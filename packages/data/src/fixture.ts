@@ -84,6 +84,12 @@ export function defaultFixture(): Snapshot {
       money_format: "USD {{amount}}",
       money_with_currency_format: "USD {{amount}}",
       timezone: "UTC",
+      description: "A synthetic catalog for local theme development.",
+      customer_accounts_enabled: false,
+      customer_accounts_optional: true,
+      enabled_payment_types: [],
+      features: { "follow_on_shop?": false },
+      policies: [],
     },
     products,
     collections: [

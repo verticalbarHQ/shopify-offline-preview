@@ -81,6 +81,21 @@ export const snapshotSchema = z.strictObject({
     currency: z.string().regex(/^[A-Z]{3}$/),
     money_format: z.string(),
     money_with_currency_format: z.string(),
+    description: z.string().optional(),
+    customer_accounts_enabled: z.boolean().optional(),
+    customer_accounts_optional: z.boolean().optional(),
+    enabled_payment_types: z.array(z.string().min(1)).optional(),
+    features: z.record(z.string(), z.boolean()).optional(),
+    policies: z
+      .array(
+        z.strictObject({
+          id: z.string().min(1).optional(),
+          title: z.string(),
+          body: z.string(),
+          url: z.string().regex(/^\/policies\//),
+        }),
+      )
+      .optional(),
     timezone: z.string().refine((zone) => {
       try {
         new Intl.DateTimeFormat("en", { timeZone: zone });

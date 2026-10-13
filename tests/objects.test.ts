@@ -4,6 +4,7 @@ import { Liquid } from "liquidjs";
 import { defaultFixture } from "../packages/data/src/fixture.js";
 import { liquidObjects, liquidPrice } from "../packages/data/src/objects.js";
 import { applyScenario } from "../packages/data/src/scenarios.js";
+import { parseSnapshot } from "../packages/data/src/schema.js";
 
 const route = {
   pageType: "product",
@@ -15,6 +16,93 @@ const route = {
   designMode: false,
 };
 const silent = { read() {}, unsupported() {} };
+
+test("shop metadata preserves supplied false values, policy content, counts and inspected reads", async () => {
+  const snapshot = defaultFixture();
+  snapshot.shop.policies = [
+    {
+      id: "1001",
+      title: "Own refund policy",
+      body: "<p>Own terms.</p>",
+      url: "/policies/refund-policy",
+    },
+  ];
+  snapshot.shop.enabled_payment_types = ["visa"];
+  const reads: string[] = [];
+  const missing: string[] = [];
+  const before = JSON.stringify(snapshot);
+  const globals = liquidObjects(
+    parseSnapshot(before),
+    { ...route, designMode: true },
+    {
+      read(path) {
+        reads.push(path);
+      },
+      unsupported(type, key) {
+        missing.push(`${type}.${key}`);
+      },
+    },
+  );
+  const result = await new Liquid().parseAndRender(
+    "{{shop.customer_accounts_enabled}}|{{shop.features['follow_on_shop?']}}|{{shop.products_count}}|{{shop.collections_count}}|{{request.design_mode}}|{{request.visual_preview_mode}}|{{shop.enabled_payment_types | join: ','}}|{% for policy in shop.policies %}{{policy.id}}:{{policy.title}}:{{policy.url}}:{{policy.body}}:{{policy}}{% endfor %}",
+    globals,
+  );
+  assert.equal(
+    result,
+    `false|false|40|${snapshot.collections.length}|true|false|visa|1001:Own refund policy:/policies/refund-policy:<p>Own terms.</p>:<p>Own terms.</p>`,
+  );
+  assert.deepEqual(missing, []);
+  for (const path of [
+    "shop.features.follow_on_shop?",
+    "shop.policies[0].body",
+    "shop.policies[0].id",
+    "request.visual_preview_mode",
+  ])
+    assert.ok(reads.includes(path), path);
+  assert.equal(JSON.stringify(snapshot), before);
+});
+
+test("legacy snapshots remain valid and absent metadata, feature keys and policy ids stay diagnosed", async () => {
+  const snapshot = defaultFixture();
+  delete snapshot.shop.description;
+  delete snapshot.shop.customer_accounts_enabled;
+  delete snapshot.shop.policies;
+  delete snapshot.shop.features;
+  const missing: string[] = [];
+  const hooks = {
+    read() {},
+    unsupported(type: string, key: string) {
+      missing.push(`${type}.${key}`);
+    },
+  };
+  await new Liquid().parseAndRender(
+    "{{shop.description}}{{shop.customer_accounts_enabled}}{{shop.policies}}{{shop.features}}",
+    liquidObjects(parseSnapshot(JSON.stringify(snapshot)), route, hooks),
+  );
+  assert.deepEqual(missing, [
+    "shop.description",
+    "shop.customer_accounts_enabled",
+    "shop.policies",
+    "shop.features",
+  ]);
+  snapshot.shop.features = {};
+  snapshot.shop.policies = [{ title: "Own policy", body: "", url: "/policies/privacy-policy" }];
+  missing.length = 0;
+  await new Liquid().parseAndRender(
+    "{{shop.features['unknown?']}}{{shop.policies.first.id}}{{shop.policies.first.unknown}}",
+    liquidObjects(snapshot, route, hooks),
+  );
+  assert.deepEqual(
+    [...new Set(missing)],
+    ["shop.features.unknown?", "policy.id", "policy.unknown"],
+  );
+  const invalid = JSON.parse(JSON.stringify(snapshot));
+  invalid.shop.features = { enabled: "false" };
+  assert.throws(() => parseSnapshot(JSON.stringify(invalid)));
+  invalid.shop.features = {};
+  invalid.shop.policies[0].url = "https://example.test";
+  assert.throws(() => parseSnapshot(JSON.stringify(invalid)));
+});
 
 test("decimal prices convert exactly to hundredths and reject silent precision loss", () => {
   assert.equal(liquidPrice("12.34"), 1234);

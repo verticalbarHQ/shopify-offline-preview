@@ -81,6 +81,12 @@ Data may come from any external collection or export tool. Prepare a local direc
 live-store data or convert vendor-specific exports. Local snapshot validation is available in the
 browser export, `render --data` and `dev --data`.
 
+Optional shop metadata includes `description`, customer account flags, `enabled_payment_types`,
+boolean `features`, and `policies` with `title`, `body`, `url` and an optional string `id`.
+Omitted metadata stays unavailable and produces a diagnostic when read. Shop product and collection
+counts come from the supplied catalog arrays; provide the full storefront catalog for those counts.
+`request.visual_preview_mode` is false because the preview renders complete pages.
+
 Source prices are decimal strings in the shop currency, not floating-point numbers or Liquid's
 derived minor-unit prices. Variants have string ids; cart lines refer to a product handle and
 variant id. Images use paths relative to `images/`. Schema validation checks source shape; reference

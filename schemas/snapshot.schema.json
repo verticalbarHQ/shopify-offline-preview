@@ -43,6 +43,59 @@
         "money_with_currency_format": {
           "type": "string"
         },
+        "description": {
+          "type": "string"
+        },
+        "customer_accounts_enabled": {
+          "type": "boolean"
+        },
+        "customer_accounts_optional": {
+          "type": "boolean"
+        },
+        "enabled_payment_types": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "features": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": "boolean"
+          }
+        },
+        "policies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "title": {
+                "type": "string"
+              },
+              "body": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string",
+                "pattern": "^\\/policies\\/"
+              }
+            },
+            "required": [
+              "title",
+              "body",
+              "url"
+            ],
+            "additionalProperties": false
+          }
+        },
         "timezone": {
           "type": "string"
         }

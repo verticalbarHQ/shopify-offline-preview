@@ -1,3 +1,4 @@
+import { Drop } from "liquidjs";
 import type { Snapshot } from "./schema.js";
 import { type SearchCandidate, searchResults } from "./search.js";
 
@@ -470,7 +471,51 @@ export function liquidObjects(
     "search",
   );
   const globals: LiquidRecord = {
-    shop: tracked(snapshot.shop, "shop", "shop"),
+    shop: tracked(
+      {
+        ...snapshot.shop,
+        products_count: snapshot.products.length,
+        collections_count: snapshot.collections.length,
+        ...(snapshot.shop.features
+          ? { features: tracked(snapshot.shop.features, "shop.features", "shop.features") }
+          : {}),
+        ...(snapshot.shop.policies
+          ? {
+              policies: snapshot.shop.policies.map((source, index) => {
+                class Policy extends Drop {
+                  #field(key: "id" | "title" | "body" | "url") {
+                    hooks.read(`shop.policies[${index}].${key}`);
+                    if (!Object.hasOwn(source, key)) hooks.unsupported("policy", key);
+                    return key === "id" && source.id ? id(source.id) : source[key];
+                  }
+                  get id() {
+                    return this.#field("id");
+                  }
+                  get title() {
+                    return this.#field("title");
+                  }
+                  get body() {
+                    return this.#field("body");
+                  }
+                  get url() {
+                    return this.#field("url");
+                  }
+                  valueOf() {
+                    return this.body;
+                  }
+                  liquidMethodMissing(key: string) {
+                    if (!internal.has(key)) hooks.unsupported("policy", key);
+                    return undefined;
+                  }
+                }
+                return new Policy();
+              }),
+            }
+          : {}),
+      },
+      "shop",
+      "shop",
+    ),
     cart,
     search,
     all_products: tracked(Object.fromEntries(products), "dictionary", "all_products"),
@@ -484,6 +529,7 @@ export function liquidObjects(
           route.pageType === "404" ? null : new URL(route.path, "https://offline.invalid").pathname,
         page_type: route.pageType,
         design_mode: route.designMode,
+        visual_preview_mode: false,
         locale: { iso_code: snapshot.shop.locale },
         host: snapshot.shop.domain,
         origin: `https://${snapshot.shop.domain}`,
