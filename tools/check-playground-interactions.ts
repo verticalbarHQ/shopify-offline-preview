@@ -17,9 +17,10 @@ const files = {
   "layout/theme.liquid":
     '<!doctype html><html><head><script type="module" src="/sop/assets/a.js"></script><link rel="stylesheet" href="/sop/assets/main.css"></head><body>{{content_for_layout}}</body></html>',
   "templates/index.json":
-    '{"sections":{"main":{"type":"main","settings":{"featured":"absent"}}},"order":["main"]}',
+    '{"sections":{"main":{"type":"main","settings":{"featured":"absent"}},"classic":{"type":"classic","blocks":{"label":{"type":"text"}},"block_order":["label"]}},"order":["main","classic"]}',
   "sections/main.liquid":
     '<h1>{{shop.name}}</h1>{% content_for \'block\', type: \'label\', id: \'label\', label: shop.name %}<p id="mode">{{request.design_mode}}</p><a id="navigate" href="/pages/about">About</a>{% schema %}{"settings":[{"type":"product","id":"featured"}]}{% endschema %}',
+  "sections/classic.liquid": `{% for block in section.blocks %}<p id="classic-block" {{block.shopify_attributes}}>{{block.settings.label}}:{{shop.name}}</p>{% endfor %}{% schema %}{"blocks":[{"type":"text","settings":[{"id":"label","type":"text","default":"Classic"}]}]}{% endschema %}`,
   "blocks/label.liquid":
     '<p id="theme-block">Block: {{label}}</p>{% schema %}{"tag":null}{% endschema %}',
   "templates/page.json": '{"sections":{"main":{"type":"main"}},"order":["main"]}',
@@ -207,6 +208,24 @@ try {
     ),
     true,
   );
+  await parent(
+    "[...document.querySelectorAll('[data-kind=block]')].at(-1).dispatchEvent(new MouseEvent('mouseenter'));true",
+  );
+  assert.equal(
+    await frame(
+      `(async()=>{await (${wait})(()=>{const r=document.querySelector('#classic-block').getBoundingClientRect(),o=document.querySelector('#sop-region-highlight').getBoundingClientRect();return document.querySelector('#sop-region-highlight').style.display==='block'&&o.width>0&&Math.abs(o.top-r.top)<2&&o.height<=r.height+2;});return true;})()`,
+    ),
+    true,
+  );
+  await frame(
+    "(()=>{const element=document.querySelector('#classic-block'),r=element.getBoundingClientRect();element.dispatchEvent(new MouseEvent('mouseover',{bubbles:true,clientX:r.left+2,clientY:r.top+2}));return true;})()",
+  );
+  assert.equal(
+    await parent(
+      `(async()=>{await (${wait})(()=>[...document.querySelectorAll('[data-kind=block]')].at(-1).getAttribute('aria-pressed')==='true'&&document.querySelector('#source').textContent.includes('{{block.settings.label}}'));const id=[...document.querySelectorAll('[data-kind=block]')].at(-1).dataset.nodeId;return window.SOP_INSPECTOR_STATE.result.dataUsed[id].includes('shop.name');})()`,
+    ),
+    true,
+  );
   await browser("upload", "#snapshot-zip", dataZip);
   await parent(
     `(async()=>{await (${wait})(()=>window.SOP_INSPECTOR_STATE.result?.html.includes('Private Browser Snapshot Needle')&&document.querySelector('#status').dataset.state==='ready');return true;})()`,
@@ -282,6 +301,7 @@ try {
     cssImports: true,
     sourceViewer: true,
     sectionHighlight: true,
+    classicBlockRangeSourceAndReads: true,
     themeBlockRangeHighlight: true,
     themeBlockHoverAndSource: true,
     mobileWidth: 390,

@@ -17,10 +17,14 @@ for (const [file, text] of Object.entries({
   "layout/theme.liquid":
     "<!doctype html><html><head><title>Inspector interaction test</title></head><body>{{content_for_layout}}</body></html>",
   "templates/index.json": JSON.stringify({
-    sections: { main: { type: "main", settings: { featured: "absent" } } },
-    order: ["main"],
+    sections: {
+      main: { type: "main", settings: { featured: "absent" } },
+      classic: { type: "classic", blocks: { label: { type: "text" } }, block_order: ["label"] },
+    },
+    order: ["main", "classic"],
   }),
   "sections/main.liquid": source,
+  "sections/classic.liquid": `{% for block in section.blocks %}<p id="classic-block" {{block.shopify_attributes}}>{{block.settings.label}}:{{shop.name}}</p>{% endfor %}{% schema %}{"blocks":[{"type":"text","settings":[{"id":"label","type":"text","default":"Classic"}]}]}{% endschema %}`,
   "blocks/label.liquid":
     '<p id="theme-block">Block: {{label}}</p>{% schema %}{"tag":null}{% endschema %}',
 })) {
@@ -166,6 +170,24 @@ try {
     ),
     true,
   );
+  await parent(
+    "[...document.querySelectorAll('[data-kind=block]')].at(-1).dispatchEvent(new MouseEvent('mouseenter'));true",
+  );
+  assert.equal(
+    await child(
+      `(async()=>{await (${wait})(()=>{const r=document.querySelector('#classic-block').getBoundingClientRect(),o=document.querySelector('#sop-region-highlight').getBoundingClientRect();return document.querySelector('#sop-region-highlight').style.display==='block'&&o.width>0&&Math.abs(o.top-r.top)<2&&o.height<=r.height+2;});return true;})()`,
+    ),
+    true,
+  );
+  await child(
+    "(()=>{const element=document.querySelector('#classic-block'),r=element.getBoundingClientRect();element.dispatchEvent(new MouseEvent('mouseover',{bubbles:true,clientX:r.left+2,clientY:r.top+2}));return true;})()",
+  );
+  assert.equal(
+    await parent(
+      `(async()=>{await (${wait})(()=>[...document.querySelectorAll('[data-kind=block]')].at(-1).getAttribute('aria-pressed')==='true'&&document.querySelector('#source').textContent.includes('{{block.settings.label}}'));const id=[...document.querySelectorAll('[data-kind=block]')].at(-1).dataset.nodeId;return window.SOP_INSPECTOR_STATE.result.dataUsed[id].includes('shop.name');})()`,
+    ),
+    true,
+  );
   await child(
     "document.querySelector('#blocked').click();document.querySelector('#absolute').click();true",
   );
@@ -226,6 +248,7 @@ try {
     status: "pass",
     mobileWidth: 390,
     sectionHighlight: true,
+    classicBlockRangeSourceAndReads: true,
     themeBlockRangeHighlight: true,
     themeBlockHoverAndSource: true,
     pageHoverSelection: true,

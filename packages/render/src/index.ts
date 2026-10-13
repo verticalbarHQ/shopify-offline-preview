@@ -22,6 +22,7 @@ import { registerBasicTags } from "./basic-tags.js";
 import { registerContentFor } from "./content-for.js";
 import { type RenderNode, type RenderResult, renderSchema } from "./contracts.js";
 import { registerShopifyFilters } from "./filters/index.js";
+import { registerLoopTrace } from "./loop-trace.js";
 import { resolveRoute } from "./routes.js";
 import { registerShopifyTags } from "./shopify-tags.js";
 import {
@@ -148,6 +149,7 @@ export async function renderTheme(
     prefix: string;
   }
   const blockOwners = new WeakMap<object, BlockOwner>();
+  const classicBlocks = new WeakMap<object, { type: string; file: string; pointer: string }>();
   function object(value: unknown): value is LiquidRecord {
     return value !== null && typeof value === "object" && !Array.isArray(value);
   }
@@ -202,6 +204,16 @@ export async function renderTheme(
     memoryLimit: 100_000_000,
   });
   engine.registerTag("schema", SchemaTag);
+  registerLoopTrace(engine, async (value, _token, safeRegion, render) => {
+    const info = object(value) ? classicBlocks.get(value) : undefined;
+    if (!info) return render();
+    const entry = node("block", info.type, info.file, info.pointer);
+    return inside(entry, async () => {
+      const body = await render();
+      if (!safeRegion) return body;
+      return `<!--sop:region ${entry.id}-->${body}<!--/sop:region-->`;
+    });
+  });
   registerBasicTags(engine, (message) => diagnostic("not-implemented", message));
   registerShopifyTags(engine, {
     path: route.path,
@@ -487,6 +499,7 @@ export async function renderTheme(
         schemaFailure = liquidError(error, file, 1);
       }
       sectionLocales.set(entry.id, schema.locales);
+      let sectionContext: Context;
       const blocks = (config.block_order ?? Object.keys(config.blocks)).flatMap((blockId) => {
         const configBlock = config.blocks[blockId];
         if (!configBlock || configBlock.disabled || configBlock.static === true) return [];
@@ -497,24 +510,31 @@ export async function renderTheme(
             "not-implemented",
             `Block type ${configBlock.type} has no classic block schema.`,
           );
-        // Block tree tracing is deferred until actual block execution is instrumented.
+        const blockData = {
+          id: blockId,
+          type: configBlock.type,
+          settings: settings(
+            schemaBlock?.settings ?? [],
+            configBlock.settings,
+            () => sectionContext,
+          ),
+          shopify_attributes: options.designMode
+            ? `data-shopify-editor-block="${escapeHtml(JSON.stringify({ id: blockId, type: configBlock.type }))}"`
+            : "",
+        };
         if (!isThemeBlock)
-          diagnostic("not-implemented", "Classic block execution tracing is not implemented.");
-        return [
-          {
-            id: blockId,
+          classicBlocks.set(blockData, {
             type: configBlock.type,
-            settings: settings(schemaBlock?.settings ?? [], configBlock.settings),
-            shopify_attributes: "",
-          },
-        ];
+            file,
+            pointer: `${configFile}#/sections/${pointer}/blocks/${blockId.replaceAll("~", "~0").replaceAll("/", "~1")}`,
+          });
+        return [blockData];
       });
       const sectionId = groupType
         ? `sections--0__${id}`
         : configFile.startsWith("templates/")
           ? `template--0__${id}`
           : id;
-      let sectionContext: Context;
       const sectionData = {
         id: sectionId,
         settings: settings(schema.settings, config.settings, () => sectionContext),

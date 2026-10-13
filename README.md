@@ -7,7 +7,7 @@ An offline theme reader and editor for Shopify Online Store 2.0 themes, for peop
 **Status: initial offline rendering is available locally; Shopify parity is pending.** JSON templates,
 layouts, sections/groups, source mappings and isolated snippets are assembled using local snapshots.
 Fixture generation and guarded read-only oracle tools exist; no real goldens have been captured.
-The dev server, inspector and static browser playground are available with section and theme-block highlighting;
+The dev server, inspector and static browser playground are available with section, classic block and theme-block highlighting;
 Shopify block fidelity remains pending. No Shopify-verified feature implementation is claimed. This package is
 private during development and has not been published.
 
@@ -49,8 +49,8 @@ exit with 4; recoverable Liquid errors appear inline and in diagnostics. Known u
 emit visible markers and `not-implemented` diagnostics; unknown filters fail explicitly.
 
 Dynamic, static and nested theme blocks execute locally with isolated parameters, scoped `closest`
-resources, dynamic setting expressions and per-execution source/read mappings. Classic block tracing,
-several resource settings and several Shopify filters remain pending. Prices convert exactly to
+resources, dynamic setting expressions and per-execution source/read mappings. Classic section block
+loops retain native loop control and own their executed snippets and data reads. Several resource settings and several Shopify filters remain pending. Prices convert exactly to
 hundredths and reject values requiring greater precision. Native LiquidJS behavior still needs
 Shopify oracle verification. The feature registry continues to report zero verified implementations.
 Theme/section translations, regional locales, plural counts and HTML escaping are handled locally.
@@ -81,8 +81,9 @@ names, beyond the JSON Schema's string shape. No real customer data belongs in f
 ## Development inspector
 
 `dev` prints separate loopback origins for the inspector and the theme page. The inspector shows the
-renderer tree, diagnostics, snapshot reads and the selected node's source. Hover sections and theme blocks to highlight
+renderer tree, diagnostics, snapshot reads and the selected node's source. Hover sections and blocks to highlight
 their regions; snippets are listed without DOM highlights. Mobile, tablet, desktop and full-width
+Loops inside HTML attributes or scripts are traced without inserting DOM markers. Width
 presets change the iframe width. Scenario and design-mode controls re-render locally. Theme and data
 file edits reload the preview. Invalid edits clear the old preview and show the input error.
 
@@ -144,7 +145,7 @@ Shopify render parity and do not waive acceptance gates.
 The Docker command prepares dependencies and benchmarks while online, then runs the foundation checks
 in a container with `--network none`. GitHub workflow definitions include unit, network-off, license-guard and browser jobs. The browser lane
 checks all 36 playground cases, no-upload behavior, playground interactions and dev-inspector
-regressions against the current renderer. Synthetic theme-block execution and DOM-range interactions are checked. Real Shopify parity remains pending.
+regressions against the current renderer. Synthetic classic/theme block execution and DOM-range interactions are checked. Real Shopify parity remains pending.
 
 ## License
 
