@@ -101,6 +101,14 @@ data URL scripts and reported as `shopify-server-only` differences.
 Color component filters support RGB, alpha, hue, saturation and lightness with bounded values.
 `link_to` preserves label markup, escapes attribute values and adds `nofollow` for Shopify links.
 
+Resources can supply optional string `id` values. Safe decimal IDs become Liquid numbers; larger
+or nondecimal IDs remain strings. Variant metadata can include `quantityRule`, decimal-string
+`quantityPriceBreaks` and `unitPrice`, `unitPriceMeasurement`, inventory fields and
+`storeAvailabilities`. Product metadata can include `giftCard`, `requiresSellingPlan`,
+`sellingPlanGroups` and `quantityPriceBreaksConfigured`. Pickup and selling-plan arrays contain
+prepared Liquid-shaped JSON objects; the library does not collect or convert their source exports.
+Missing metadata remains diagnosed. `variants_count` derives from the supplied variants.
+
 Source prices are decimal strings in the shop currency, not floating-point numbers or Liquid's
 derived minor-unit prices. Variants have string ids; cart lines refer to a product handle and
 variant id. Images use paths relative to `images/`. Schema validation checks source shape; reference

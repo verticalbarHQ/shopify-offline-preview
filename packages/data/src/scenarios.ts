@@ -36,6 +36,17 @@ export function validateSnapshotReferences(snapshot: Snapshot): void {
     snapshot.products.map((p) => p.handle),
     "product handle",
   );
+  for (const [kind, resources] of [
+    ["product", snapshot.products],
+    ["collection", snapshot.collections],
+    ["page", snapshot.pages],
+    ["blog", snapshot.blogs],
+    ["article", snapshot.blogs.flatMap((blog) => blog.articles)],
+  ] as const)
+    unique(
+      resources.flatMap((resource) => (resource.id === undefined ? [] : [resource.id])),
+      `${kind} id`,
+    );
   unique(
     snapshot.collections.map((p) => p.handle),
     "collection handle",
@@ -64,6 +75,12 @@ export function validateSnapshotReferences(snapshot: Snapshot): void {
       `option name on ${product.handle}`,
     );
     for (const variant of product.variants) {
+      if (
+        variant.quantityRule?.max !== undefined &&
+        variant.quantityRule.max !== null &&
+        variant.quantityRule.max < variant.quantityRule.min
+      )
+        throw new Error("Variant quantity rule maximum is below its minimum");
       if (variant.image !== null && !files.has(variant.image))
         throw new Error(`Missing variant image on ${product.handle}`);
       if (variant.optionValues.length !== product.options.length)

@@ -15,10 +15,23 @@ function image(index: number) {
     height: 64,
   };
 }
+function variantMetadata() {
+  return {
+    quantityRule: { min: 1, max: null, increment: 1 },
+    quantityPriceBreaks: [],
+    unitPrice: null,
+    unitPriceMeasurement: null,
+    inventoryManagement: "shopify",
+    inventoryPolicy: "deny" as const,
+    inventoryQuantity: 10,
+    storeAvailabilities: [],
+  };
+}
 
 /** Original synthetic content only; no benchmark code or customer content. */
 export function defaultFixture(): Snapshot {
   const products: Snapshot["products"] = Array.from({ length: 40 }, (_, i) => ({
+    id: String(100001 + i),
     handle: i === 0 ? fixtureProductHandle : `sop-product-${String(i + 1).padStart(2, "0")}`,
     title: i === 0 ? "SOP Matrix Needle" : `SOP Product ${String(i + 1).padStart(2, "0")}`,
     descriptionHtml: `<p>Original synthetic product ${i + 1} for offline theme verification.</p>`,
@@ -29,6 +42,7 @@ export function defaultFixture(): Snapshot {
     options: [{ name: "Title", values: ["Default Title"] }],
     variants: [
       {
+        ...variantMetadata(),
         id: `sop-variant-${i + 1}`,
         optionValues: [{ name: "Title", value: "Default Title" }],
         price: `${10 + i}.00`,
@@ -41,6 +55,10 @@ export function defaultFixture(): Snapshot {
     ],
     images: [image(i % 16)],
     metafields: {},
+    giftCard: false,
+    requiresSellingPlan: false,
+    sellingPlanGroups: [],
+    quantityPriceBreaksConfigured: false,
   }));
   const main = products[0];
   if (!main) throw new Error("Fixture product is missing");
@@ -57,6 +75,8 @@ export function defaultFixture(): Snapshot {
             main.options[2]?.values.map((material, m) => {
               const index = c * 4 + s * 2 + m;
               return {
+                ...variantMetadata(),
+                inventoryQuantity: index === 7 ? 0 : 10,
                 id: `sop-main-${index + 1}`,
                 optionValues: [
                   { name: "Color", value: color },
@@ -94,6 +114,7 @@ export function defaultFixture(): Snapshot {
     products,
     collections: [
       {
+        id: "200001",
         handle: "sop-catalog",
         title: "Example Catalog",
         descriptionHtml: "<p>Original synthetic collection.</p>",
@@ -105,6 +126,7 @@ export function defaultFixture(): Snapshot {
     ],
     pages: [
       {
+        id: "300001",
         handle: "about",
         title: "About Example Studio",
         bodyHtml:
@@ -115,11 +137,13 @@ export function defaultFixture(): Snapshot {
     ],
     blogs: [
       {
+        id: "400001",
         handle: "news",
         title: "Example Journal",
         templateSuffix: null,
         metafields: {},
         articles: Array.from({ length: 3 }, (_, i) => ({
+          id: String(500001 + i),
           handle: `story-${i + 1}`,
           title: `Example Story ${i + 1}`,
           bodyHtml: `<p>Original example article ${i + 1}.</p>`,
@@ -168,6 +192,7 @@ export function defaultFixture(): Snapshot {
   const soldOut = structuredClone(main);
   soldOut.variants.forEach((v) => {
     v.available = false;
+    v.inventoryQuantity = 0;
   });
   const firstVariant = main.variants[0];
   if (!firstVariant) throw new Error("Fixture variants are missing");
@@ -185,7 +210,7 @@ export function defaultFixture(): Snapshot {
   long.title = "SOP Matrix Needle — ".repeat(12).trim();
   long.descriptionHtml = `<p>${"Original long-content example. ".repeat(80)}</p>`;
   long.images = imageFiles.map((_, i) => image(i));
-  snapshot.scenarios = {
+  snapshot.scenarios = snapshotSchema.shape.scenarios.parse({
     "sold-out": overlayProduct(soldOut),
     "single-variant": overlayProduct(single),
     "no-images": overlayProduct(noImages),
@@ -222,7 +247,7 @@ export function defaultFixture(): Snapshot {
         ),
       })),
     },
-  };
+  });
   const valid = snapshotSchema.parse(snapshot);
   validateSnapshotReferences(valid);
   return valid;

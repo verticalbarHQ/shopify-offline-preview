@@ -33,6 +33,9 @@ function id(value: string): number | string {
   const number = Number(value);
   return /^\d+$/.test(value) && Number.isSafeInteger(number) ? number : value;
 }
+function availableFields(values: LiquidRecord): LiquidRecord {
+  return Object.fromEntries(Object.entries(values).filter(([, value]) => value !== undefined));
+}
 function image(value: Snapshot["products"][number]["images"][number], index: number): LiquidRecord {
   const src = `/sop/images/${value.file.split("/").map(encodeURIComponent).join("/")}`;
   return {
@@ -101,6 +104,26 @@ export function liquidObjects(
     entries.set(`${type}:${path}`, result);
     return result;
   }
+  function trackedJson(value: unknown, type: string, path: string): unknown {
+    if (Array.isArray(value))
+      return tracked(
+        value.map((item, index) => trackedJson(item, type, `${path}[${index}]`)),
+        type,
+        path,
+      );
+    if (value !== null && typeof value === "object")
+      return tracked(
+        Object.fromEntries(
+          Object.entries(value).map(([key, item]) => [
+            key,
+            trackedJson(item, type, `${path}.${key}`),
+          ]),
+        ),
+        type,
+        path,
+      );
+    return value;
+  }
   const products = new Map<string, LiquidRecord>();
   const collections = new Map<string, LiquidRecord>();
   for (const [productIndex, source] of snapshot.products.entries()) {
@@ -130,6 +153,40 @@ export function liquidObjects(
           image: images.find((i) => i.file === variant.image) ?? null,
           featured_image: images.find((i) => i.file === variant.image) ?? null,
           featured_media: images.find((i) => i.file === variant.image) ?? null,
+          ...availableFields({
+            quantity_rule: trackedJson(
+              variant.quantityRule,
+              "quantity_rule",
+              `${path}.variants[${index}].quantity_rule`,
+            ),
+            quantity_price_breaks: trackedJson(
+              variant.quantityPriceBreaks?.map((entry) => ({
+                minimum_quantity: entry.minimumQuantity,
+                price: liquidPrice(entry.price),
+              })),
+              "quantity_price_break",
+              `${path}.variants[${index}].quantity_price_breaks`,
+            ),
+            unit_price:
+              variant.unitPrice === undefined
+                ? undefined
+                : variant.unitPrice === null
+                  ? null
+                  : liquidPrice(variant.unitPrice),
+            unit_price_measurement: trackedJson(
+              variant.unitPriceMeasurement,
+              "unit_price_measurement",
+              `${path}.variants[${index}].unit_price_measurement`,
+            ),
+            inventory_management: variant.inventoryManagement,
+            inventory_policy: variant.inventoryPolicy,
+            inventory_quantity: variant.inventoryQuantity,
+            store_availabilities: trackedJson(
+              variant.storeAvailabilities,
+              "store_availability",
+              `${path}.variants[${index}].store_availabilities`,
+            ),
+          }),
         },
         "variant",
         `${path}.variants[${index}]`,
@@ -142,6 +199,18 @@ export function liquidObjects(
       variant.compareAtPrice === null ? [] : [liquidPrice(variant.compareAtPrice)],
     );
     const dto: LiquidRecord = {
+      ...availableFields({
+        id: source.id === undefined ? undefined : id(source.id),
+        "gift_card?": source.giftCard,
+        requires_selling_plan: source.requiresSellingPlan,
+        selling_plan_groups: trackedJson(
+          source.sellingPlanGroups,
+          "selling_plan_group",
+          `${path}.selling_plan_groups`,
+        ),
+        "quantity_price_breaks_configured?": source.quantityPriceBreaksConfigured,
+      }),
+      variants_count: variants.length,
       handle: source.handle,
       title: source.title,
       description: source.descriptionHtml,
@@ -193,6 +262,7 @@ export function liquidObjects(
       source.handle,
       tracked(
         {
+          ...availableFields({ id: source.id === undefined ? undefined : id(source.id) }),
           handle: source.handle,
           title: source.title,
           description: source.descriptionHtml,
@@ -229,6 +299,7 @@ export function liquidObjects(
       source.handle,
       tracked(
         {
+          ...availableFields({ id: source.id === undefined ? undefined : id(source.id) }),
           handle: source.handle,
           title: source.title,
           content: source.bodyHtml,
@@ -247,6 +318,7 @@ export function liquidObjects(
       source.handle,
       tracked(
         {
+          ...availableFields({ id: source.id === undefined ? undefined : id(source.id) }),
           handle: source.handle,
           title: source.title,
           url: `/blogs/${source.handle}`,
@@ -254,6 +326,7 @@ export function liquidObjects(
           articles: source.articles.map((article, index) => {
             const dto = tracked(
               {
+                ...availableFields({ id: article.id === undefined ? undefined : id(article.id) }),
                 handle: article.handle,
                 title: article.title,
                 content: article.bodyHtml,
@@ -348,6 +421,10 @@ export function liquidObjects(
         total_discount: 0,
         properties: {},
         selling_plan_allocation: null,
+        ...availableFields({
+          unit_price: variant.unit_price,
+          unit_price_measurement: variant.unit_price_measurement,
+        }),
       },
       "line_item",
       `cart.lines[${index}]`,

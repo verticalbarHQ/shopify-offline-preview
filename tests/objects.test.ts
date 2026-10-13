@@ -153,6 +153,7 @@ test("Liquid's own-property check reports absent data and reads use indices with
   const snapshot = defaultFixture();
   const product = snapshot.products[0];
   assert.ok(product);
+  delete product.id;
   const reads: string[] = [];
   const unsupported: string[] = [];
   const before = JSON.stringify(snapshot);

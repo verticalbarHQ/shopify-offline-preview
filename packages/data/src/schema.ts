@@ -22,8 +22,34 @@ const variant = z.strictObject({
   sku: z.string(),
   barcode: z.string(),
   image: z.string().nullable(),
+  quantityRule: z
+    .strictObject({
+      min: z.number().int().positive(),
+      max: z.number().int().positive().nullable(),
+      increment: z.number().int().positive(),
+    })
+    .optional(),
+  quantityPriceBreaks: z
+    .array(z.strictObject({ minimumQuantity: z.number().int().positive(), price: money }))
+    .optional(),
+  unitPrice: money.nullable().optional(),
+  unitPriceMeasurement: z
+    .strictObject({
+      measured_type: z.enum(["volume", "weight", "length", "area", "count"]),
+      quantity_unit: z.string(),
+      quantity_value: z.number().positive(),
+      reference_unit: z.string(),
+      reference_value: z.number().positive(),
+    })
+    .nullable()
+    .optional(),
+  inventoryManagement: z.string().nullable().optional(),
+  inventoryPolicy: z.enum(["deny", "continue"]).optional(),
+  inventoryQuantity: z.number().int().optional(),
+  storeAvailabilities: z.array(z.record(z.string(), z.json())).optional(),
 });
 const product = z.strictObject({
+  id: z.string().min(1).optional(),
   handle,
   title: z.string(),
   descriptionHtml: z.string(),
@@ -35,8 +61,13 @@ const product = z.strictObject({
   variants: z.array(variant).min(1),
   images: z.array(image),
   metafields,
+  giftCard: z.boolean().optional(),
+  requiresSellingPlan: z.boolean().optional(),
+  sellingPlanGroups: z.array(z.record(z.string(), z.json())).optional(),
+  quantityPriceBreaksConfigured: z.boolean().optional(),
 });
 const page = z.strictObject({
+  id: z.string().min(1).optional(),
   handle,
   title: z.string(),
   bodyHtml: z.string(),
@@ -44,6 +75,7 @@ const page = z.strictObject({
   metafields,
 });
 const article = z.strictObject({
+  id: z.string().min(1).optional(),
   handle,
   title: z.string(),
   bodyHtml: z.string(),
@@ -108,6 +140,7 @@ export const snapshotSchema = z.strictObject({
   products: z.array(product),
   collections: z.array(
     z.strictObject({
+      id: z.string().min(1).optional(),
       handle,
       title: z.string(),
       descriptionHtml: z.string(),
@@ -120,6 +153,7 @@ export const snapshotSchema = z.strictObject({
   pages: z.array(page),
   blogs: z.array(
     z.strictObject({
+      id: z.string().min(1).optional(),
       handle,
       title: z.string(),
       articles: z.array(article),
