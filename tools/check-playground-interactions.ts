@@ -15,7 +15,7 @@ const root = resolve("dist/playground"),
   temp = await mkdtemp(join(tmpdir(), "sop-playground-interactions-"));
 const files = {
   "layout/theme.liquid":
-    '<!doctype html><html><head><script type="module" src="/sop/assets/a.js"></script><link rel="stylesheet" href="/sop/assets/main.css"></head><body>{{content_for_layout}}</body></html>',
+    '<!doctype html><html><head>{{content_for_header}}<script type="module" src="/sop/assets/a.js"></script><link rel="stylesheet" href="/sop/assets/main.css"></head><body>{{content_for_layout}}</body></html>',
   "templates/index.json":
     '{"sections":{"main":{"type":"main","settings":{"featured":"absent"}},"classic":{"type":"classic","blocks":{"label":{"type":"text"}},"block_order":["label"]},"apps":{"type":"apps","blocks":{"app":{"type":"shopify://apps/example-reviews/blocks/rating/synthetic-extension"}},"block_order":["app"]}},"order":["main","classic","apps"]}',
   "sections/main.liquid":
@@ -33,7 +33,13 @@ const files = {
     'import {marker} from "./a.js"; export const answer=37; export function readMarker(){return marker;}',
   "assets/main.css": '@import "./base.css";',
   "assets/base.css": "h1{color:rgb(150,0,0)}",
+  "sections/unused-error.liquid":
+    "{% javascript %}throw new Error('Own isolated bundle failure');{% endjavascript %}{% stylesheet %}h1{color:blue}{% endstylesheet %}",
+  "snippets/unused-script.liquid":
+    "{% javascript %}const shared=2;window.otherLexical=shared;{% endjavascript %}",
 };
+files["sections/main.liquid"] +=
+  "{% javascript %}const shared=1;window.bundleLexical=shared;window.bundleCount=(window.bundleCount||0)+1;window.bundleSawDOM=!!document.getElementById('theme-block');{% endjavascript %}{% stylesheet %}h1{font-style:italic}{% endstylesheet %}";
 const themeZip = join(temp, "theme.zip");
 await writeFile(
   themeZip,
@@ -161,9 +167,19 @@ try {
   }
   assert.deepEqual(
     await frame(
-      `(async()=>{await (${wait})(()=>window.moduleAnswer===37&&window.dynamicAnswer===37);let parentBlocked=false;try{void parent.document.body}catch{parentBlocked=true}return {module:window.moduleAnswer,dynamic:window.dynamicAnswer,color:getComputedStyle(document.querySelector('h1')).color,parentBlocked};})()`,
+      `(async()=>{await (${wait})(()=>window.moduleAnswer===37&&window.dynamicAnswer===37&&window.otherLexical===2);let parentBlocked=false;try{void parent.document.body}catch{parentBlocked=true}return {module:window.moduleAnswer,dynamic:window.dynamicAnswer,color:getComputedStyle(document.querySelector('h1')).color,fontStyle:getComputedStyle(document.querySelector('h1')).fontStyle,bundleCount:window.bundleCount,bundleSawDOM:window.bundleSawDOM,bundleLexical:window.bundleLexical,otherLexical:window.otherLexical,parentBlocked};})()`,
     ),
-    { module: 37, dynamic: 37, color: "rgb(150, 0, 0)", parentBlocked: true },
+    {
+      module: 37,
+      dynamic: 37,
+      color: "rgb(150, 0, 0)",
+      fontStyle: "italic",
+      bundleCount: 1,
+      bundleSawDOM: true,
+      bundleLexical: 1,
+      otherLexical: 2,
+      parentBlocked: true,
+    },
   );
   assert.deepEqual(
     await frame(

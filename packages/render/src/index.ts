@@ -18,6 +18,7 @@ import { type Snapshot, snapshotSchema } from "../../data/src/schema.js";
 import { registry } from "../../spec/src/index.js";
 import { parseThemeJson, type ThemeFileSystem, themePath } from "../../theme/src/index.js";
 import { appendAppEmbeds, appIdentity, appMarkup } from "./apps.js";
+import { ThemeAssetBundles } from "./asset-bundles.js";
 import { registerBasicTags } from "./basic-tags.js";
 import { ColorScheme, ColorSchemeGroup, colorPalette, colorSetting } from "./color-settings.js";
 import { registerContentFor } from "./content-for.js";
@@ -238,7 +239,8 @@ export async function renderTheme(
       return `<!--sop:region ${entry.id}-->${body}<!--/sop:region-->`;
     });
   });
-  registerBasicTags(engine, (message) => diagnostic("not-implemented", message));
+  const assetBundles = new ThemeAssetBundles(files, snapshot);
+  registerBasicTags(engine);
   registerShopifyTags(engine, {
     path: route.path,
     unsupported: (message) => diagnostic("not-implemented", message),
@@ -389,6 +391,7 @@ export async function renderTheme(
   async function renderFile(file: string, context: Context): Promise<string> {
     let parsed: Template[];
     try {
+      assetBundles.use(file);
       parsed = parse(file);
     } catch (error) {
       return liquidError(error, file, 1);
@@ -585,7 +588,7 @@ export async function renderTheme(
         "Shopify's content_for_header scripts are omitted.",
         "info",
       );
-      return "";
+      return assetBundles.header();
     },
   });
   globals.template = {
@@ -875,6 +878,14 @@ export async function renderTheme(
     }
     html = appendAppEmbeds(html, embeds);
   }
+  const bundled = assetBundles.finish(html);
+  html = bundled.html;
+  if (bundled.emitted)
+    diagnostic(
+      "shopify-server-only",
+      "Theme CSS and deferred JavaScript are compiled locally; Shopify's generated CDN bundle URLs are omitted.",
+      "info",
+    );
   return renderSchema.parse({
     schemaVersion: "1.0",
     html,

@@ -31,8 +31,17 @@ test("schemas, docs and raw assets retain literal Liquid without lexing their co
   const theme = new MemoryThemeFileSystem(files);
   const result = await renderTheme(theme, "/", { snapshot });
   assert.ok(result.html.includes("Visible"));
-  assert.ok(result.html.includes(`<style>${css}</style>`));
-  assert.ok(result.html.includes(`<script>${js}</script>`));
+  assert.ok(result.html.includes(`<style data-sop-theme-styles>${css}</style>`));
+  const bundle =
+    /data-sop-theme-scripts="snippets" src="data:text\/javascript;base64,([^"]+)"/.exec(
+      result.html,
+    );
+  assert.ok(bundle);
+  assert.ok(
+    Buffer.from(bundle[1] ?? "", "base64")
+      .toString()
+      .includes(js),
+  );
   assert.ok(!result.html.includes("Must be inside"));
   assert.ok(!result.html.includes("visible_if"));
   assert.ok(!result.diagnostics.some((d) => d.code === "liquid-error"));

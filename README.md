@@ -87,10 +87,16 @@ Omitted metadata stays unavailable and produces a diagnostic when read. Shop pro
 counts come from the supplied catalog arrays; provide the full storefront catalog for those counts.
 `request.visual_preview_mode` is false because the preview renders complete pages.
 
-Font settings recognize Assistant, Work Sans and Anonymous Pro and their available weights/styles.
+Font settings recognize Assistant, Inter, Work Sans and Anonymous Pro and their available weights/styles.
 `font_face` and `font_url` use fixed Google Fonts WOFF2 URLs for the Latin subset, with an explicit
 `shopify-server-only` diagnostic for the CDN substitution. Rendering makes no font requests;
 offline the CSS fallback stack applies. Other families and unavailable metadata remain diagnosed.
+
+`stylesheet` bodies are collected once from each rendered section, block or snippet file.
+`javascript` bodies are collected from all theme section, block and snippet files and run once,
+deferred, with a separate closure and error boundary for each file. Both tags preserve literal code;
+use `style` for CSS that evaluates Liquid. Generated CDN URLs are replaced by local inline CSS and
+data URL scripts and reported as `shopify-server-only` differences.
 
 Source prices are decimal strings in the shop currency, not floating-point numbers or Liquid's
 derived minor-unit prices. Variants have string ids; cart lines refer to a product handle and

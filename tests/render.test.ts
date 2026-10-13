@@ -164,9 +164,18 @@ test("style evaluates Liquid, doc remains inert, and asset bodies preserve liter
     { snapshot: fixture },
   );
   assert.match(result.html, /<style data-shopify>\.x\{width:5px\}<\/style>/);
-  assert.match(result.html, /<script>console.log\("\{\{2 \| plus:3\}\}"\)<\/script>/);
+  const script =
+    /data-sop-theme-scripts="sections" src="data:text\/javascript;base64,([^"]+)"/.exec(
+      result.html,
+    );
+  assert.ok(script);
+  assert.ok(
+    Buffer.from(script[1] ?? "", "base64")
+      .toString()
+      .includes('console.log("{{2 | plus:3}}")'),
+  );
   assert.ok(!result.html.includes("yes"));
-  assert.equal(result.diagnostics.filter((d) => d.code === "not-implemented").length, 2);
+  assert.equal(result.diagnostics.filter((d) => d.code === "not-implemented").length, 0);
 });
 
 test("missing translations and nested snippet errors keep actual source paths and line numbers", async () => {

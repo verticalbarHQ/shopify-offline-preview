@@ -9,7 +9,7 @@ import {
 } from "liquidjs";
 
 /** Uses only LiquidJS's public tag/parser extension API; never patches its internals. */
-export function registerBasicTags(engine: Liquid, unsupported: (message: string) => void): void {
+export function registerBasicTags(engine: Liquid): void {
   engine.registerTag(
     "style",
     class extends Tag {
@@ -36,10 +36,8 @@ export function registerBasicTags(engine: Liquid, unsupported: (message: string)
     engine.registerTag(
       name,
       class extends Tag {
-        private readonly body: string;
         constructor(token: TagToken, tokens: TopLevelToken[], liquid: Liquid) {
           super(token, tokens, liquid);
-          const body: TopLevelToken[] = [];
           let closed = false;
           while (tokens.length) {
             const next = tokens.shift();
@@ -47,20 +45,12 @@ export function registerBasicTags(engine: Liquid, unsupported: (message: string)
               closed = true;
               break;
             }
-            if (next) body.push(next);
           }
           if (!closed) throw new Error(`Unclosed ${name} tag`);
-          this.body = body.map((token) => token.getText()).join("");
           // Raw documentation is ignored; its example tags must never be parsed or executed.
         }
         render() {
-          if (name === "doc") return "";
-          unsupported(
-            `Shopify's ${name} asset bundling is not implemented; raw code is emitted inline.`,
-          );
-          return name === "javascript"
-            ? `<script>${this.body}</script>`
-            : `<style>${this.body}</style>`;
+          return "";
         }
       },
     );
