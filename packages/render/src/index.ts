@@ -19,7 +19,7 @@ import { registry } from "../../spec/src/index.js";
 import { parseThemeJson, type ThemeFileSystem, themePath } from "../../theme/src/index.js";
 import { appendAppEmbeds, appIdentity, appMarkup } from "./apps.js";
 import { registerBasicTags } from "./basic-tags.js";
-import { ColorScheme, ColorSchemeGroup, colorSetting } from "./color-settings.js";
+import { ColorScheme, ColorSchemeGroup, colorPalette, colorSetting } from "./color-settings.js";
 import { registerContentFor } from "./content-for.js";
 import { type RenderNode, type RenderResult, renderSchema } from "./contracts.js";
 import { ImageUrlInputError } from "./filters/images.js";
@@ -406,6 +406,7 @@ export async function renderTheme(
     }
     return html;
   }
+  let globalSettingsContext: Context;
   const colorGroups = new Map<string, ColorSchemeGroup>();
   function settings(
     definitions: z.infer<typeof settingSchema>[],
@@ -417,6 +418,11 @@ export async function renderTheme(
       if (!definition.id) continue;
       const key = definition.id;
       const raw = Object.hasOwn(configured, key) ? configured[key] : definition.default;
+      if (typeof raw === "string" && raw.includes("{%")) {
+        result[key] = null;
+        diagnostic("not-implemented", `Liquid logic in setting ${key} is unsupported.`);
+        continue;
+      }
       if (typeof raw === "string" && raw.includes("{{")) {
         if (!dynamicContext || raw.includes("{%")) {
           result[key] = null;
@@ -426,16 +432,41 @@ export async function renderTheme(
           );
           continue;
         }
+        let resolving = false;
         Object.defineProperty(result, key, {
           enumerable: true,
           configurable: true,
           get() {
+            if (resolving) throw new Error("Cyclic dynamic setting reference");
+            resolving = true;
             const single = /^\s*\{\{([\s\S]*?)\}\}\s*$/.exec(raw);
-            return single
+            const resolved = single
               ? engine.evalValue(single[1] ?? "", dynamicContext())
               : engine.parseAndRender(raw, dynamicContext());
+            return resolved
+              .then((value) =>
+                definition.type === "color"
+                  ? colorSetting(value, (message) => diagnostic("not-implemented", message))
+                  : value,
+              )
+              .finally(() => {
+                resolving = false;
+              });
           },
         });
+        continue;
+      }
+      if (definition.type === "color_palette") {
+        result[key] = colorPalette(
+          key,
+          definition.default,
+          Object.hasOwn(configured, key) ? configured[key] : undefined,
+          (message) => diagnostic("not-implemented", message),
+        );
+        continue;
+      }
+      if (definition.type === "color_background") {
+        result[key] = raw ?? "";
         continue;
       }
       if (definition.type === "color") {
@@ -515,6 +546,8 @@ export async function renderTheme(
         .parse(parseThemeJson(source("config/settings_schema.json"), "config/settings_schema.json"))
         .flatMap((group) => group.settings)
     : [];
+  if (definitions.filter((d) => d.type === "color_palette").length > 1)
+    throw new Error("A theme can define only one color palette");
   for (const definition of definitions) {
     if (definition.type !== "color_scheme_group" || !definition.id) continue;
     const fields = z.array(settingSchema).parse(definition.definition ?? []);
@@ -528,12 +561,17 @@ export async function renderTheme(
       definition.id,
       new ColorSchemeGroup(
         Object.entries(entries).map(
-          ([id, value]) => new ColorScheme(id, settings(fields, value.settings)),
+          ([id, value]) =>
+            new ColorScheme(
+              id,
+              settings(fields, value.settings, () => globalSettingsContext),
+            ),
         ),
       ),
     );
   }
-  globals.settings = settings(definitions, settingsConfig);
+  globals.settings = settings(definitions, settingsConfig, () => globalSettingsContext);
+  globalSettingsContext = new Context({}, engine.options, { globals });
   Object.defineProperty(globals, "content_for_header", {
     get() {
       diagnostic(

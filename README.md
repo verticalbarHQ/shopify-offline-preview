@@ -51,7 +51,9 @@ emit visible markers and `not-implemented` diagnostics; unknown filters fail exp
 Dynamic, static and nested theme blocks execute locally with isolated parameters, scoped `closest`
 resources, dynamic setting expressions and per-execution source/read mappings. Color scheme groups
 resolve ids and defaults; sRGB colors expose RGB, HSL and alpha properties. Other color formats and
-properties remain explicitly diagnosed. Classic section block
+properties remain explicitly diagnosed. Global palettes preserve named lookup and value order,
+merge new defaults with merchant values, and resolve color references and dynamic setting expressions.
+Reference cycles fail visibly; settings cannot execute Liquid logic tags. Classic section block
 loops retain native loop control and own their executed snippets and data reads. External app blocks
 and embeds appear as labelled placeholders with source mappings and `app-placeholder` diagnostics. Several resource settings and several Shopify filters remain pending. Prices convert exactly to
 hundredths and reject values requiring greater precision. Liquid behavior still needs

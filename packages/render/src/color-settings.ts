@@ -164,3 +164,67 @@ export class ColorSchemeGroup extends Drop {
     return this.#schemes.find((s) => s.id === String(key));
   }
 }
+
+/** Named lookup with standard iteration over values, without exposing names as loop entries. */
+export function colorPalette(
+  id: string,
+  defaults: unknown,
+  configured: unknown,
+  unsupported: (message: string) => void,
+): LiquidRecord {
+  const record = (v: unknown): v is LiquidRecord =>
+    v !== null && typeof v === "object" && !Array.isArray(v);
+  if (!record(defaults)) throw new Error("Color palette defaults must be an object");
+  const names = Object.keys(defaults);
+  if (
+    names.length < 2 ||
+    names.length > 20 ||
+    names.some((key) => !/^[A-Za-z][A-Za-z0-9_]*$/.test(key))
+  )
+    throw new Error("Invalid color palette default keys");
+  if (
+    Object.values(defaults).some(
+      (value) => typeof value !== "string" || !/^#(?:[\da-f]{3}|[\da-f]{6})$/i.test(value),
+    )
+  )
+    throw new Error("Color palette defaults must be hex colors without alpha");
+  if (configured !== undefined && !record(configured))
+    throw new Error("Color palette values must be an object");
+  const raw = new Map(Object.entries(record(configured) ? configured : {}));
+  for (const [key, value] of Object.entries(defaults)) if (!raw.has(key)) raw.set(key, value);
+  if (raw.size > 20 || [...raw.keys()].some((key) => !/^[A-Za-z][A-Za-z0-9_]*$/.test(key)))
+    throw new Error("Invalid color palette keys");
+  const palette: LiquidRecord = Object.create(null);
+  const cache = new Map<string, unknown>(),
+    active = new Set<string>();
+  function resolve(key: string): unknown {
+    if (cache.has(key)) return cache.get(key);
+    if (active.has(key)) throw new Error("Cyclic color palette reference");
+    active.add(key);
+    try {
+      const value = raw.get(key);
+      let result: unknown;
+      if (typeof value === "string" && value.includes("{{")) {
+        const reference =
+          /^\s*\{\{\s*settings\.([A-Za-z_][A-Za-z0-9_-]*)\.([A-Za-z][A-Za-z0-9_]*)\s*\}\}\s*$/.exec(
+            value,
+          );
+        if (!reference || reference[1] !== id || !raw.has(reference[2] ?? ""))
+          throw new Error("Invalid color palette reference");
+        result = resolve(reference[2] ?? "");
+      } else result = colorSetting(value, unsupported);
+      cache.set(key, result);
+      return result;
+    } finally {
+      active.delete(key);
+    }
+  }
+  for (const key of raw.keys())
+    Object.defineProperty(palette, key, { get: () => resolve(key), enumerable: true });
+  Object.defineProperty(palette, Symbol.iterator, {
+    value: function* () {
+      for (const key of raw.keys()) yield resolve(key);
+    },
+  });
+  return palette;
+}
