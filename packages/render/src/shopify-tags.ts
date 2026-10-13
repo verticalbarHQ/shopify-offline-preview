@@ -12,6 +12,11 @@ import {
 } from "liquidjs";
 import { liquidObjectKind, preserveLiquidObjectKind } from "../../data/src/objects.js";
 
+const formKinds = new WeakMap<object, string>();
+export function formKind(value: unknown): string | undefined {
+  return value !== null && typeof value === "object" ? formKinds.get(value) : undefined;
+}
+
 function escapeHtml(value: unknown): string {
   return String(value ?? "").replace(
     /[&<>"']/g,
@@ -127,7 +132,9 @@ export function registerShopifyTags(engine: Liquid, hooks: TagHooks): void {
             );
         else if (args.return_to !== undefined)
           before += hidden("return_to", args.return_to === true ? hooks.path : args.return_to);
-        context.push({ form: { errors: null, "posted_successfully?": false, email: null } });
+        const form = { errors: null, "posted_successfully?": false, email: null };
+        formKinds.set(form, kind);
+        context.push({ form });
         let output: string;
         try {
           output = await engine.render(this.templates, context);

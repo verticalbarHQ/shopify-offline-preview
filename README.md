@@ -148,6 +148,10 @@ come from the snapshot. Shop policy aliases resolve supplied policy URLs and rem
 when the policy list itself is absent. Shared collection/search lookups that Shopify returns as nil
 retain nil values.
 
+Shopify accelerated checkout and installment terms are omitted with `shopify-server-only` diagnostics.
+The preview emits no fake payment controls or server credentials. Payment filters validate their
+product/cart form scope; regular forms and snapshot cart content remain available.
+
 Source prices are decimal strings in the shop currency, not floating-point numbers or Liquid's
 derived minor-unit prices. Variants have string ids; cart lines refer to a product handle and
 variant id. Images use paths relative to `images/`. Schema validation checks source shape; reference

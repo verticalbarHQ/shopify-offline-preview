@@ -3,6 +3,7 @@ import { liquidObjectKind } from "../../../data/src/objects.js";
 import type { Snapshot } from "../../../data/src/schema.js";
 import { themePath } from "../../../theme/src/index.js";
 import { registerFontFilters } from "../fonts.js";
+import { formKind } from "../shopify-tags.js";
 import { registerColorFilters } from "./colors.js";
 import { registerDateFilters } from "./dates.js";
 import { registerEventFilters } from "./events.js";
@@ -27,6 +28,21 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
   registerFontFilters(engine, hooks.diagnostic);
   engine.registerFilter("money_amount", (value) => moneyAmount(toValue(value)));
   engine.registerFilter("handleize", handleize);
+  for (const name of ["payment_button", "payment_terms"])
+    engine.registerFilter(name, function (value: unknown) {
+      const kind = formKind(value);
+      if (kind !== "product" && (name !== "payment_terms" || kind !== "cart"))
+        throw new Error(`${name} requires a supported Shopify form`);
+      hooks.diagnostic(
+        "shopify-server-only",
+        name === "payment_button"
+          ? "Shopify accelerated checkout is omitted; it requires server-issued credentials and live checkout."
+          : "Shop Pay installment terms are omitted; they require Shopify's live payment service.",
+        this.token.file ?? null,
+        this.token.getPosition()[0] ?? null,
+      );
+      return "";
+    });
   engine.registerFilter("item_count_for_variant", (input: unknown, variant: unknown) => {
     if (
       liquidObjectKind(input) !== "cart" ||
