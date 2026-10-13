@@ -1,3 +1,4 @@
+import { NodeTypes, toLiquidAST, walk } from "@shopify/liquid-html-parser";
 import {
   Context,
   type Emitter,
@@ -381,15 +382,20 @@ export async function renderTheme(
     const pointer = id.replaceAll("~", "~0").replaceAll("/", "~1");
     const entry = node("section", config.type, file, `${configFile}#/sections/${pointer}`);
     return inside(entry, async () => {
-      let schema: SectionSchema;
+      let schema: SectionSchema = sectionSchema.parse({});
+      let schemaFailure: string | undefined;
       try {
-        const schemas = parse(file).filter(
-          (template): template is SchemaTag => template instanceof SchemaTag,
-        );
+        // Schema extraction must not depend on support for the section's executable tags.
+        const schemas: SectionSchema[] = [];
+        walk(toLiquidAST(source(file)), (node, parent) => {
+          if (node.type !== NodeTypes.LiquidRawTag || node.name !== "schema") return;
+          if (parent?.type !== NodeTypes.Document) throw new Error("Schema tag must be top-level");
+          schemas.push(sectionSchema.parse(JSON.parse(node.body.value)));
+        });
         if (schemas.length > 1) throw new Error("More than one schema tag");
-        schema = schemas[0]?.schema ?? sectionSchema.parse({});
+        schema = schemas[0] ?? sectionSchema.parse({});
       } catch (error) {
-        return liquidError(error, file, 1);
+        schemaFailure = liquidError(error, file, 1);
       }
       const blocks = (config.block_order ?? Object.keys(config.blocks)).flatMap((blockId) => {
         const configBlock = config.blocks[blockId];
@@ -428,7 +434,7 @@ export async function renderTheme(
       const context = new Context({ section: sectionData }, engine.options, {
         globals: sectionGlobals,
       });
-      const body = await renderFile(file, context);
+      const body = schemaFailure ?? (await renderFile(file, context));
       const tag = schema.tag ?? "div";
       if (!/^(?:div|section|header|footer|aside|article)$/.test(tag))
         throw new Error("Unsupported section wrapper tag");

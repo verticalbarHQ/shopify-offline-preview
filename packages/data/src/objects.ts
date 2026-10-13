@@ -287,7 +287,8 @@ export function liquidObjects(
     linklists: tracked(menuMap, "dictionary", "linklists"),
     request: tracked(
       {
-        path: route.path,
+        path:
+          route.pageType === "404" ? null : new URL(route.path, "https://offline.invalid").pathname,
         page_type: route.pageType,
         design_mode: route.designMode,
         locale: { iso_code: snapshot.shop.locale },

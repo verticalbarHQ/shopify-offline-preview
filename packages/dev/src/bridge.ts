@@ -1,0 +1,232 @@
+import type { Diagnostic } from "../../check/src/contracts.js";
+import { isBlockedEndpoint } from "./endpoints.js";
+
+interface Region {
+  nodeId: string;
+  domId: string;
+}
+interface Configuration {
+  inspectorOrigin: string;
+  regions: Region[];
+  diagnostics: Diagnostic[];
+  path: string;
+  designMode?: boolean;
+  shopDomain?: string;
+  locale?: string;
+  currency?: string;
+  viewId?: string;
+}
+const element = document.getElementById("sop-bridge-config");
+const configuration: Configuration = JSON.parse(element?.textContent ?? "{}");
+declare global {
+  interface Window {
+    Shopify?: Record<string, unknown>;
+  }
+}
+// Only source-backed static context is supplied; no Shopify service APIs are emulated.
+window.Shopify ??= {};
+const platform = window.Shopify;
+platform.designMode = configuration.designMode ?? false;
+platform.routes = { root: "/" };
+if (configuration.locale) platform.locale = configuration.locale;
+if (configuration.currency) platform.currency = { active: configuration.currency };
+const prefix = "shopify-offline-preview";
+function send(kind: string, value: unknown) {
+  if (window.parent !== window)
+    window.parent.postMessage(
+      { source: prefix, kind, value, viewId: configuration.viewId },
+      configuration.inspectorOrigin,
+    );
+}
+const overlay = document.createElement("div");
+overlay.id = "sop-region-highlight";
+Object.assign(overlay.style, {
+  position: "fixed",
+  pointerEvents: "none",
+  zIndex: "2147483647",
+  border: "2px solid #4168ec",
+  background: "rgba(65,104,236,.08)",
+  display: "none",
+});
+const badges = document.createElement("div");
+badges.id = "sop-diagnostic-badges";
+Object.assign(badges.style, {
+  position: "fixed",
+  bottom: "12px",
+  left: "12px",
+  zIndex: "2147483646",
+  display: "flex",
+  gap: "6px",
+  flexWrap: "wrap",
+  maxWidth: "80vw",
+  font: "12px system-ui",
+});
+const counts = new Map<string, number>();
+function badge(code: string) {
+  counts.set(code, (counts.get(code) ?? 0) + 1);
+  let node = Array.from(badges.children).find((child) => child.getAttribute("data-code") === code);
+  if (!node) {
+    node = document.createElement("span");
+    node.setAttribute("data-code", code);
+    Object.assign(node instanceof HTMLElement ? node.style : {}, {
+      background: "#20293a",
+      color: "white",
+      borderRadius: "6px",
+      padding: "6px 8px",
+      boxShadow: "0 2px 6px #0003",
+    });
+    badges.append(node);
+  }
+  node.textContent = `${code} · ${counts.get(code)}`;
+}
+for (const diagnostic of configuration.diagnostics)
+  if (diagnostic.code !== "shopify-server-only") badge(diagnostic.code);
+function report(code: string, message: string) {
+  badge(code);
+  send("diagnostic", {
+    code,
+    severity: code === "external-request" ? "info" : "warning",
+    file: null,
+    line: null,
+    nodeId: null,
+    message,
+  });
+}
+function blocked(url: URL) {
+  return (
+    (url.origin === location.origin || url.hostname === configuration.shopDomain) &&
+    isBlockedEndpoint(url)
+  );
+}
+function request(input: string) {
+  let url: URL;
+  try {
+    url = new URL(input, location.href);
+  } catch {
+    return;
+  }
+  if (blocked(url)) report("blocked-endpoint", `${url.pathname}: not available offline`);
+  return url;
+}
+const originalFetch = window.fetch.bind(window);
+window.fetch = (input, init) => {
+  const target = request(input instanceof Request ? input.url : String(input));
+  if (target && target.origin !== location.origin && blocked(target)) {
+    return Promise.resolve(
+      new Response(JSON.stringify({ error: "not available offline" }), {
+        status: 501,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  }
+  return originalFetch(input, init);
+};
+const originalOpen = XMLHttpRequest.prototype.open;
+XMLHttpRequest.prototype.open = function (
+  method: string,
+  url: string | URL,
+  async: boolean = true,
+  username?: string | null,
+  password?: string | null,
+) {
+  const target = request(String(url));
+  const local =
+    target && blocked(target) ? new URL(target.pathname + target.search, location.origin) : url;
+  return originalOpen.call(this, method, local, async, username ?? null, password ?? null);
+};
+function regionElement(region: Region): HTMLElement | null {
+  return document.getElementById(region.domId);
+}
+let selected: Region | undefined;
+function highlight(region: Region | undefined) {
+  selected = region;
+  const target = region && regionElement(region);
+  if (!target) {
+    overlay.style.display = "none";
+    return;
+  }
+  const rect = target.getBoundingClientRect();
+  Object.assign(overlay.style, {
+    display: "block",
+    left: `${rect.left}px`,
+    top: `${rect.top}px`,
+    width: `${rect.width}px`,
+    height: `${rect.height}px`,
+  });
+}
+window.addEventListener("message", (event) => {
+  if (event.origin !== configuration.inspectorOrigin || event.source !== window.parent) return;
+  const message: unknown = event.data;
+  if (
+    !message ||
+    typeof message !== "object" ||
+    !("source" in message) ||
+    message.source !== prefix ||
+    !("kind" in message)
+  )
+    return;
+  if (message.kind === "highlight" && "value" in message)
+    highlight(configuration.regions.find((region) => region.nodeId === message.value));
+});
+window.addEventListener("scroll", () => highlight(selected), { passive: true });
+window.addEventListener("resize", () => highlight(selected));
+function ready() {
+  document.body.append(overlay, badges);
+  document.addEventListener("mouseover", (event) => {
+    const target =
+      event.target instanceof Element
+        ? event.target.closest('[id^="shopify-section-"], [data-sop-block-node]')
+        : null;
+    const region = configuration.regions.find((region) => region.domId === target?.id);
+    if (region) send("select", region.nodeId);
+  });
+  document.addEventListener("click", (event) => {
+    const anchor = event.target instanceof Element ? event.target.closest("a[href]") : null;
+    if (
+      !(anchor instanceof HTMLAnchorElement) ||
+      anchor.target === "_blank" ||
+      anchor.hasAttribute("download") ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.shiftKey ||
+      event.altKey
+    )
+      return;
+    const url = new URL(anchor.href);
+    if (
+      url.origin === location.origin &&
+      !blocked(url) &&
+      !/^\/sop\//.test(url.pathname) &&
+      !url.hash
+    ) {
+      event.preventDefault();
+      send("navigate", url.pathname + url.search);
+    }
+  });
+  send("ready", configuration.path);
+}
+if (document.readyState === "loading")
+  document.addEventListener("DOMContentLoaded", ready, { once: true });
+else ready();
+const external = new Set<string>();
+function observe(entries: PerformanceEntry[]) {
+  for (const entry of entries) {
+    try {
+      const url = new URL(entry.name);
+      if (
+        !["http:", "https:"].includes(url.protocol) ||
+        url.origin === location.origin ||
+        external.has(url.href)
+      )
+        continue;
+      external.add(url.href);
+      report("external-request", url.href);
+    } catch {
+      /* Non-URL performance entries are not resource requests. */
+    }
+  }
+}
+if (typeof PerformanceObserver !== "undefined") {
+  const observer = new PerformanceObserver((list) => observe(list.getEntries()));
+  observer.observe({ type: "resource", buffered: true });
+}

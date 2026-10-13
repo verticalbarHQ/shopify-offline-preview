@@ -4,6 +4,7 @@ import { type CheckResult, checkTheme } from "../../check/src/index.js";
 import { defaultFixture } from "../../data/src/fixture.js";
 import { applyScenario, validateSnapshotReferences } from "../../data/src/scenarios.js";
 import { parseSnapshot } from "../../data/src/schema.js";
+import { startDevServer } from "../../dev/src/server.js";
 import { type RenderResult, renderTheme } from "../../render/src/index.js";
 import { resolveRoute } from "../../render/src/routes.js";
 import { templateConfig } from "../../render/src/theme-config.js";
@@ -11,7 +12,65 @@ import { registry } from "../../spec/src/index.js";
 import { NodeThemeFileSystem } from "../../theme/src/node.js";
 
 const usage =
-  "Usage: shopify-offline-preview check <theme> [--json] [--strict] | render <theme> <path> [--data <directory>] [--scenario <name>] [--design-mode] [--json] [--out <file>] | schema <render|check|snapshot>";
+  "Usage: shopify-offline-preview check <theme> [--json] [--strict] | render <theme> <path> [--data <directory>] [--scenario <name>] [--design-mode] [--json] [--out <file>] | dev <theme> [--data <directory>] [--scenario <name>] [--design-mode] [--port <number>] | schema <render|check|snapshot>";
+async function devCommand(args: string[]): Promise<number> {
+  const [target, ...flags] = args;
+  const parsed = new Map<string, string | true>();
+  if (!target || target.startsWith("-")) {
+    console.error(usage);
+    return 2;
+  }
+  for (let index = 0; index < flags.length; index++) {
+    const flag = flags[index];
+    if (
+      !flag ||
+      parsed.has(flag) ||
+      !["--data", "--scenario", "--design-mode", "--port"].includes(flag)
+    ) {
+      console.error(usage);
+      return 2;
+    }
+    if (flag === "--design-mode") parsed.set(flag, true);
+    else {
+      const value = flags[++index];
+      if (!value || value.startsWith("--")) {
+        console.error(usage);
+        return 2;
+      }
+      parsed.set(flag, value);
+    }
+  }
+  const portValue = parsed.get("--port");
+  if (typeof portValue === "string" && (!/^\d+$/.test(portValue) || Number(portValue) > 65534)) {
+    console.error("Invalid port");
+    return 2;
+  }
+  try {
+    const data = parsed.get("--data");
+    const scenario = parsed.get("--scenario");
+    const session = await startDevServer({
+      themeDirectory: target,
+      ...(typeof data === "string" ? { dataDirectory: data } : {}),
+      ...(typeof scenario === "string" ? { scenario } : {}),
+      ...(typeof portValue === "string" ? { port: Number(portValue) } : {}),
+      designMode: parsed.has("--design-mode"),
+    });
+    console.log(`Inspector: ${session.inspectorOrigin}/`);
+    console.log(`Preview: ${session.previewOrigin}/`);
+    const stop = () => {
+      void session.close().catch((error) => {
+        console.error(error instanceof Error ? error.message : String(error));
+        process.exitCode = 4;
+      });
+    };
+    process.once("SIGINT", stop);
+    process.once("SIGTERM", stop);
+    return 0;
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    return 3;
+  }
+}
 function renderFailure(code: string, message: string, json: boolean): void {
   console.error(message);
   if (json) {
@@ -113,6 +172,7 @@ async function main(args: string[]): Promise<number> {
     return 0;
   }
   if (command === "render") return renderCommand(args.slice(1));
+  if (command === "dev") return devCommand(args.slice(1));
   if (
     command === "schema" &&
     target &&

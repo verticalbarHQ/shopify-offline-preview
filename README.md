@@ -7,7 +7,8 @@ An offline theme reader and editor for Shopify Online Store 2.0 themes, for peop
 **Status: initial offline rendering is available locally; Shopify parity is pending.** JSON templates,
 layouts, sections/groups, source mappings and isolated snippets are assembled using local snapshots.
 Fixture generation and guarded read-only oracle tools exist; no real goldens have been captured.
-The dev server, inspector and playground are pending. No Shopify-verified feature implementation is claimed. This package is
+The dev server and inspector are available with section highlighting; theme-block fidelity and the
+playground remain pending. No Shopify-verified feature implementation is claimed. This package is
 private during development and has not been published.
 
 ## Local development
@@ -22,6 +23,7 @@ node dist/cli.js check /path/to/theme --json
 node dist/cli.js check /path/to/theme --json --strict
 node dist/cli.js render /path/to/theme /products/example --data /path/to/data --json
 node dist/cli.js schema snapshot
+node dist/cli.js dev /path/to/theme --data /path/to/data --port 3000
 ```
 
 `check` walks JSON templates and their layouts, section groups, sections, theme blocks, and statically
@@ -56,13 +58,26 @@ Shopify oracle verification. The feature registry continues to report zero verif
 Data may come from any external collection or export tool. Prepare a local directory containing
 `snapshot.json` and `images/`, following `schemas/snapshot.schema.json`. The library does not collect
 live-store data or convert vendor-specific exports. Local snapshot validation is available in the
-browser export and `render --data`; `dev --data` arrives with the dev server.
+browser export, `render --data` and `dev --data`.
 
 Source prices are decimal strings in the shop currency, not floating-point numbers or Liquid's
 derived minor-unit prices. Variants have string ids; cart lines refer to a product handle and
 variant id. Images use paths relative to `images/`. Schema validation checks source shape; reference
 integrity and scenario derivation are also checked by the renderer. The runtime validates IANA timezone
 names, beyond the JSON Schema's string shape. No real customer data belongs in fixtures.
+
+## Development inspector
+
+`dev` prints separate loopback origins for the inspector and the theme page. The inspector shows the
+renderer tree, diagnostics, snapshot reads and the selected node's source. Hover sections to highlight
+their regions; snippets are listed without DOM highlights. Mobile, tablet, desktop and full-width
+presets change the iframe width. Scenario and design-mode controls re-render locally. Theme and data
+file edits reload the preview. Invalid edits clear the old preview and show the input error.
+
+Unsupported Shopify endpoints return 501 with `{"error":"not available offline"}` and page badges.
+The bridge also prevents those requests from reaching the snapshot's shop domain. Third-party resource
+requests are listed separately. Bridge markup is added only to the served view, leaving `render` output
+unchanged. The inspector rejects cross-origin requests and filesystem escapes.
 
 ## Generated Shopify documentation
 
@@ -94,7 +109,7 @@ Shopify render parity and do not waive acceptance gates.
 The Docker command prepares dependencies and benchmarks while online, then runs the foundation checks
 in a container with `--network none`. GitHub workflow definitions include unit, network-off, and
 license-guard jobs. Remote M0 CI passed at `744be2a`; the owner authorizes subsequent pushes during North Star delivery. Browser contract tests also exercise the renderer without Node globals; the loopback smoke
-page checks real browser execution. Inspector and playground e2e remain later milestones.
+page checks real browser execution. Inspector browser checks cover the initial renderer; theme-block coverage and playground e2e remain pending.
 
 ## License
 

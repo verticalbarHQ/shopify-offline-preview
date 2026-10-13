@@ -19,6 +19,15 @@ await build({
   banner: { js: "#!/usr/bin/env node" },
 });
 await chmod("dist/cli.js", 0o755);
+for (const name of ["inspector", "bridge"]) {
+  await build({
+    ...shared,
+    entryPoints: [`packages/dev/src/${name}.ts`],
+    outfile: `dist/${name}.js`,
+    platform: "browser",
+    ...(name === "bridge" ? { format: "iife" } : {}),
+  });
+}
 await build({
   ...shared,
   entryPoints: ["packages/check/src/index.ts"],
