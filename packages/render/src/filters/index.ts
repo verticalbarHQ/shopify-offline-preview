@@ -1,7 +1,7 @@
 import { type Liquid, toValue } from "liquidjs";
 import type { Snapshot } from "../../../data/src/schema.js";
 import { themePath } from "../../../theme/src/index.js";
-import { imageFilters } from "./images.js";
+import { imageFilters, namedArgs } from "./images.js";
 import { md5 } from "./md5.js";
 import { formatMoney } from "./money.js";
 import { translateFactory } from "./translations.js";
@@ -70,6 +70,28 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
     } catch {
       throw new Error("Inline asset must contain valid UTF-8 text");
     }
+  });
+  engine.registerFilter("preload_tag", function (value: unknown, ...args: unknown[]) {
+    if (typeof value !== "string" || !value) throw new Error("preload_tag requires an asset URL");
+    const attributes = namedArgs(args);
+    if (typeof attributes.as !== "string" || !attributes.as)
+      throw new Error("preload_tag requires an as attribute");
+    const output = [`href="${escapeAttribute(value)}"`];
+    for (const [name, input] of Object.entries(attributes)) {
+      if (!/^[A-Za-z_:][A-Za-z0-9_:.-]*$/.test(name))
+        throw new Error("Invalid preload attribute name");
+      if (name === "href" || name === "rel") continue;
+      const scalar: unknown = toValue(input);
+      if (scalar === null || scalar === undefined || scalar === false) continue;
+      output.push(scalar === true ? name : `${name}="${escapeAttribute(scalar)}"`);
+    }
+    hooks.diagnostic(
+      "shopify-server-only",
+      "Shopify's HTTP Link preload header is omitted from the HTML render result.",
+      this.token.file ?? null,
+      this.token.getPosition()[0] ?? null,
+    );
+    return `<link ${output.join(" ")} rel="preload">`;
   });
   engine.registerFilter("md5", (value: unknown) => md5(String(toValue(value) ?? "")));
   const images = imageFilters(hooks.snapshot);

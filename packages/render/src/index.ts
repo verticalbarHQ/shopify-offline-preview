@@ -111,7 +111,11 @@ export async function renderTheme(
     const snippet = `snippets/${file}.liquid`;
     return files.has(snippet) ? snippet : file;
   }
-  function diagnostic(code: string, message: string, severity: Diagnostic["severity"] = "warning") {
+  function diagnostic(
+    code: string,
+    message: string,
+    severity: Diagnostic["severity"] = code === "shopify-server-only" ? "info" : "warning",
+  ) {
     const entry: Diagnostic = {
       code,
       severity,

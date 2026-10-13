@@ -198,3 +198,38 @@ test("inline assets accept the last valid byte size and report invalid UTF-8 con
   );
   assert.equal(bad.diagnostics[0]?.message, "Inline asset must contain valid UTF-8 text");
 });
+
+test("preload tags require an asset kind and preserve escaped HTML attributes", async () => {
+  const snapshot = defaultFixture();
+  const result = await renderTheme(
+    new MemoryThemeFileSystem({
+      ...files,
+      "assets/own.js": "window.own=true;",
+      "sections/main.liquid": `{{'own.js'|asset_url|preload_tag:as:'script',type:'text/javascript',title:'A "name" & B',disabled:false}}`,
+    }),
+    `/products/${snapshot.products[0]?.handle}`,
+    { snapshot },
+  );
+  assert.ok(
+    result.html.includes(
+      '<link href="/sop/assets/own.js" as="script" type="text/javascript" title="A &quot;name&quot; &amp; B" rel="preload">',
+    ),
+  );
+  assert.deepEqual(
+    result.diagnostics.map((d) => d.code),
+    ["shopify-server-only"],
+  );
+  const missing = await renderTheme(
+    new MemoryThemeFileSystem({
+      ...files,
+      "sections/main.liquid": "{{'own.js'|asset_url|preload_tag}}",
+    }),
+    `/products/${snapshot.products[0]?.handle}`,
+    { snapshot },
+  );
+  assert.ok(
+    missing.diagnostics.some(
+      (d) => d.code === "liquid-error" && d.message.includes("as attribute"),
+    ),
+  );
+});
