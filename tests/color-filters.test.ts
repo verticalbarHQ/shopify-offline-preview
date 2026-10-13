@@ -7,6 +7,28 @@ const base = {
   "layout/theme.liquid": "{{content_for_layout}}",
   "templates/index.json": '{"sections":{"main":{"type":"main"}},"order":["main"]}',
 };
+test("component modification matches RGB, alpha and HSL reference outputs and preserves RGB syntax", async () => {
+  const source = `{{'#EA5AB9'|color_modify:'red',255}}|{{'#EA5AB9'|color_modify:'alpha',0.85}}|{{'#EA5AB9'|color_modify:'hue',60}}|{{'#EA5AB9'|color_modify:'saturation',30}}|{{'#EA5AB9'|color_modify:'lightness',50}}|{{'rgba(234,90,185,0.5)'|color_modify:'alpha',1}}`;
+  const result = await renderTheme(
+    new MemoryThemeFileSystem({ ...base, "sections/main.liquid": source }),
+    "/",
+  );
+  assert.ok(
+    result.html.includes(
+      "#ff5ab9|rgba(234, 90, 185, 0.85)|#eaea5a|#be86ab|#e21d9f|rgb(234, 90, 185)",
+    ),
+  );
+  assert.deepEqual(result.diagnostics, []);
+});
+test("invalid color component values fail visibly while later outputs still render", async () => {
+  const source = `{{'#fff'|color_modify:'lightness',101}}|{{'#fff'|color_modify:'red',0.5}}|{{'#fff'|color_modify:'alpha',-1}}|After`;
+  const result = await renderTheme(
+    new MemoryThemeFileSystem({ ...base, "sections/main.liquid": source }),
+    "/",
+  );
+  assert.equal(result.diagnostics.filter((d) => d.code === "liquid-error").length, 3);
+  assert.ok(result.html.endsWith("After</div>"));
+});
 test("color brightness, contrast and lightness match documented reference values", async () => {
   const source = `{{'#EA5AB9'|color_brightness}}|{{'#E800B0'|color_contrast:'#D9D8FF'}}|{{'#000'|color_contrast:'#fff'}}|{{'#EA5AB9'|color_lighten:30}}|{{'#EA5AB9'|color_darken:30}}|{{'#334fb4'|color_extract:'lightness'}}`;
   const result = await renderTheme(

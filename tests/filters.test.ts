@@ -9,6 +9,25 @@ const files = {
   "layout/theme.liquid": "{{content_for_layout}}",
   "templates/product.json": '{"sections":{"main":{"type":"main"}},"order":["main"]}',
 };
+test("link_to preserves intended label markup, escapes attributes and applies Shopify's nofollow rule", async () => {
+  const snapshot = defaultFixture();
+  const source = `{{'Shop'|link_to:'/'}}|{{'<b>A&B</b>'|link_to:'/?q=a&b=2',class:'own'}}|{{'X'|link_to:'/',disabled:true,class:true,hidden:false}}|{{'X'|link_to:'https://www.shopify.com',rel:'author'}}|{{'X'|link_to:'https://shopify.com.evil.test'}}|{{'X'|link_to:'/',title:'A "name" & B',href:'/other'}}`;
+  const result = await renderTheme(
+    new MemoryThemeFileSystem({ ...files, "sections/main.liquid": source }),
+    `/products/${snapshot.products[0]?.handle}`,
+    { snapshot },
+  );
+  for (const expected of [
+    '<a href="/" title="">Shop</a>',
+    '<a class="own" href="/?q=a&amp;b=2"><b>A&B</b></a>',
+    '<a disabled="disabled" class="true" href="/">X</a>',
+    '<a rel="nofollow" href="https://www.shopify.com">X</a>',
+    '<a href="https://shopify.com.evil.test" title="">X</a>',
+    '<a title="A &quot;name&quot; &amp; B" href="/">X</a>',
+  ])
+    assert.ok(result.html.includes(expected), expected);
+  assert.deepEqual(result.diagnostics, []);
+});
 test("money formatting retains exact hundredths, shop templates, separators and rounding", () => {
   assert.equal(formatMoney(123456, "USD {{amount}}"), "USD 1,234.56");
   assert.equal(formatMoney(123456, "EUR {{amount_with_comma_separator}}"), "EUR 1.234,56");

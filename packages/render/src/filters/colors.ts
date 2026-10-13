@@ -69,7 +69,57 @@ function luminance(color: ColorValue) {
   };
   return linear(color.red) * 0.2126 + linear(color.green) * 0.7152 + linear(color.blue) * 0.0722;
 }
+function modifiedColor(input: unknown, color: ColorValue): string {
+  if (color.alpha !== 1) return `rgba(${color.red}, ${color.green}, ${color.blue}, ${color.alpha})`;
+  return /^rgba?\(/i.test(String(toValue(input)))
+    ? `rgb(${color.red}, ${color.green}, ${color.blue})`
+    : color.valueOf();
+}
 export function registerColorFilters(engine: Liquid): void {
+  engine.registerFilter("color_modify", (input: unknown, component: unknown, amount: unknown) => {
+    const color = channels(input),
+      key = String(component),
+      scalar = toValue(amount),
+      value = Number(scalar);
+    const maximum =
+      key === "alpha"
+        ? 1
+        : key === "hue"
+          ? 360
+          : ["saturation", "lightness"].includes(key)
+            ? 100
+            : 255;
+    if (!["red", "green", "blue", "alpha", "hue", "saturation", "lightness"].includes(key))
+      throw new Error("Unsupported color component");
+    if (
+      (typeof scalar !== "number" && typeof scalar !== "string") ||
+      !Number.isFinite(value) ||
+      value < 0 ||
+      value > maximum ||
+      (key !== "alpha" && !Number.isInteger(value))
+    )
+      throw new Error(
+        `${key[0]?.toUpperCase()}${key.slice(1)} must be ${key === "alpha" ? "a number" : "an integer"} between 0 and ${maximum}`,
+      );
+    let result: ColorValue;
+    if (["hue", "saturation", "lightness"].includes(key)) {
+      const hsl = exactHsl(color);
+      result = fromHsl(
+        key === "hue" ? value / 360 : hsl.h,
+        key === "saturation" ? value / 100 : hsl.s,
+        key === "lightness" ? value / 100 : hsl.l,
+        color.alpha,
+      );
+    } else
+      result = new ColorValue(
+        key === "red" ? value : color.red,
+        key === "green" ? value : color.green,
+        key === "blue" ? value : color.blue,
+        key === "alpha" ? value : color.alpha,
+        () => {},
+      );
+    return modifiedColor(input, result);
+  });
   engine.registerFilter("color_brightness", (value: unknown) => {
     const c = channels(value),
       n = (299 * c.red + 587 * c.green + 114 * c.blue) / 1000;
@@ -100,9 +150,7 @@ export function registerColorFilters(engine: Liquid): void {
         Math.min(1, Math.max(0, hsl.l + (direction * percent(amount)) / 100)),
         c.alpha,
       );
-      return result.alpha === 1
-        ? result.valueOf()
-        : `rgba(${result.red}, ${result.green}, ${result.blue}, ${result.alpha})`;
+      return modifiedColor(value, result);
     });
   engine.registerFilter("color_extract", (value: unknown, key: unknown) => {
     const c = channels(value),

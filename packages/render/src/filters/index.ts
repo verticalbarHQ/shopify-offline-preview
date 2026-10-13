@@ -19,6 +19,55 @@ interface FilterHooks {
 export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void {
   registerColorFilters(engine);
   registerFontFilters(engine, hooks.diagnostic);
+  engine.registerFilter("link_to", (value: unknown, url: unknown, ...args: unknown[]) => {
+    const target = String(toValue(url) ?? "");
+    const attributes = namedArgs(args);
+    if (!Object.keys(attributes).length) {
+      attributes.href = target;
+      attributes.title = "";
+    } else attributes.href = target;
+    try {
+      const host = new URL(target, "https://offline.invalid").hostname;
+      if (host === "shopify.com" || host.endsWith(".shopify.com")) attributes.rel = "nofollow";
+    } catch {
+      /* Relative or non-URL href strings still render as supplied. */
+    }
+    const boolean = new Set([
+      "allowfullscreen",
+      "async",
+      "autofocus",
+      "autoplay",
+      "checked",
+      "controls",
+      "defer",
+      "disabled",
+      "formnovalidate",
+      "hidden",
+      "ismap",
+      "itemscope",
+      "loop",
+      "multiple",
+      "muted",
+      "nomodule",
+      "novalidate",
+      "open",
+      "playsinline",
+      "readonly",
+      "required",
+      "reversed",
+      "selected",
+    ]);
+    const output = Object.entries(attributes).flatMap(([name, input]) => {
+      if (!/^[A-Za-z_:][A-Za-z0-9_:.-]*$/.test(name))
+        throw new Error("Invalid link attribute name");
+      const scalar = toValue(input);
+      if (scalar === null || scalar === undefined || scalar === false) return [];
+      return [
+        `${name}="${escapeAttribute(scalar === true && boolean.has(name.toLowerCase()) ? name : scalar)}"`,
+      ];
+    });
+    return `<a ${output.join(" ")}>${String(toValue(value) ?? "")}</a>`;
+  });
   const translate = translateFactory(hooks.files, hooks.snapshot.shop.locale, hooks.sectionLocales);
   engine.registerFilter("translate", function (value: unknown, ...args: unknown[]) {
     return translate(value, args, (key) =>
