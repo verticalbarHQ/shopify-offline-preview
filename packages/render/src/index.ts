@@ -221,14 +221,7 @@ export async function renderTheme(
         } catch (error) {
           const detail = LiquidError.is(error) ? (error.originalError ?? error) : error;
           if (!(detail instanceof ImageUrlInputError)) throw error;
-          const name = [...this.localScope()][0]?.content;
-          if (!name) throw error;
-          Object.defineProperty(context.bottom(), name, {
-            value: null,
-            enumerable: true,
-            configurable: true,
-            writable: true,
-          });
+          // Failed image assignments leave the previous binding intact, or undefined if new.
         }
       }
     },

@@ -234,7 +234,7 @@ test("preload tags require an asset kind and preserve escaped HTML attributes", 
   );
 });
 
-test("image URL output reports invalid input while native-style assignments suppress it and reset old values", async () => {
+test("image URL output reports invalid input while native-style assignments suppress it and preserve old values", async () => {
   const snapshot = defaultFixture();
   const theme = new MemoryThemeFileSystem({
     ...files,
@@ -246,7 +246,7 @@ test("image URL output reports invalid input while native-style assignments supp
   });
   assert.ok(
     result.html.includes(
-      "Value=|Liquid error (sections/main.liquid line 1): invalid url input|/sop/images/",
+      "Value=Old|Liquid error (sections/main.liquid line 1): invalid url input|/sop/images/",
     ),
   );
   assert.equal(result.diagnostics.filter((d) => d.code === "liquid-error").length, 1);
