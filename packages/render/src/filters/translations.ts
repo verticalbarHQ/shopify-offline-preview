@@ -58,7 +58,7 @@ export function translateFactory(
     }
     if (typeof value !== "string") {
       missing(key);
-      return `Translation missing: ${locale}.${key}`;
+      return `translation missing: ${locale}.${key}`;
     }
     const text = value.replace(
       /\{\{\s*([\w-]+)\s*\}\}|%\{([\w-]+)\}/g,

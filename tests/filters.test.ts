@@ -60,7 +60,7 @@ test("section locale keys remain scoped and missing translations retain source d
     snapshot,
   });
   assert.ok(result.html.includes(">Section</div>"));
-  assert.ok(result.html.includes(">Theme|Translation missing: en.absent</div>"));
+  assert.ok(result.html.includes(">Theme|translation missing: en.absent</div>"));
   assert.equal(result.diagnostics[0]?.file, "sections/plain.liquid");
   assert.equal(result.diagnostics[0]?.code, "missing-resource");
 });
@@ -84,10 +84,26 @@ test("source asset and image filters preserve local paths, dimensions, alt text 
   const unsupported = await renderTheme(
     new MemoryThemeFileSystem({
       ...files,
-      "sections/main.liquid": `{{product.featured_image | image_url: width: 32, crop: 'top'}}`,
+      "sections/main.liquid": `{{product.featured_image | image_url: width: 32, unknown_transform: 'top'}}`,
     }),
     `/products/${snapshot.products[0]?.handle}`,
     { snapshot },
   );
   assert.equal(unsupported.diagnostics[0]?.code, "not-implemented");
+});
+
+test("image URLs retain crop/quality hints and preload metadata while adapters serve original bytes", async () => {
+  const snapshot = defaultFixture();
+  const theme = new MemoryThemeFileSystem({
+    ...files,
+    "sections/main.liquid": `{{product.featured_image | image_url: width: 32, height: 16, crop: 'top', quality: 80 | image_tag: preload: true, widths: '16,32'}}`,
+  });
+  const result = await renderTheme(theme, `/products/${snapshot.products[0]?.handle}`, {
+    snapshot,
+  });
+  assert.ok(result.html.includes('width="32" height="16"'));
+  assert.ok(result.html.includes('rel="preload"'));
+  assert.ok(result.html.includes("imagesrcset="));
+  assert.ok(result.html.includes("crop=top"));
+  assert.equal(result.diagnostics.length, 0);
 });

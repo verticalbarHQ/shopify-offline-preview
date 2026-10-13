@@ -158,3 +158,65 @@ test("cart derivation refuses unsafe multiplication instead of losing monetary p
   line.quantity = Number.MAX_SAFE_INTEGER;
   assert.throws(() => liquidObjects(snapshot, route, silent), /Cart amount exceeds safe/);
 });
+
+test("search derives unambiguous product, page and article matches without fabricating records", async () => {
+  const snapshot = defaultFixture();
+  const before = JSON.stringify(snapshot);
+  const unavailable: string[] = [];
+  const make = (path: string) =>
+    liquidObjects(
+      snapshot,
+      {
+        ...route,
+        pageType: "search",
+        path,
+        q: new URL(path, "https://offline.invalid").searchParams.get("q") ?? "",
+        resourceHandle: null,
+      },
+      { read() {}, unsupported() {}, unsupportedOperation: (message) => unavailable.push(message) },
+    );
+  const liquid = new Liquid();
+  assert.equal(
+    await liquid.parseAndRender(
+      "{{search.performed}}|{{search.results_count}}|{% for item in search.results %}{{item.object_type}}:{{item.title}}{% endfor %}",
+      make("/search?q=Matrix%20Needle"),
+    ),
+    "true|1|product:SOP Matrix Needle",
+  );
+  assert.equal(
+    await liquid.parseAndRender("{{search.results_count}}", make("/search?q=zzzxnevermatch983147")),
+    "0",
+  );
+  assert.equal(await liquid.parseAndRender("{{search.performed}}", make("/search")), "false");
+  assert.equal(
+    await liquid.parseAndRender(
+      "{% for item in search.results %}{{item.object_type}}{% endfor %}",
+      make("/search?q=About%20Example&type=page"),
+    ),
+    "page",
+  );
+  assert.equal(
+    await liquid.parseAndRender(
+      "{% for item in search.results %}{{item.object_type}}{% endfor %}",
+      make("/search?q=Example%20Story%201&type=article"),
+    ),
+    "article",
+  );
+  assert.equal(
+    await liquid.parseAndRender("{{search.results_count}}", make("/search?q=Matrix%20Nee")),
+    "1",
+  );
+  assert.equal(
+    await liquid.parseAndRender(
+      "{{search.results_count}}",
+      make("/search?q=Matrix%20Nee&options[prefix]=none"),
+    ),
+    "0",
+  );
+  assert.equal(unavailable.length, 0);
+  assert.equal(JSON.stringify(snapshot), before);
+  await liquid.parseAndRender("{{search.results_count}}", make("/search?q=SOP"));
+  assert.ok(unavailable.some((message) => message.includes("relevance ranking")));
+  await liquid.parseAndRender("{{search.results_count}}", make("/search?q=tag:blue"));
+  assert.ok(unavailable.some((message) => message.includes("operators")));
+});

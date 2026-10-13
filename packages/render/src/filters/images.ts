@@ -46,7 +46,8 @@ export function imageFilters(snapshot: Snapshot) {
     const image = images.get(file);
     if (!image) throw new Error("Image input is absent from the local snapshot");
     const options = namedArgs(args);
-    if (options.width === undefined && options.height === undefined)
+    const region = options.crop === "region";
+    if (options.width === undefined && options.height === undefined && !region)
       throw new Error("image_url requires width or height");
     for (const dimension of ["width", "height"] as const)
       if (options[dimension] !== undefined) {
@@ -57,30 +58,75 @@ export function imageFilters(snapshot: Snapshot) {
       }
     for (const [key, value] of Object.entries(options))
       if (!["width", "height"].includes(key)) {
-        unsupported(
-          `Image transformation ${key} is not implemented; the local source file is used.`,
-        );
+        if (
+          key === "crop" &&
+          !["top", "center", "bottom", "left", "right", "region"].includes(String(value))
+        )
+          throw new Error("Invalid image crop mode");
+        else if (
+          key.startsWith("crop_") &&
+          ["crop_left", "crop_top", "crop_width", "crop_height"].includes(key)
+        ) {
+          const number = Number(value);
+          if (
+            !Number.isInteger(number) ||
+            number < (key === "crop_width" || key === "crop_height" ? 1 : 0)
+          )
+            throw new Error(`Invalid image ${key}`);
+        } else if (key === "format" && !["jpg", "pjpg"].includes(String(value)))
+          throw new Error("Invalid image format");
+        else if (
+          key === "quality" &&
+          (!Number.isInteger(Number(value)) || Number(value) < 10 || Number(value) > 90)
+        )
+          throw new Error("Invalid image quality");
+        else if (key === "pad_color" && !/^(?:[a-fA-F0-9]{3}|[a-fA-F0-9]{6})$/.test(String(value)))
+          throw new Error("Invalid image pad color");
+        else if (
+          ![
+            "crop",
+            "crop_left",
+            "crop_top",
+            "crop_width",
+            "crop_height",
+            "format",
+            "quality",
+            "pad_color",
+          ].includes(key)
+        )
+          unsupported(`Image option ${key} is not implemented.`);
         url.searchParams.set(key, String(value));
       }
+    if (
+      region &&
+      ["crop_left", "crop_top", "crop_width", "crop_height"].some(
+        (key) => options[key] === undefined,
+      )
+    )
+      throw new Error("Region crop requires its complete rectangle");
     return url.pathname + url.search;
   }
-  function imageTag(
-    input: unknown,
-    args: unknown[],
-    unsupported: (message: string) => void,
-  ): string {
+  function imageTag(input: unknown, args: unknown[]): string {
     if (typeof input !== "string" || !input.startsWith("/sop/images/"))
       throw new Error("image_tag requires a local image_url result");
     const url = new URL(input, "https://offline.invalid");
     const image = images.get(decodeURIComponent(url.pathname.slice(12)));
     if (!image) throw new Error("Image input is absent from the local snapshot");
     const options = namedArgs(args);
-    const ratio = Math.min(
-      Number(url.searchParams.get("width") ?? image.width) / image.width,
-      Number(url.searchParams.get("height") ?? image.height) / image.height,
-    );
-    const width = Math.max(1, Math.round(image.width * ratio)),
-      height = Math.max(1, Math.round(image.height * ratio));
+    const sourceWidth = Number(url.searchParams.get("crop_width") ?? image.width);
+    const sourceHeight = Number(url.searchParams.get("crop_height") ?? image.height);
+    const requestedWidth = url.searchParams.get("width"),
+      requestedHeight = url.searchParams.get("height");
+    const width = requestedWidth
+      ? Number(requestedWidth)
+      : requestedHeight
+        ? Math.max(1, Math.round((sourceWidth * Number(requestedHeight)) / sourceHeight))
+        : sourceWidth;
+    const height = requestedHeight
+      ? Number(requestedHeight)
+      : requestedWidth
+        ? Math.max(1, Math.round((sourceHeight * Number(requestedWidth)) / sourceWidth))
+        : sourceHeight;
     const attributes: Record<string, unknown> = { src: input, alt: image.alt, width, height };
     const widths =
       options.widths === undefined
@@ -101,7 +147,6 @@ export function imageFilters(snapshot: Snapshot) {
     for (const [key, value] of Object.entries(options)) {
       if (key === "widths") continue;
       if (key === "preload") {
-        if (value) unsupported("Image preload link hints are not implemented.");
         continue;
       }
       if (!/^[A-Za-z_:][A-Za-z0-9_.:-]*$/.test(key))
@@ -109,7 +154,10 @@ export function imageFilters(snapshot: Snapshot) {
       if (value === null) delete attributes[key];
       else attributes[key] = value;
     }
-    return `<img ${Object.entries(attributes)
+    const preload = options.preload
+      ? `<link rel="preload" as="image" href="${escapeHtml(input)}"${attributes.srcset ? ` imagesrcset="${escapeHtml(attributes.srcset)}"` : ""}${attributes.sizes ? ` imagesizes="${escapeHtml(attributes.sizes)}"` : ""}>`
+      : "";
+    return `${preload}<img ${Object.entries(attributes)
       .map(([key, value]) => `${key}="${escapeHtml(value)}"`)
       .join(" ")}>`;
   }

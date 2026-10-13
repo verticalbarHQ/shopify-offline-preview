@@ -1,9 +1,11 @@
 import type { Snapshot } from "./schema.js";
+import { type SearchCandidate, searchResults } from "./search.js";
 
 export type LiquidRecord = Record<string, unknown>;
 export interface ObjectHooks {
   read(path: string): void;
   unsupported(type: string, property: string): void;
+  unsupportedOperation?(message: string): void;
 }
 export interface RouteContext {
   pageType: string;
@@ -371,9 +373,105 @@ export function liquidObjects(
     "cart",
     "cart",
   );
+  const candidates: SearchCandidate<LiquidRecord>[] = [];
+  for (const source of snapshot.products) {
+    const value = products.get(source.handle);
+    if (value)
+      candidates.push({
+        type: "product",
+        value,
+        text: [
+          source.title,
+          source.descriptionHtml,
+          source.vendor,
+          source.productType,
+          ...source.tags,
+          ...source.variants.map((v) => v.sku),
+        ].join(" "),
+        available: source.variants.some((v) => v.available),
+        price: Math.min(...source.variants.map((v) => liquidPrice(v.price))),
+      });
+  }
+  for (const source of snapshot.pages) {
+    const value = pages.get(source.handle);
+    if (value)
+      candidates.push({
+        type: "page",
+        value,
+        text: `${source.title} ${source.bodyHtml}`,
+        available: true,
+        price: null,
+      });
+  }
+  for (const blog of snapshot.blogs)
+    for (const source of blog.articles) {
+      const value = articles.get(blog.handle)?.get(source.handle);
+      if (value)
+        candidates.push({
+          type: "article",
+          value,
+          text: [
+            source.title,
+            source.bodyHtml,
+            source.excerptHtml,
+            source.author,
+            ...source.tags,
+          ].join(" "),
+          available: true,
+          price: null,
+        });
+    }
+  let results: LiquidRecord[] | undefined;
+  function matching(): LiquidRecord[] {
+    if (results) return results;
+    results = searchResults(candidates, route.path, (message) =>
+      hooks.unsupportedOperation
+        ? hooks.unsupportedOperation(message)
+        : hooks.unsupported("search", message),
+    ).map(
+      (candidate) =>
+        new Proxy(candidate.value, {
+          ownKeys(target) {
+            return [...Reflect.ownKeys(target), "object_type"];
+          },
+          getOwnPropertyDescriptor(target, key) {
+            return key === "object_type"
+              ? { configurable: true, enumerable: true, writable: false, value: candidate.type }
+              : Reflect.getOwnPropertyDescriptor(target, key);
+          },
+          get(target, key, receiver) {
+            return key === "object_type" ? candidate.type : Reflect.get(target, key, receiver);
+          },
+        }),
+    );
+    return results;
+  }
+  const search = tracked(
+    {
+      terms: route.q,
+      performed: new URL(route.path, "https://offline.invalid").searchParams.has("q"),
+      get results() {
+        return matching();
+      },
+      get results_count() {
+        return matching().length;
+      },
+      default_sort_by: "relevance",
+      sort_by: route.sortBy ?? "relevance",
+      sort_options: [
+        { name: "Relevance", value: "relevance" },
+        { name: "Price, low to high", value: "price-ascending" },
+        { name: "Price, high to low", value: "price-descending" },
+      ],
+      filters: snapshot.filters,
+    },
+    "search",
+    "search",
+  );
   const globals: LiquidRecord = {
     shop: tracked(snapshot.shop, "shop", "shop"),
     cart,
+    search,
     all_products: tracked(Object.fromEntries(products), "dictionary", "all_products"),
     collections: tracked(Object.fromEntries(collections), "dictionary", "collections"),
     pages: tracked(Object.fromEntries(pages), "dictionary", "pages"),

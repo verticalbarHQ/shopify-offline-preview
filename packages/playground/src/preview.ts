@@ -67,15 +67,17 @@ export async function playgroundPreview(
       const value = attr(e, name);
       if (value && !value.value.startsWith("#")) value.value = resource(value.value);
     }
-    const srcset = attr(e, "srcset");
-    if (srcset && !srcset.value.startsWith("data:"))
-      srcset.value = srcset.value
-        .split(",")
-        .map((value) => {
-          const [url, ...size] = value.trim().split(/\s+/);
-          return [resource(url ?? ""), ...size].join(" ");
-        })
-        .join(", ");
+    for (const name of ["srcset", "imagesrcset"]) {
+      const srcset = attr(e, name);
+      if (srcset && !srcset.value.startsWith("data:"))
+        srcset.value = srcset.value
+          .split(",")
+          .map((value) => {
+            const [url, ...size] = value.trim().split(/\s+/);
+            return [resource(url ?? ""), ...size].join(" ");
+          })
+          .join(", ");
+    }
     if (e.tagName === "script" && attr(e, "type")?.value === "importmap") {
       const map: unknown = JSON.parse(
         e.childNodes

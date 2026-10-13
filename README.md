@@ -49,18 +49,20 @@ exit with 4; recoverable Liquid errors appear inline and in diagnostics. Known u
 emit visible markers and `not-implemented` diagnostics; unknown filters fail explicitly.
 
 Initial rendering is incomplete: theme block execution, classic block tracing, several resource
-settings, search derivation and Shopify filters remain pending. Prices convert exactly to
+settings and several Shopify filters remain pending. Prices convert exactly to
 hundredths and reject values requiring greater precision. Native LiquidJS behavior still needs
 Shopify oracle verification. The feature registry continues to report zero verified implementations.
 Theme/section translations, regional locales, plural counts and HTML escaping are handled locally.
-Money filters use the snapshot templates; assets and basic image sizing use local files. CDN image
-transformations and preload hints remain diagnosed as pending.
+Money filters use the snapshot templates; assets, image URL parameters and preload hints use local
+files. The server serves the original image bytes and the browser scales them, as specified.
 
 Initial `product`, `customer`, `contact` and `localization` forms render their HTML and initial form
 state. Resource lists (`collection.products`, `blog.articles`, `search.results`, `product.variants`)
 can be paginated without mutating their source; page links preserve the URL query. Independent
 setting-array pagination is diagnosed as pending. Cart lines and exact undiscounted totals derive
-from snapshot variant prices and quantities; compare-at prices do not count as discounts.
+from snapshot variant prices and quantities; compare-at prices do not count as discounts. Basic search
+matches product, page and article words, with documented prefix/type/availability options. Advanced
+query syntax and ambiguous relevance ranking remain explicitly diagnosed.
 
 ## Bring your own data
 

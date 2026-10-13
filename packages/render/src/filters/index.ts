@@ -58,16 +58,9 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
       ),
     );
   });
-  engine.registerFilter("image_tag", function (value: unknown, ...args: unknown[]) {
-    return images.imageTag(value, args, (message) =>
-      hooks.diagnostic(
-        "not-implemented",
-        message,
-        this.token.file ?? null,
-        this.token.getPosition()[0] ?? null,
-      ),
-    );
-  });
+  engine.registerFilter("image_tag", (value: unknown, ...args: unknown[]) =>
+    images.imageTag(value, args),
+  );
   engine.registerFilter(
     "stylesheet_tag",
     (value: unknown) =>

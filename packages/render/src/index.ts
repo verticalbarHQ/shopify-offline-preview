@@ -159,6 +159,9 @@ export async function renderTheme(
         }
         paths.add(dataPath);
       },
+      unsupportedOperation(message) {
+        diagnostic("not-implemented", message);
+      },
       unsupported(type, property) {
         diagnostic(
           "not-implemented",
@@ -390,7 +393,7 @@ export async function renderTheme(
     suffix: route.template.slice(10, -5).split(".")[1] ?? null,
   };
   globals.current_page = Number(route.query.page ?? 1);
-  for (const property of ["page_title", "search"])
+  for (const property of ["page_title"])
     Object.defineProperty(globals, property, {
       get() {
         diagnostic("not-implemented", `Global ${property} derivation is not implemented.`);
