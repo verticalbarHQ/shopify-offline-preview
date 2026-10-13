@@ -1,0 +1,540 @@
+import {
+  type LiquidExpression,
+  type LiquidHtmlNode,
+  NodeTypes,
+  toLiquidAST,
+  walk,
+} from "@shopify/liquid-html-parser";
+import { z } from "zod";
+import {
+  type FeatureKind,
+  type ImplementationEvidence,
+  isImplemented,
+  registry,
+} from "../../spec/src/index.js";
+import { parseThemeJson, type ThemeFileSystem, themePath } from "../../theme/src/index.js";
+import type { CheckResult, Diagnostic, Feature } from "./contracts.js";
+
+export { type CheckResult, checkSchema } from "./contracts.js";
+
+const objects: Record<string, { global: boolean; properties: Record<string, string[]> }> =
+  registry.objects;
+const objectNames = new Set(Object.keys(objects));
+const dictionaries: Record<string, string> = {
+  all_products: "product",
+  collections: "collection",
+  pages: "page",
+  blogs: "blog",
+  linklists: "linklist",
+  metaobjects: "metaobject",
+};
+function propertyReturns(type: string, property: string): string[] | undefined {
+  const properties = objectNames.has(type) ? objects[type]?.properties : undefined;
+  return properties && Object.hasOwn(properties, property) ? properties[property] : undefined;
+}
+const knownFilters = new Set([...Object.keys(registry.filters), ...Object.keys(registry.aliases)]);
+// Section schema is an architectural tag absent from the Liquid API data:
+// https://shopify.dev/docs/storefronts/themes/architecture/sections/section-schema
+const knownTags = new Set([...Object.keys(registry.tags), "schema"]);
+const aliases: Record<string, string> = registry.aliases;
+const pageTypes = new Set([
+  "index",
+  "product",
+  "collection",
+  "list-collections",
+  "page",
+  "search",
+  "cart",
+  "404",
+  "blog",
+  "article",
+]);
+const sectionConfig: z.ZodType<SectionConfig> = z.lazy(() =>
+  z.looseObject({
+    type: z.string(),
+    disabled: z.boolean().optional(),
+    blocks: z.record(z.string(), sectionConfig).optional(),
+    block_order: z.array(z.string()).optional(),
+  }),
+);
+interface SectionConfig {
+  type: string;
+  disabled?: boolean | undefined;
+  blocks?: Record<string, SectionConfig> | undefined;
+  block_order?: string[] | undefined;
+}
+const templateSchema = z.looseObject({
+  layout: z.union([z.string(), z.literal(false), z.null()]).optional(),
+  sections: z.record(z.string(), sectionConfig),
+  order: z.array(z.string()),
+});
+interface Scan {
+  features: Feature[];
+  refs: string[];
+  diagnostics: Diagnostic[];
+  complete: boolean;
+  layout?: string | false | null;
+}
+
+function diagnostic(
+  code: string,
+  file: string | null,
+  message: string,
+  line: number | null = null,
+): Diagnostic {
+  return {
+    code,
+    severity: code === "liquid-parse-error" || code === "missing-file" ? "error" : "warning",
+    file,
+    line,
+    nodeId: null,
+    message,
+  };
+}
+function location(node: LiquidHtmlNode): number {
+  return node.source.slice(0, node.position.start).split("\n").length;
+}
+function reference(directory: string, name: string, extension: string): string {
+  return themePath(`${directory}/${name}${extension}`);
+}
+
+function lookupTypes(expression: LiquidExpression, symbols: Map<string, Set<string>>): Set<string> {
+  if (expression.type !== NodeTypes.VariableLookup || !expression.name) return new Set();
+  let types =
+    symbols.get(expression.name) ??
+    (objectNames.has(expression.name) ? new Set([expression.name]) : new Set<string>());
+  for (const lookup of expression.lookups) {
+    const next = new Set<string>();
+    for (const type of types) {
+      if (type.endsWith("[]")) {
+        if (
+          lookup.type === NodeTypes.Number ||
+          lookup.type === NodeTypes.VariableLookup ||
+          (lookup.type === NodeTypes.String && ["first", "last"].includes(lookup.value))
+        )
+          next.add(type.slice(0, -2));
+      } else if (lookup.type === NodeTypes.String) {
+        for (const result of propertyReturns(type, lookup.value) ?? []) next.add(result);
+      }
+      // Shopify resource dictionaries use handles, not documented fixed properties.
+      if (Object.hasOwn(dictionaries, type) && dictionaries[type]) next.add(dictionaries[type]);
+    }
+    types = next;
+  }
+  return types;
+}
+
+function scanLiquid(text: string, file: string): Scan {
+  const result: Scan = { features: [], refs: [], diagnostics: [], complete: true };
+  const featureMap = new Map<string, Feature>();
+  function add(kind: FeatureKind, name: string, known: boolean, node: LiquidHtmlNode): void {
+    const key = `${kind}:${name}`;
+    const feature = featureMap.get(key) ?? {
+      kind,
+      name,
+      known,
+      registered: false,
+      oracleCases: [],
+      implemented: false,
+      occurrences: [],
+    };
+    const line = location(node);
+    if (!feature.occurrences.some((o) => o.line === line)) feature.occurrences.push({ file, line });
+    featureMap.set(key, feature);
+  }
+  try {
+    const ast = toLiquidAST(text, { allowUnclosedDocumentNode: false, mode: "tolerant" });
+    const nodes: LiquidHtmlNode[] = [];
+    walk(ast, (node) => nodes.push(node));
+    // Conservative, flow-insensitive alias inference. Unresolved aliases are explicitly reported.
+    const symbols = new Map<string, Set<string>>();
+    for (let pass = 0; pass < nodes.length; pass++) {
+      let changed = false;
+      for (const node of nodes) {
+        let name: string | undefined;
+        let types = new Set<string>();
+        if (node.type === NodeTypes.AssignMarkup) {
+          name = node.name;
+          if (node.value.expression.type !== NodeTypes.BooleanExpression)
+            types = lookupTypes(node.value.expression, symbols);
+          // Filters can change types; do not assert their result type before dialect conformance.
+          if (node.value.filters.length) types = new Set();
+        } else if (node.type === NodeTypes.ForMarkup) {
+          name = node.variableName;
+          types = new Set(
+            [...lookupTypes(node.collection, symbols)]
+              .filter((t) => t.endsWith("[]"))
+              .map((t) => t.slice(0, -2)),
+          );
+        }
+        if (!name || !types.size) continue;
+        const existing = symbols.get(name) ?? new Set<string>();
+        for (const type of types)
+          if (!existing.has(type)) {
+            existing.add(type);
+            changed = true;
+          }
+        symbols.set(name, existing);
+      }
+      if (!changed) break;
+    }
+    let schema: Record<string, unknown> | undefined;
+    let rendersBlocks = false;
+    for (const node of nodes) {
+      if (node.type === NodeTypes.LiquidFilter)
+        add("filter", node.name, knownFilters.has(node.name), node);
+      if (
+        (node.type === NodeTypes.LiquidTag || node.type === NodeTypes.LiquidRawTag) &&
+        node.name &&
+        node.name !== "#"
+      ) {
+        add("tag", node.name, knownTags.has(node.name), node);
+      }
+      if (node.type === NodeTypes.VariableLookup && node.name) {
+        const initial =
+          symbols.get(node.name) ??
+          (objectNames.has(node.name) ? new Set([node.name]) : new Set<string>());
+        for (const type of initial) if (objectNames.has(type)) add("object", type, true, node);
+        if (!initial.size && node.lookups.length) {
+          result.complete = false;
+          result.diagnostics.push(
+            diagnostic(
+              "unresolved-object",
+              file,
+              `Cannot statically resolve ${node.name}; snippet arguments and filtered aliases need runtime coverage.`,
+              location(node),
+            ),
+          );
+        }
+        let types = initial;
+        for (const lookup of node.lookups) {
+          const next = new Set<string>();
+          for (const type of types) {
+            if (Object.hasOwn(dictionaries, type) && dictionaries[type]) {
+              next.add(dictionaries[type]);
+              add("object", dictionaries[type], true, node);
+              continue;
+            }
+            if (type.endsWith("[]")) {
+              if (lookup.type === NodeTypes.String && lookup.value === "size") next.add("number");
+              else if (
+                lookup.type === NodeTypes.Number ||
+                lookup.type === NodeTypes.VariableLookup ||
+                (lookup.type === NodeTypes.String && ["first", "last"].includes(lookup.value))
+              )
+                next.add(type.slice(0, -2));
+              continue;
+            }
+            if (lookup.type === NodeTypes.String) {
+              const returns = propertyReturns(type, lookup.value);
+              if (returns) {
+                add("object-property", `${type}.${lookup.value}`, true, node);
+                for (const value of returns) next.add(value);
+              } else if (
+                objectNames.has(type) &&
+                Object.keys(objects[type]?.properties ?? {}).length &&
+                !["settings", "metafields", "metaobject"].includes(type)
+              ) {
+                add("object-property", `${type}.${lookup.value}`, false, node);
+              }
+            } else {
+              result.complete = false;
+              result.diagnostics.push(
+                diagnostic(
+                  "dynamic-property",
+                  file,
+                  `Dynamic lookup on ${type} needs runtime coverage.`,
+                  location(node),
+                ),
+              );
+            }
+          }
+          if (
+            !next.size &&
+            types.size &&
+            ![...types].every((type) => ["string", "number", "boolean"].includes(type))
+          ) {
+            result.complete = false;
+            result.diagnostics.push(
+              diagnostic(
+                "unresolved-property",
+                file,
+                `Cannot statically resolve this property of ${[...types].sort().join(" | ")}; runtime coverage is required.`,
+                location(node),
+              ),
+            );
+          }
+          types = next;
+        }
+      }
+      if (node.type === NodeTypes.LiquidRawTag && node.name === "schema") {
+        schema = z.record(z.string(), z.unknown()).parse(parseThemeJson(node.body.value, file));
+      }
+      if (
+        node.type === NodeTypes.LiquidTag &&
+        typeof node.markup === "string" &&
+        node.markup.trim()
+      ) {
+        result.complete = false;
+        result.diagnostics.push(
+          diagnostic(
+            "unparsed-tag-markup",
+            file,
+            `Parser could not resolve markup for ${node.name}.`,
+            location(node),
+          ),
+        );
+      }
+      if (node.type === NodeTypes.LiquidVariableOutput && typeof node.markup === "string") {
+        result.complete = false;
+        result.diagnostics.push(
+          diagnostic(
+            "unparsed-output",
+            file,
+            "Parser could not resolve this Liquid expression.",
+            location(node),
+          ),
+        );
+      }
+      if (node.type === NodeTypes.RenderMarkup) {
+        if (node.snippet.type === NodeTypes.String)
+          result.refs.push(reference("snippets", node.snippet.value, ".liquid"));
+        else {
+          result.complete = false;
+          result.diagnostics.push(
+            diagnostic(
+              "dynamic-render",
+              file,
+              "Dynamically named snippet needs runtime coverage.",
+              location(node),
+            ),
+          );
+        }
+      }
+      if (
+        node.type === NodeTypes.LiquidTag &&
+        node.name === "sections" &&
+        typeof node.markup !== "string" &&
+        node.markup.type === NodeTypes.String
+      )
+        result.refs.push(reference("sections", node.markup.value, ".json"));
+      if (node.type === NodeTypes.SectionMarkup)
+        result.refs.push(reference("sections", node.name.value, ".liquid"));
+      if (
+        node.type === NodeTypes.LiquidTag &&
+        node.name === "layout" &&
+        typeof node.markup !== "string"
+      ) {
+        if (node.markup.type === NodeTypes.String) result.layout = node.markup.value;
+        else if (node.markup.type === NodeTypes.LiquidLiteral && node.markup.value === null)
+          result.layout = false;
+        else {
+          result.complete = false;
+          result.diagnostics.push(
+            diagnostic(
+              "dynamic-layout",
+              file,
+              "Dynamically named layout needs runtime coverage.",
+              location(node),
+            ),
+          );
+        }
+      }
+      if (node.type === NodeTypes.ContentForMarkup) {
+        if (node.contentForType.value === "blocks") rendersBlocks = true;
+        if (node.contentForType.value === "block") {
+          const type = node.args.find((arg) => arg.name === "type")?.value;
+          if (type?.type === NodeTypes.String)
+            result.refs.push(reference("blocks", type.value, ".liquid"));
+          else {
+            result.complete = false;
+            result.diagnostics.push(
+              diagnostic(
+                "dynamic-block",
+                file,
+                "Dynamically named block needs runtime coverage.",
+                location(node),
+              ),
+            );
+          }
+        }
+      }
+    }
+    if (rendersBlocks && schema?.blocks) {
+      const blocks = z.array(z.looseObject({ type: z.string() })).parse(schema.blocks);
+      for (const block of blocks) {
+        if (block.type === "@theme") result.refs.push("blocks/*");
+        else if (block.type === "@app")
+          result.diagnostics.push(
+            diagnostic("app-placeholder", file, "External app blocks render as placeholders."),
+          );
+        else result.refs.push(reference("blocks", block.type, ".liquid"));
+      }
+    }
+  } catch (error) {
+    result.complete = false;
+    result.diagnostics.push(
+      diagnostic(
+        "liquid-parse-error",
+        file,
+        error instanceof Error ? error.message : String(error),
+      ),
+    );
+  }
+  result.features = [...featureMap.values()];
+  return result;
+}
+
+/** No file/network access except through the supplied adapter; usable in a browser bundle. */
+export async function checkTheme(
+  fs: ThemeFileSystem,
+  evidence: readonly ImplementationEvidence[] = [],
+): Promise<CheckResult> {
+  const files = await fs.listFiles();
+  const available = new Set(files);
+  const diagnostics: Diagnostic[] = [];
+  const pages: CheckResult["pages"] = [];
+  const scans = new Map<string, Promise<Scan>>();
+  const implementations = new Map(evidence.map((e) => [`${e.kind}:${e.name}`, e]));
+  const templates = files.filter(
+    (file) =>
+      /^templates\/[^/]+\.json$/.test(file) && pageTypes.has(file.slice(10).split(".")[0] ?? ""),
+  );
+  const vintage = files.filter(
+    (file) =>
+      /^templates\/[^/]+\.liquid$/.test(file) && pageTypes.has(file.slice(10).split(".")[0] ?? ""),
+  );
+  const supported = !vintage.length && templates.length > 0;
+  for (const file of vintage)
+    diagnostics.push(
+      diagnostic(
+        "unsupported-theme",
+        file,
+        "Vintage Liquid templates are outside the Online Store 2.0 scope.",
+      ),
+    );
+  if (!templates.length)
+    diagnostics.push(
+      diagnostic("unsupported-theme", null, "No supported Online Store 2.0 JSON templates found."),
+    );
+
+  async function scan(file: string): Promise<Scan> {
+    let cached = scans.get(file);
+    if (!cached) {
+      cached = (async () => {
+        if (file.endsWith(".liquid")) return scanLiquid(await fs.readText(file), file);
+        const document = templateSchema.parse(parseThemeJson(await fs.readText(file), file));
+        const result: Scan = { features: [], refs: [], diagnostics: [], complete: true };
+        if (document.layout !== undefined) result.layout = document.layout;
+        function blocks(config: SectionConfig): void {
+          for (const id of config.block_order ?? Object.keys(config.blocks ?? {})) {
+            const block = config.blocks?.[id];
+            if (!block) throw new Error(`${file}: unknown block in block_order: ${id}`);
+            if (block.disabled) continue;
+            if (block.type.startsWith("shopify://apps/") || block.type === "@app")
+              result.diagnostics.push(
+                diagnostic(
+                  "app-placeholder",
+                  file,
+                  `External block ${block.type} renders as a placeholder.`,
+                ),
+              );
+            else {
+              const path = reference("blocks", block.type, ".liquid");
+              if (available.has(path)) result.refs.push(path);
+              blocks(block);
+            }
+          }
+        }
+        for (const id of document.order) {
+          const section = document.sections[id];
+          if (!section) throw new Error(`${file}: unknown section in order: ${id}`);
+          if (section.disabled) continue;
+          result.refs.push(reference("sections", section.type, ".liquid"));
+          blocks(section);
+        }
+        return result;
+      })();
+      scans.set(file, cached);
+    }
+    return cached;
+  }
+  for (const template of templates) {
+    const page = {
+      pageType: template.slice(10).split(".")[0] ?? "",
+      template,
+      files: [] as string[],
+      features: [] as Feature[],
+      unimplementedCount: 0,
+      complete: true,
+    };
+    const visited = new Set<string>();
+    const features = new Map<string, Feature>();
+    async function visit(file: string): Promise<void> {
+      if (visited.has(file)) return;
+      visited.add(file);
+      if (!available.has(file)) {
+        page.complete = false;
+        diagnostics.push(
+          diagnostic("missing-file", file, `Referenced by ${template}, but not present in theme.`),
+        );
+        return;
+      }
+      page.files.push(file);
+      const item = await scan(file);
+      page.complete &&= item.complete;
+      diagnostics.push(...item.diagnostics);
+      for (const feature of item.features) {
+        const key = `${feature.kind}:${feature.name}`;
+        const entry = features.get(key) ?? { ...feature, occurrences: [] };
+        entry.occurrences.push(...feature.occurrences);
+        features.set(key, entry);
+      }
+      for (const ref of [...new Set(item.refs)].sort()) {
+        if (ref === "blocks/*") {
+          for (const block of files.filter((f) => /^blocks\/[^/]+\.liquid$/.test(f)))
+            await visit(block);
+        } else await visit(ref);
+      }
+    }
+    await visit(template);
+    const templateScan = await scan(template);
+    if (templateScan.layout !== false && templateScan.layout !== null)
+      await visit(reference("layout", templateScan.layout ?? "theme", ".liquid"));
+    for (const entry of features.values()) {
+      const canonical = entry.kind === "filter" ? (aliases[entry.name] ?? entry.name) : entry.name;
+      const implementation = implementations.get(`${entry.kind}:${canonical}`);
+      entry.registered = implementation?.registered ?? false;
+      entry.oracleCases = [...(implementation?.oracleCases ?? [])].sort();
+      entry.implemented = isImplemented(implementation);
+      entry.occurrences.sort((a, b) => a.file.localeCompare(b.file, "en") || a.line - b.line);
+    }
+    page.files.sort();
+    page.features = [...features.values()].sort((a, b) =>
+      `${a.kind}:${a.name}`.localeCompare(`${b.kind}:${b.name}`, "en"),
+    );
+    page.unimplementedCount = page.features.filter((f) => !f.implemented).length;
+    pages.push(page);
+  }
+  const unique = new Map<string, Feature>();
+  for (const page of pages)
+    for (const feature of page.features) unique.set(`${feature.kind}:${feature.name}`, feature);
+  return {
+    schemaVersion: "1.0",
+    supported,
+    specCommit: registry.commit,
+    pages,
+    diagnostics: [...new Map(diagnostics.map((d) => [JSON.stringify(d), d])).values()].sort(
+      (a, b) =>
+        `${a.file}:${a.line}:${a.code}:${a.message}`.localeCompare(
+          `${b.file}:${b.line}:${b.code}:${b.message}`,
+          "en",
+        ),
+    ),
+    summary: {
+      featureCount: unique.size,
+      unimplementedCount: [...unique.values()].filter((f) => !f.implemented).length,
+      complete: supported && pages.every((p) => p.complete),
+    },
+  };
+}

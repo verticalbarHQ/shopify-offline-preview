@@ -1,0 +1,7 @@
+HANDOFF-*.md
+.local/
+.env*
+tools/
+tests/
+vendor/
+SPEC.md

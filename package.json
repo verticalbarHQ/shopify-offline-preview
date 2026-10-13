@@ -1,0 +1,60 @@
+{
+  "name": "shopify-offline-preview",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@10.34.7",
+  "bin": {
+    "shopify-offline-preview": "dist/cli.js"
+  },
+  "exports": {
+    "./check": {
+      "types": "./dist/types/check/src/index.d.ts",
+      "import": "./dist/check.js"
+    },
+    "./browser": {
+      "types": "./dist/types/check/src/browser.d.ts",
+      "import": "./dist/browser.js"
+    },
+    "./schemas/*": "./schemas/*"
+  },
+  "files": [
+    "dist",
+    "schemas",
+    "README.md",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "scripts": {
+    "generate": "node tools/generate-spec.mjs && tsx tools/generate-schemas.ts",
+    "generate:check": "node tools/generate-spec.mjs --check && tsx tools/generate-schemas.ts --check",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "build": "node tools/build.mjs",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "verify": "pnpm generate:check && pnpm typecheck && pnpm lint && pnpm build && pnpm test",
+    "benchmarks:fetch": "node tools/fetch-benchmarks.mjs",
+    "benchmarks:check": "node tools/check-benchmarks.mjs",
+    "license-guard": "node tools/license-guard.mjs",
+    "test:network-off": "node tools/network-off.mjs"
+  },
+  "dependencies": {
+    "@shopify/liquid-html-parser": "2.10.2",
+    "jsonc-parser": "3.3.1",
+    "liquidjs": "10.30.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15",
+    "@types/node": "22.20.5",
+    "ajv": "8.17.1",
+    "esbuild": "0.28.2",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3"
+  }
+}

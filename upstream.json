@@ -1,0 +1,5 @@
+{
+  "repository": "Shopify/theme-liquid-docs",
+  "commit": "7db55a524269b9cc2257bf4beefd1fd04b38df2b",
+  "files": ["filters.json", "objects.json", "tags.json", "shopify_system_translations.json"]
+}

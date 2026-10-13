@@ -1,0 +1,2431 @@
+[
+  {
+    "id": "filters/item_count_for_variant/0",
+    "kind": "filters",
+    "name": "item_count_for_variant",
+    "path": "/cart",
+    "liquid": "{{ cart | item_count_for_variant: 39888235757633 }}"
+  },
+  {
+    "id": "filters/line_items_for/0",
+    "kind": "filters",
+    "name": "line_items_for",
+    "path": "/products/bloodroot-whole",
+    "liquid": "{% assign product = all_products['bloodroot-whole'] %}\n{% assign line_items = cart | line_items_for: product %}\n\nTotal cart quantity for product: {{ line_items | sum: 'quantity' }}"
+  },
+  {
+    "id": "filters/line_items_for/1",
+    "kind": "filters",
+    "name": "line_items_for",
+    "path": "/products/bloodroot-whole",
+    "liquid": "{% assign product = all_products['bloodroot-whole'] %}\n{% assign variant = product.variants.first %}\n{% assign line_items = cart | line_items_for: variant %}\n\nTotal cart quantity for variant: {{ line_items | sum: 'quantity' }}"
+  },
+  {
+    "id": "filters/link_to_type/0",
+    "kind": "filters",
+    "name": "link_to_type",
+    "path": "/",
+    "liquid": "{{ 'Health' | link_to_type }}"
+  },
+  {
+    "id": "filters/link_to_type/1",
+    "kind": "filters",
+    "name": "link_to_type",
+    "path": "/",
+    "liquid": "{{ 'Health' | link_to_type: class: 'link-class' }}"
+  },
+  {
+    "id": "filters/link_to_vendor/0",
+    "kind": "filters",
+    "name": "link_to_vendor",
+    "path": "/",
+    "liquid": "{{ \"Polina's Potent Potions\" | link_to_vendor }}"
+  },
+  {
+    "id": "filters/link_to_vendor/1",
+    "kind": "filters",
+    "name": "link_to_vendor",
+    "path": "/",
+    "liquid": "{{ \"Polina's Potent Potions\" | link_to_vendor: class: 'link-class' }}"
+  },
+  {
+    "id": "filters/sort_by/0",
+    "kind": "filters",
+    "name": "sort_by",
+    "path": "/collections/sale-potions",
+    "liquid": "{{ collection.url | sort_by: 'best-selling' }}"
+  },
+  {
+    "id": "filters/url_for_type/0",
+    "kind": "filters",
+    "name": "url_for_type",
+    "path": "/",
+    "liquid": "{{ 'health' | url_for_type }}"
+  },
+  {
+    "id": "filters/url_for_vendor/0",
+    "kind": "filters",
+    "name": "url_for_vendor",
+    "path": "/",
+    "liquid": "{{ \"Polina's Potent Potions\" | url_for_vendor }}"
+  },
+  {
+    "id": "filters/within/0",
+    "kind": "filters",
+    "name": "within",
+    "path": "/collections/sale-potions",
+    "liquid": "{%- assign collection_product = collection.products.first -%}\n\n{{ collection_product.url | within: collection }}"
+  },
+  {
+    "id": "filters/brightness_difference/0",
+    "kind": "filters",
+    "name": "brightness_difference",
+    "path": "/",
+    "liquid": "{{ '#E800B0' | brightness_difference: '#FECEE9' }}"
+  },
+  {
+    "id": "filters/color_brightness/0",
+    "kind": "filters",
+    "name": "color_brightness",
+    "path": "/",
+    "liquid": "{{ '#EA5AB9' | color_brightness }}"
+  },
+  {
+    "id": "filters/color_contrast/0",
+    "kind": "filters",
+    "name": "color_contrast",
+    "path": "/",
+    "liquid": "{{ '#E800B0' | color_contrast: '#D9D8FF' }}"
+  },
+  {
+    "id": "filters/color_darken/0",
+    "kind": "filters",
+    "name": "color_darken",
+    "path": "/",
+    "liquid": "{{ '#EA5AB9' | color_darken: 30 }}"
+  },
+  {
+    "id": "filters/color_desaturate/0",
+    "kind": "filters",
+    "name": "color_desaturate",
+    "path": "/",
+    "liquid": "{{ '#EA5AB9' | color_desaturate: 30 }}"
+  },
+  {
+    "id": "filters/color_difference/0",
+    "kind": "filters",
+    "name": "color_difference",
+    "path": "/",
+    "liquid": "{{ '#720955' | color_difference: '#FFF3F9' }}"
+  },
+  {
+    "id": "filters/color_extract/0",
+    "kind": "filters",
+    "name": "color_extract",
+    "path": "/",
+    "liquid": "{{ '#EA5AB9' | color_extract: 'red' }}"
+  },
+  {
+    "id": "filters/color_lighten/0",
+    "kind": "filters",
+    "name": "color_lighten",
+    "path": "/",
+    "liquid": "{{ '#EA5AB9' | color_lighten: 30 }}"
+  },
+  {
+    "id": "filters/color_mix/0",
+    "kind": "filters",
+    "name": "color_mix",
+    "path": "/",
+    "liquid": "{{ '#E800B0' | color_mix: '#00936F', 50 }}"
+  },
+  {
+    "id": "filters/color_mix/1",
+    "kind": "filters",
+    "name": "color_mix",
+    "path": "/",
+    "liquid": "{{ 'rgba(232, 0, 176, 0.75)' | color_mix: '#00936F', 50 }}"
+  },
+  {
+    "id": "filters/color_modify/0",
+    "kind": "filters",
+    "name": "color_modify",
+    "path": "/",
+    "liquid": "{{ '#EA5AB9' | color_modify: 'red', 255 }}"
+  },
+  {
+    "id": "filters/color_modify/1",
+    "kind": "filters",
+    "name": "color_modify",
+    "path": "/",
+    "liquid": "{{ '#EA5AB9' | color_modify: 'alpha', 0.85 }}"
+  },
+  {
+    "id": "filters/color_saturate/0",
+    "kind": "filters",
+    "name": "color_saturate",
+    "path": "/",
+    "liquid": "{{ '#EA5AB9' | color_saturate: 30 }}"
+  },
+  {
+    "id": "filters/color_to_hex/0",
+    "kind": "filters",
+    "name": "color_to_hex",
+    "path": "/",
+    "liquid": "{{ 'rgb(234, 90, 185)' | color_to_hex }}"
+  },
+  {
+    "id": "filters/color_to_hsl/0",
+    "kind": "filters",
+    "name": "color_to_hsl",
+    "path": "/",
+    "liquid": "{{ '#EA5AB9' | color_to_hsl }}"
+  },
+  {
+    "id": "filters/color_to_oklch/0",
+    "kind": "filters",
+    "name": "color_to_oklch",
+    "path": "/",
+    "liquid": "{{ '#EA5AB9' | color_to_oklch }}"
+  },
+  {
+    "id": "filters/color_to_rgb/0",
+    "kind": "filters",
+    "name": "color_to_rgb",
+    "path": "/",
+    "liquid": "{{ '#EA5AB9' | color_to_rgb }}"
+  },
+  {
+    "id": "filters/hex_to_rgba/0",
+    "kind": "filters",
+    "name": "hex_to_rgba",
+    "path": "/",
+    "liquid": "{{ '#EA5AB9' | hex_to_rgba }}"
+  },
+  {
+    "id": "filters/hex_to_rgba/1",
+    "kind": "filters",
+    "name": "hex_to_rgba",
+    "path": "/",
+    "liquid": "{{ '#EA5AB9' | hex_to_rgba: 0.5 }}"
+  },
+  {
+    "id": "filters/blake3/0",
+    "kind": "filters",
+    "name": "blake3",
+    "path": "/",
+    "liquid": "{{ '' | blake3 }}"
+  },
+  {
+    "id": "filters/hmac_sha1/0",
+    "kind": "filters",
+    "name": "hmac_sha1",
+    "path": "/",
+    "liquid": "{%- assign secret_potion = 'Polyjuice' | hmac_sha1: 'Polina' -%}\n\nMy secret potion: {{ secret_potion }}"
+  },
+  {
+    "id": "filters/hmac_sha256/0",
+    "kind": "filters",
+    "name": "hmac_sha256",
+    "path": "/",
+    "liquid": "{%- assign secret_potion = 'Polyjuice' | hmac_sha256: 'Polina' -%}\n\nMy secret potion: {{ secret_potion }}"
+  },
+  {
+    "id": "filters/md5/0",
+    "kind": "filters",
+    "name": "md5",
+    "path": "/",
+    "liquid": "{{ '' | md5 }}"
+  },
+  {
+    "id": "filters/sha1/0",
+    "kind": "filters",
+    "name": "sha1",
+    "path": "/",
+    "liquid": "{%- assign secret_potion = 'Polyjuice' | sha1 -%}\n\nMy secret potion: {{ secret_potion }}"
+  },
+  {
+    "id": "filters/sha256/0",
+    "kind": "filters",
+    "name": "sha256",
+    "path": "/",
+    "liquid": "{%- assign secret_potion = 'Polyjuice' | sha256 -%}\n\nMy secret potion: {{ secret_potion }}"
+  },
+  {
+    "id": "filters/currency_selector/0",
+    "kind": "filters",
+    "name": "currency_selector",
+    "path": "/",
+    "liquid": "{% form 'currency' %}\n  {{ form | currency_selector }}\n{% endform %}"
+  },
+  {
+    "id": "filters/currency_selector/1",
+    "kind": "filters",
+    "name": "currency_selector",
+    "path": "/",
+    "liquid": "{% form 'currency' %}\n  {{ form | currency_selector: class: 'custom-class' }}\n{% endform %}"
+  },
+  {
+    "id": "filters/currency_selector/2",
+    "kind": "filters",
+    "name": "currency_selector",
+    "path": "/",
+    "liquid": "{% form 'currency' %}\n  {{ form | currency_selector: id: 'custom-id' }}\n{% endform %}"
+  },
+  {
+    "id": "filters/customer_login_link/0",
+    "kind": "filters",
+    "name": "customer_login_link",
+    "path": "/",
+    "liquid": "{{ 'Log in' | customer_login_link }}"
+  },
+  {
+    "id": "filters/customer_logout_link/0",
+    "kind": "filters",
+    "name": "customer_logout_link",
+    "path": "/",
+    "liquid": "{{ 'Log out' | customer_logout_link }}"
+  },
+  {
+    "id": "filters/customer_register_link/0",
+    "kind": "filters",
+    "name": "customer_register_link",
+    "path": "/",
+    "liquid": "{{ 'Create an account' | customer_register_link }}"
+  },
+  {
+    "id": "filters/date/0",
+    "kind": "filters",
+    "name": "date",
+    "path": "/blogs/potion-notions/how-to-tell-if-you-have-run-out-of-invisibility-potion",
+    "liquid": "{{ article.created_at | date: '%B %d, %Y' }}"
+  },
+  {
+    "id": "filters/date/1",
+    "kind": "filters",
+    "name": "date",
+    "path": "/",
+    "liquid": "{{ 'now' | date: '%B %d, %Y' }}"
+  },
+  {
+    "id": "filters/date/2",
+    "kind": "filters",
+    "name": "date",
+    "path": "/blogs/potion-notions/how-to-tell-if-you-have-run-out-of-invisibility-potion",
+    "liquid": "{{ article.created_at | date: format: 'abbreviated_date' }}"
+  },
+  {
+    "id": "filters/date/3",
+    "kind": "filters",
+    "name": "date",
+    "path": "/blogs/potion-notions/how-to-tell-if-you-have-run-out-of-invisibility-potion",
+    "liquid": "{{ article.created_at | date: format: 'month_day_year' }}"
+  },
+  {
+    "id": "filters/font_face/0",
+    "kind": "filters",
+    "name": "font_face",
+    "path": "/",
+    "liquid": "{{ settings.type_header_font | font_face }}"
+  },
+  {
+    "id": "filters/font_face/1",
+    "kind": "filters",
+    "name": "font_face",
+    "path": "/",
+    "liquid": "{{ settings.type_header_font | font_face: font_display: 'swap' }}"
+  },
+  {
+    "id": "filters/font_modify/0",
+    "kind": "filters",
+    "name": "font_modify",
+    "path": "/",
+    "liquid": "{%- assign bold_font = settings.type_body_font | font_modify: 'weight', 'bold' -%}\n\nh2 {\n  font-weight: {{ bold_font.weight }};\n}"
+  },
+  {
+    "id": "filters/font_modify/1",
+    "kind": "filters",
+    "name": "font_modify",
+    "path": "/",
+    "liquid": "{%- assign bold_font = settings.type_body_font | font_modify: 'weight', 'bold' -%}\n{%- assign italic_font = settings.type_body_font | font_modify: 'style', 'italic' -%}\n{%- assign heavy_font = settings.type_body_font | font_modify: 'weight', '900' | default: bold_font -%}\n{%- assign oblique_font = settings.type_body_font | font_modify: 'style', 'oblique' | default: italic_font -%}\n\nh2 {\n  font-style: {{ heavy_font.weight }};\n}\n\n.italic {\n  {% if oblique_font -%}\n    font-style: {{ oblique_font.style }};\n  {%- else -%}\n    font-style: {{ italic_font.style }};\n  {%- endif %}\n}"
+  },
+  {
+    "id": "filters/font_url/0",
+    "kind": "filters",
+    "name": "font_url",
+    "path": "/",
+    "liquid": "{{ settings.type_header_font | font_url }}"
+  },
+  {
+    "id": "filters/font_url/1",
+    "kind": "filters",
+    "name": "font_url",
+    "path": "/",
+    "liquid": "{{ settings.type_header_font | font_url: 'woff' }}"
+  },
+  {
+    "id": "filters/payment_button/0",
+    "kind": "filters",
+    "name": "payment_button",
+    "path": "/products/health-potion",
+    "liquid": "{% form 'product', product %}\n  {{ form | payment_button }}\n{% endform %}"
+  },
+  {
+    "id": "filters/time_tag/0",
+    "kind": "filters",
+    "name": "time_tag",
+    "path": "/blogs/potion-notions/how-to-tell-if-you-have-run-out-of-invisibility-potion",
+    "liquid": "{{ article.created_at | time_tag: '%B %d, %Y' }}"
+  },
+  {
+    "id": "filters/time_tag/1",
+    "kind": "filters",
+    "name": "time_tag",
+    "path": "/blogs/potion-notions/how-to-tell-if-you-have-run-out-of-invisibility-potion",
+    "liquid": "{{ article.created_at | time_tag: format: 'abbreviated_date' }}"
+  },
+  {
+    "id": "filters/time_tag/2",
+    "kind": "filters",
+    "name": "time_tag",
+    "path": "/blogs/potion-notions/how-to-tell-if-you-have-run-out-of-invisibility-potion",
+    "liquid": "{{ article.created_at | time_tag: '%B %d, %Y', datetime: '%Y-%m-%d' }}"
+  },
+  {
+    "id": "filters/time_tag/3",
+    "kind": "filters",
+    "name": "time_tag",
+    "path": "/blogs/potion-notions/how-to-tell-if-you-have-run-out-of-invisibility-potion",
+    "liquid": "{{ article.created_at | time_tag: format: 'month_day_year' }}"
+  },
+  {
+    "id": "filters/inline_asset_content/0",
+    "kind": "filters",
+    "name": "inline_asset_content",
+    "path": "/",
+    "liquid": "{{ 'icon.svg' | inline_asset_content }}"
+  },
+  {
+    "id": "filters/json/0",
+    "kind": "filters",
+    "name": "json",
+    "path": "/products/crocodile-tears",
+    "liquid": "{{ product | json }}"
+  },
+  {
+    "id": "filters/abs/0",
+    "kind": "filters",
+    "name": "abs",
+    "path": "/",
+    "liquid": "{{ -3 | abs }}"
+  },
+  {
+    "id": "filters/append/0",
+    "kind": "filters",
+    "name": "append",
+    "path": "/products/health-potion",
+    "liquid": "{%-  assign path = product.url -%}\n\n{{ request.origin | append: path }}"
+  },
+  {
+    "id": "filters/at_least/0",
+    "kind": "filters",
+    "name": "at_least",
+    "path": "/",
+    "liquid": "{{ 4 | at_least: 5 }}\n{{ 4 | at_least: 3 }}"
+  },
+  {
+    "id": "filters/at_most/0",
+    "kind": "filters",
+    "name": "at_most",
+    "path": "/",
+    "liquid": "{{ 6 | at_most: 5 }}\n{{ 4 | at_most: 5 }}"
+  },
+  {
+    "id": "filters/base64_decode/0",
+    "kind": "filters",
+    "name": "base64_decode",
+    "path": "/",
+    "liquid": "{{ 'b25lIHR3byB0aHJlZQ==' | base64_decode }}"
+  },
+  {
+    "id": "filters/base64_encode/0",
+    "kind": "filters",
+    "name": "base64_encode",
+    "path": "/",
+    "liquid": "{{ 'one two three' | base64_encode }}"
+  },
+  {
+    "id": "filters/base64_url_safe_decode/0",
+    "kind": "filters",
+    "name": "base64_url_safe_decode",
+    "path": "/",
+    "liquid": "{{ 'b25lIHR3byB0aHJlZQ==' | base64_url_safe_decode }}"
+  },
+  {
+    "id": "filters/base64_url_safe_encode/0",
+    "kind": "filters",
+    "name": "base64_url_safe_encode",
+    "path": "/",
+    "liquid": "{{ 'one two three' | base64_url_safe_encode }}"
+  },
+  {
+    "id": "filters/capitalize/0",
+    "kind": "filters",
+    "name": "capitalize",
+    "path": "/",
+    "liquid": "{{ 'this sentence should start with a capitalized word.' | capitalize }}"
+  },
+  {
+    "id": "filters/ceil/0",
+    "kind": "filters",
+    "name": "ceil",
+    "path": "/",
+    "liquid": "{{ 1.2 | ceil }}"
+  },
+  {
+    "id": "filters/compact/0",
+    "kind": "filters",
+    "name": "compact",
+    "path": "/collections/all",
+    "liquid": "{%- assign original_prices = collection.products | map: 'compare_at_price' -%}\n\nOriginal prices:\n\n{% for price in original_prices -%}\n  - {{ price }}\n{%- endfor %}\n\n{%- assign compacted_original_prices = original_prices | compact -%}\n\nOriginal prices - compacted:\n\n{% for price in compacted_original_prices -%}\n  - {{ price }}\n{%- endfor %}"
+  },
+  {
+    "id": "filters/concat/0",
+    "kind": "filters",
+    "name": "concat",
+    "path": "/collections/all",
+    "liquid": "{%- assign types_and_vendors = collection.all_types | concat: collection.all_vendors -%}\n\nTypes and vendors:\n\n{% for item in types_and_vendors -%}\n  {%- if item != blank -%}\n    - {{ item }}\n  {%- endif -%}\n{%- endfor %}"
+  },
+  {
+    "id": "filters/default/0",
+    "kind": "filters",
+    "name": "default",
+    "path": "/products/health-potion",
+    "liquid": "{{ product.selected_variant.url | default: product.url }}"
+  },
+  {
+    "id": "filters/default/1",
+    "kind": "filters",
+    "name": "default",
+    "path": "/products/health-potion",
+    "liquid": "{%- assign display_price = false -%}\n\n{{ display_price | default: true, allow_false: true }}"
+  },
+  {
+    "id": "filters/divided_by/0",
+    "kind": "filters",
+    "name": "divided_by",
+    "path": "/",
+    "liquid": "{{ 4 | divided_by: 2 }}\n\n# divisor is an integer\n{{ 20 | divided_by: 7 }}\n\n# divisor is a float \n{{ 20 | divided_by: 7.0 }}"
+  },
+  {
+    "id": "filters/downcase/0",
+    "kind": "filters",
+    "name": "downcase",
+    "path": "/products/health-potion",
+    "liquid": "{{ product.title | downcase }}"
+  },
+  {
+    "id": "filters/escape/0",
+    "kind": "filters",
+    "name": "escape",
+    "path": "/",
+    "liquid": "{{ '&lt;p&gt;Text to be escaped.&lt;/p&gt;' | escape }}"
+  },
+  {
+    "id": "filters/escape_once/0",
+    "kind": "filters",
+    "name": "escape_once",
+    "path": "/",
+    "liquid": "# applying the escape filter to already escaped text escapes characters in HTML entities:\n\n{{ \"&amp;lt;p&amp;gt;Text to be escaped.&amp;lt;/p&amp;gt;\" | escape }}\n\n# applying the escape_once filter to already escaped text skips characters in HTML entities:\n\n{{ \"&amp;lt;p&amp;gt;Text to be escaped.&amp;lt;/p&amp;gt;\" | escape_once }}\n\n# use escape_once to escape strings where a combination of HTML entities and non-escaped characters might be present:\n\n{{ \"&amp;lt;p&amp;gt;Text to be escaped.&amp;lt;/p&amp;gt; &amp; some additional text\" | escape_once }}"
+  },
+  {
+    "id": "filters/find/0",
+    "kind": "filters",
+    "name": "find",
+    "path": "/collections/all",
+    "liquid": "{% assign product = collection.products | find: 'vendor', \"Polina's Potent Potions\" %}\n\n{{ product.title }}"
+  },
+  {
+    "id": "filters/find/1",
+    "kind": "filters",
+    "name": "find",
+    "path": "/collections/all",
+    "liquid": "{% assign product = collection.products | find: 'vendor', \"Polina's Potions\" %}\n\n{{ product.title | default: \"No product found\" }}"
+  },
+  {
+    "id": "filters/find_index/0",
+    "kind": "filters",
+    "name": "find_index",
+    "path": "/collections/all",
+    "liquid": "{% assign index = collection.products | find_index: 'vendor', \"Polina's Potent Potions\" %}\n\n{{ index }}"
+  },
+  {
+    "id": "filters/find_index/1",
+    "kind": "filters",
+    "name": "find_index",
+    "path": "/collections/all",
+    "liquid": "{% assign index = collection.products | find_index: 'vendor', \"Polina's Potions\" %}\n\n{{ index | default: \"No index found\" }}"
+  },
+  {
+    "id": "filters/first/0",
+    "kind": "filters",
+    "name": "first",
+    "path": "/collections/all",
+    "liquid": "{%- assign first_product = collection.products | first -%}\n\n{{ first_product.title }}"
+  },
+  {
+    "id": "filters/first/1",
+    "kind": "filters",
+    "name": "first",
+    "path": "/collections/all",
+    "liquid": "{{ collection.products.first.title }}"
+  },
+  {
+    "id": "filters/floor/0",
+    "kind": "filters",
+    "name": "floor",
+    "path": "/",
+    "liquid": "{{ 1.2 | floor }}"
+  },
+  {
+    "id": "filters/has/0",
+    "kind": "filters",
+    "name": "has",
+    "path": "/collections/all",
+    "liquid": "{% assign has_potent_potions = collection.products | has: 'vendor', \"Polina's Potent Potions\" %}\n\n{{ has_potent_potions }}"
+  },
+  {
+    "id": "filters/has/1",
+    "kind": "filters",
+    "name": "has",
+    "path": "/collections/all",
+    "liquid": "{% assign has_potent_potions = collection.products | has: 'vendor', \"Polina's Potions\" %}\n\n{{ has_potent_potions }}"
+  },
+  {
+    "id": "filters/join/0",
+    "kind": "filters",
+    "name": "join",
+    "path": "/collections/sale-potions",
+    "liquid": "{{ collection.all_tags | join }}"
+  },
+  {
+    "id": "filters/join/1",
+    "kind": "filters",
+    "name": "join",
+    "path": "/collections/sale-potions",
+    "liquid": "{{ collection.all_tags | join: ', ' }}"
+  },
+  {
+    "id": "filters/last/0",
+    "kind": "filters",
+    "name": "last",
+    "path": "/collections/all",
+    "liquid": "{%- assign last_product = collection.products | last -%}\n\n{{ last_product.title }}"
+  },
+  {
+    "id": "filters/last/1",
+    "kind": "filters",
+    "name": "last",
+    "path": "/collections/all",
+    "liquid": "{{ collection.products.last.title }}"
+  },
+  {
+    "id": "filters/lstrip/0",
+    "kind": "filters",
+    "name": "lstrip",
+    "path": "/",
+    "liquid": "{%- assign text = '  Some potions create whitespace.      ' -%}\n\n\"{{ text }}\"\n\"{{ text | lstrip }}\""
+  },
+  {
+    "id": "filters/map/0",
+    "kind": "filters",
+    "name": "map",
+    "path": "/collections/sale-potions",
+    "liquid": "{%- assign product_titles = collection.products | map: 'title' -%}\n\n{{ product_titles | join: ', ' }}"
+  },
+  {
+    "id": "filters/minus/0",
+    "kind": "filters",
+    "name": "minus",
+    "path": "/",
+    "liquid": "{{ 4 | minus: 2 }}"
+  },
+  {
+    "id": "filters/modulo/0",
+    "kind": "filters",
+    "name": "modulo",
+    "path": "/",
+    "liquid": "{{ 12 | modulo: 5 }}"
+  },
+  {
+    "id": "filters/newline_to_br/0",
+    "kind": "filters",
+    "name": "newline_to_br",
+    "path": "/products/health-potion",
+    "liquid": "{{ product.description | newline_to_br }}"
+  },
+  {
+    "id": "filters/plus/0",
+    "kind": "filters",
+    "name": "plus",
+    "path": "/",
+    "liquid": "{{ 2 | plus: 2 }}"
+  },
+  {
+    "id": "filters/prepend/0",
+    "kind": "filters",
+    "name": "prepend",
+    "path": "/products/health-potion",
+    "liquid": "{%- assign origin = request.origin -%}\n\n{{ product.url | prepend: origin }}"
+  },
+  {
+    "id": "filters/reject/0",
+    "kind": "filters",
+    "name": "reject",
+    "path": "/collections/all",
+    "liquid": "{% assign polina_products = collection.products | reject: 'vendor', \"Polina's Potent Potions\" %}\n\nProducts from other vendors than Polina's Potent Potions:\n\n{% for product in polina_products -%}\n  - {{ product.title }}\n{%- endfor %}"
+  },
+  {
+    "id": "filters/remove/0",
+    "kind": "filters",
+    "name": "remove",
+    "path": "/",
+    "liquid": "{{ \"I can't do it!\" | remove: \"'t\" }}"
+  },
+  {
+    "id": "filters/remove_first/0",
+    "kind": "filters",
+    "name": "remove_first",
+    "path": "/",
+    "liquid": "{{ \"I hate it when I accidentally spill my duplication potion accidentally!\" | remove_first: ' accidentally' }}"
+  },
+  {
+    "id": "filters/remove_last/0",
+    "kind": "filters",
+    "name": "remove_last",
+    "path": "/",
+    "liquid": "{{ \"I hate it when I accidentally spill my duplication potion accidentally!\" | remove_last: ' accidentally' }}"
+  },
+  {
+    "id": "filters/replace/0",
+    "kind": "filters",
+    "name": "replace",
+    "path": "/products/komodo-dragon-scale",
+    "liquid": "{{ product.handle | replace: '-', ' ' }}"
+  },
+  {
+    "id": "filters/replace_first/0",
+    "kind": "filters",
+    "name": "replace_first",
+    "path": "/products/komodo-dragon-scale",
+    "liquid": "{{ product.handle | replace_first: '-', ' ' }}"
+  },
+  {
+    "id": "filters/replace_last/0",
+    "kind": "filters",
+    "name": "replace_last",
+    "path": "/products/komodo-dragon-scale",
+    "liquid": "{{ product.handle | replace_last: '-', ' ' }}"
+  },
+  {
+    "id": "filters/reverse/0",
+    "kind": "filters",
+    "name": "reverse",
+    "path": "/collections/sale-potions",
+    "liquid": "Original order:\n{{ collection.products | map: 'title' | join: ', ' }}\n\nReverse order:\n{{ collection.products | reverse | map: 'title' | join: ', ' }}"
+  },
+  {
+    "id": "filters/reverse/1",
+    "kind": "filters",
+    "name": "reverse",
+    "path": "/collections/sale-potions",
+    "liquid": "{{ collection.title | split: '' | reverse | join: '' }}"
+  },
+  {
+    "id": "filters/round/0",
+    "kind": "filters",
+    "name": "round",
+    "path": "/",
+    "liquid": "{{ 2.7 | round }}\n{{ 1.3 | round }}"
+  },
+  {
+    "id": "filters/round/1",
+    "kind": "filters",
+    "name": "round",
+    "path": "/",
+    "liquid": "{{ 3.14159 | round: 2 }}"
+  },
+  {
+    "id": "filters/rstrip/0",
+    "kind": "filters",
+    "name": "rstrip",
+    "path": "/",
+    "liquid": "{%- assign text = '  Some potions create whitespace.      ' -%}\n\n\"{{ text }}\"\n\"{{ text | rstrip }}\""
+  },
+  {
+    "id": "filters/size/0",
+    "kind": "filters",
+    "name": "size",
+    "path": "/collections/sale-potions",
+    "liquid": "{{ collection.title | size }}\n{{ collection.products | size }}"
+  },
+  {
+    "id": "filters/size/1",
+    "kind": "filters",
+    "name": "size",
+    "path": "/collections/sale-potions",
+    "liquid": "{% if collection.products.size &gt;= 10 %}\n  There are 10 or more products in this collection.\n{% else %}\n  There are less than 10 products in this collection.\n{% endif %}"
+  },
+  {
+    "id": "filters/slice/0",
+    "kind": "filters",
+    "name": "slice",
+    "path": "/collections/all",
+    "liquid": "{{ collection.title | slice: 0 }}\n{{ collection.title | slice: 0, 5 }}\n\n{{ collection.all_tags | slice: 1, 2 | join: ', ' }}"
+  },
+  {
+    "id": "filters/slice/1",
+    "kind": "filters",
+    "name": "slice",
+    "path": "/collections/all",
+    "liquid": "{{ collection.title | slice: -3, 3 }}"
+  },
+  {
+    "id": "filters/sort/0",
+    "kind": "filters",
+    "name": "sort",
+    "path": "/collections/all",
+    "liquid": "{% assign tags = collection.all_tags | sort %}\n\n{% for tag in tags -%}\n  {{ tag }}\n{%- endfor %}"
+  },
+  {
+    "id": "filters/sort/1",
+    "kind": "filters",
+    "name": "sort",
+    "path": "/collections/all",
+    "liquid": "{% assign products = collection.products | sort: 'price' %}\n\n{% for product in products -%}\n  {{ product.title }}\n{%- endfor %}"
+  },
+  {
+    "id": "filters/sort_natural/0",
+    "kind": "filters",
+    "name": "sort_natural",
+    "path": "/collections/all",
+    "liquid": "{% assign tags = collection.all_tags | sort_natural %}\n\n{% for tag in tags -%}\n  {{ tag }}\n{%- endfor %}"
+  },
+  {
+    "id": "filters/sort_natural/1",
+    "kind": "filters",
+    "name": "sort_natural",
+    "path": "/collections/all",
+    "liquid": "{% assign products = collection.products | sort_natural: 'title' %}\n\n{% for product in products -%}\n  {{ product.title }}\n{%- endfor %}"
+  },
+  {
+    "id": "filters/split/0",
+    "kind": "filters",
+    "name": "split",
+    "path": "/products/health-potion",
+    "liquid": "{%- assign title_words = product.handle | split: '-' -%}\n\n{% for word in title_words -%}\n  {{ word }}\n{%- endfor %}"
+  },
+  {
+    "id": "filters/strip/0",
+    "kind": "filters",
+    "name": "strip",
+    "path": "/",
+    "liquid": "{%- assign text = '  Some potions create whitespace.      ' -%}\n\n\"{{ text }}\"\n\"{{ text | strip }}\""
+  },
+  {
+    "id": "filters/strip_html/0",
+    "kind": "filters",
+    "name": "strip_html",
+    "path": "/products/health-potion",
+    "liquid": "&lt;!-- With HTML --&gt;\n{{ product.description }}\n\n&lt;!-- HTML stripped --&gt;\n{{ product.description | strip_html }}"
+  },
+  {
+    "id": "filters/strip_newlines/0",
+    "kind": "filters",
+    "name": "strip_newlines",
+    "path": "/products/health-potion",
+    "liquid": "&lt;!-- With newlines --&gt;\n{{ product.description }}\n\n&lt;!-- Newlines stripped --&gt;\n{{ product.description | strip_newlines }}"
+  },
+  {
+    "id": "filters/sum/0",
+    "kind": "filters",
+    "name": "sum",
+    "path": "/",
+    "liquid": "{% assign fibonacci = '0, 1, 1, 2, 3, 5' | split: ', ' %}\n\n{{ fibonacci | sum }}"
+  },
+  {
+    "id": "filters/sum/1",
+    "kind": "filters",
+    "name": "sum",
+    "path": "/cart",
+    "liquid": "Total quantity of all items in cart:\n{{ cart.items | sum: 'quantity' }}\n\nSubtotal price for all items in cart:\n{{ cart.items | sum: 'final_line_price' | money }}"
+  },
+  {
+    "id": "filters/times/0",
+    "kind": "filters",
+    "name": "times",
+    "path": "/",
+    "liquid": "{{ 2 | times: 2 }}"
+  },
+  {
+    "id": "filters/truncate/0",
+    "kind": "filters",
+    "name": "truncate",
+    "path": "/blogs/potion-notions/how-to-tell-if-you-have-run-out-of-invisibility-potion",
+    "liquid": "{{ article.title | truncate: 15 }}"
+  },
+  {
+    "id": "filters/truncate/1",
+    "kind": "filters",
+    "name": "truncate",
+    "path": "/blogs/potion-notions/how-to-tell-if-you-have-run-out-of-invisibility-potion",
+    "liquid": "{{ article.title | truncate: 15, '--' }}\n{{ article.title | truncate: 15, '' }}"
+  },
+  {
+    "id": "filters/truncatewords/0",
+    "kind": "filters",
+    "name": "truncatewords",
+    "path": "/blogs/potion-notions/how-to-tell-if-you-have-run-out-of-invisibility-potion",
+    "liquid": "{{ article.content | strip_html | truncatewords: 15 }}"
+  },
+  {
+    "id": "filters/truncatewords/1",
+    "kind": "filters",
+    "name": "truncatewords",
+    "path": "/blogs/potion-notions/how-to-tell-if-you-have-run-out-of-invisibility-potion",
+    "liquid": "{{ article.content | strip_html | truncatewords: 15, '--' }}\n\n{{ article.content | strip_html | truncatewords: 15, '' }}"
+  },
+  {
+    "id": "filters/uniq/0",
+    "kind": "filters",
+    "name": "uniq",
+    "path": "/",
+    "liquid": "{% assign potion_array = 'invisibility, health, love, health, invisibility' | split: ', ' %}\n\n{{ potion_array | uniq | join: ', ' }}"
+  },
+  {
+    "id": "filters/upcase/0",
+    "kind": "filters",
+    "name": "upcase",
+    "path": "/products/health-potion",
+    "liquid": "{{ product.title | upcase }}"
+  },
+  {
+    "id": "filters/url_decode/0",
+    "kind": "filters",
+    "name": "url_decode",
+    "path": "/",
+    "liquid": "{{ 'test%40test.com' | url_decode }}"
+  },
+  {
+    "id": "filters/url_encode/0",
+    "kind": "filters",
+    "name": "url_encode",
+    "path": "/",
+    "liquid": "{{ 'test@test.com' | url_encode }}"
+  },
+  {
+    "id": "filters/where/0",
+    "kind": "filters",
+    "name": "where",
+    "path": "/collections/all",
+    "liquid": "{% assign polina_products = collection.products | where: 'vendor', \"Polina's Potent Potions\" %}\n\nProducts from Polina's Potent Potions:\n\n{% for product in polina_products -%}\n  - {{ product.title }}\n{%- endfor %}"
+  },
+  {
+    "id": "filters/where/1",
+    "kind": "filters",
+    "name": "where",
+    "path": "/collections/all",
+    "liquid": "{% assign available_products = collection.products | where: 'available' %}\n\nAvailable products:\n\n{% for product in available_products -%}\n  - {{ product.title }}\n{%- endfor %}"
+  },
+  {
+    "id": "filters/external_video_tag/0",
+    "kind": "filters",
+    "name": "external_video_tag",
+    "path": "/products/potion-beats",
+    "liquid": "{% for media in product.media %}\n  {% if media.media_type == 'external_video' %}\n    {% if media.host == 'youtube' %}\n      {{ media | external_video_url: color: 'white' | external_video_tag }}\n    {% elsif media.host == 'vimeo' %}\n      {{ media | external_video_url: loop: '1', muted: '1' | external_video_tag }}\n    {% endif %}\n  {% endif %}\n{% endfor %}"
+  },
+  {
+    "id": "filters/external_video_tag/1",
+    "kind": "filters",
+    "name": "external_video_tag",
+    "path": "/products/potion-beats",
+    "liquid": "{% for media in product.media %}\n  {% if media.media_type == 'external_video' %}\n    {% if media.host == 'youtube' %}\n      {{ media | external_video_url: color: 'white' | external_video_tag: class:'youtube-video' }}\n    {% endif %}\n  {% endif %}\n{% endfor %}"
+  },
+  {
+    "id": "filters/external_video_url/0",
+    "kind": "filters",
+    "name": "external_video_url",
+    "path": "/products/potion-beats",
+    "liquid": "{% for media in product.media %}\n  {% if media.media_type == 'external_video' %}\n    {% if media.host == 'youtube' %}\n      {{ media | external_video_url: color: 'white' | external_video_tag }}\n    {% elsif media.host == 'vimeo' %}\n      {{ media | external_video_url: loop: '1', muted: '1' | external_video_tag }}\n    {% endif %}\n  {% endif %}\n{% endfor %}"
+  },
+  {
+    "id": "filters/image_tag/0",
+    "kind": "filters",
+    "name": "image_tag",
+    "path": "/products/health-potion",
+    "liquid": "{{ product | image_url: width: 200 | image_tag }}"
+  },
+  {
+    "id": "filters/image_tag/2",
+    "kind": "filters",
+    "name": "image_tag",
+    "path": "/",
+    "liquid": "{{ images['potions-header.png'] | image_url: width: 300 | image_tag }}"
+  },
+  {
+    "id": "filters/image_tag/3",
+    "kind": "filters",
+    "name": "image_tag",
+    "path": "/products/health-potion",
+    "liquid": "&lt;!-- With a width --&gt;\n{{ product | image_url: width: 400 | image_tag: width: 300 }}\n\n&lt;!-- With the width set to nil --&gt;\n{{ product | image_url: width: 400 | image_tag: width: nil }}"
+  },
+  {
+    "id": "filters/image_tag/4",
+    "kind": "filters",
+    "name": "image_tag",
+    "path": "/products/health-potion",
+    "liquid": "&lt;!-- With a height --&gt;\n{{ product | image_url: width: 400 | image_tag: height: 300 }}\n\n&lt;!-- With the height set to nil --&gt;\n{{ product | image_url: width: 400 | image_tag: height: nil }}"
+  },
+  {
+    "id": "filters/image_tag/5",
+    "kind": "filters",
+    "name": "image_tag",
+    "path": "/products/health-potion",
+    "liquid": "{{ product | image_url: width: 200 | image_tag: sizes: '(min-width:1600px) 960px, (min-width: 750px) calc((100vw - 11.5rem) / 2), calc(100vw - 4rem)' }}"
+  },
+  {
+    "id": "filters/image_tag/6",
+    "kind": "filters",
+    "name": "image_tag",
+    "path": "/products/health-potion",
+    "liquid": "{{ product | image_url: width: 600 | image_tag: widths: '200, 300, 400' }}"
+  },
+  {
+    "id": "filters/image_tag/7",
+    "kind": "filters",
+    "name": "image_tag",
+    "path": "/products/health-potion",
+    "liquid": "{{ product | image_url: width: 200 | image_tag: srcset: nil }}"
+  },
+  {
+    "id": "filters/image_tag/9",
+    "kind": "filters",
+    "name": "image_tag",
+    "path": "/products/health-potion",
+    "liquid": "{{ product | image_url: width: 200 | image_tag: alt: \"My image's alt text\" }}"
+  },
+  {
+    "id": "filters/image_tag/10",
+    "kind": "filters",
+    "name": "image_tag",
+    "path": "/products/health-potion",
+    "liquid": "{{ product | image_url: width: 200 | image_tag: class: 'custom-class', loading: 'lazy' }}"
+  },
+  {
+    "id": "filters/media_tag/0",
+    "kind": "filters",
+    "name": "media_tag",
+    "path": "/products/potion-beats",
+    "liquid": "{% for media in product.media %}\n  {{- media | media_tag }}\n{% endfor %}"
+  },
+  {
+    "id": "filters/media_tag/1",
+    "kind": "filters",
+    "name": "media_tag",
+    "path": "/products/potion-beats",
+    "liquid": "{% for media in product.media %}\n  {{- media | media_tag: image_size: '400x' }}\n{% endfor %}"
+  },
+  {
+    "id": "filters/model_viewer_tag/0",
+    "kind": "filters",
+    "name": "model_viewer_tag",
+    "path": "/products/potion-bottle",
+    "liquid": "{% for media in product.media %}\n  {% if media.media_type == 'model' %}\n    {{ media | model_viewer_tag }}\n  {% endif %}\n{% endfor %}"
+  },
+  {
+    "id": "filters/model_viewer_tag/1",
+    "kind": "filters",
+    "name": "model_viewer_tag",
+    "path": "/products/potion-bottle",
+    "liquid": "{% for media in product.media %}\n  {% if media.media_type == 'model' %}\n    {{ media | model_viewer_tag: interaction-policy: 'allow-when-focused' }}\n  {% endif %}\n{% endfor %}"
+  },
+  {
+    "id": "filters/model_viewer_tag/2",
+    "kind": "filters",
+    "name": "model_viewer_tag",
+    "path": "/products/potion-bottle",
+    "liquid": "{% for media in product.media %}\n  {% if media.media_type == 'model' %}\n    {{ media | model_viewer_tag: image_size: '400x' }}\n  {% endif %}\n{% endfor %}"
+  },
+  {
+    "id": "filters/video_tag/0",
+    "kind": "filters",
+    "name": "video_tag",
+    "path": "/products/potion-beats",
+    "liquid": "{% for media in product.media %}\n  {% if media.media_type == 'video' %}\n    {{ media | video_tag }}\n  {% endif %}\n{% endfor %}"
+  },
+  {
+    "id": "filters/video_tag/2",
+    "kind": "filters",
+    "name": "video_tag",
+    "path": "/products/potion-beats",
+    "liquid": "{% for media in product.media %}\n  {% if media.media_type == 'video' %}\n    {{ media | video_tag: image_size: '400x' }}\n  {% endif %}\n{% endfor %}"
+  },
+  {
+    "id": "filters/video_tag/3",
+    "kind": "filters",
+    "name": "video_tag",
+    "path": "/products/potion-beats",
+    "liquid": "{% for media in product.media %}\n  {% if media.media_type == 'video' %}\n    {{ media | video_tag: autoplay: true, loop: true, muted: true, controls: true }}\n  {% endif %}\n{% endfor %}"
+  },
+  {
+    "id": "filters/metafield_tag/0",
+    "kind": "filters",
+    "name": "metafield_tag",
+    "path": "/products/health-potion",
+    "liquid": "&lt;!-- boolean --&gt;\n{{ product.metafields.information.seasonal | metafield_tag }}\n\n&lt;!-- collection_reference --&gt;\n{{ product.metafields.information.related_collection | metafield_tag }}\n\n&lt;!-- color --&gt;\n{{ product.metafields.details.potion_color | metafield_tag }}\n\n&lt;!-- date --&gt;\n{{ product.metafields.information.expiry | metafield_tag }}\n\n&lt;!-- date_time --&gt;\n{{ product.metafields.information.brew_date | metafield_tag }}\n\n&lt;!-- json --&gt;\n{{ product.metafields.information.burn_temperature | metafield_tag }}\n\n&lt;!-- money --&gt;\n{{ product.metafields.details.price_per_ml | metafield_tag }}\n\n&lt;!-- multi_line_text_field --&gt;\n{{ product.metafields.information.shipping | metafield_tag }}\n\n&lt;!-- number_decimal --&gt;\n{{ product.metafields.information.salinity | metafield_tag }}\n\n&lt;!-- number_integer --&gt;\n{{ product.metafields.information.doses_per_day | metafield_tag }}\n\n&lt;!-- page_reference --&gt;\n{{ product.metafields.information.dosage | metafield_tag }}\n\n&lt;!-- product_reference --&gt;\n{{ product.metafields.information.related_product | metafield_tag }}\n\n&lt;!-- rating --&gt;\n{{ product.metafields.details.rating | metafield_tag }}\n\n&lt;!-- single_line_text_field --&gt;\n{{ product.metafields.information.directions | metafield_tag }}\n\n&lt;!-- url --&gt;\n{{ product.metafields.information.health | metafield_tag }}\n\n&lt;!-- variant_reference --&gt;\n{{ product.metafields.information.best_seller | metafield_tag }}\n\n&lt;!-- rich_text_field --&gt;\n{{ product.metafields.information.rich_description | metafield_tag }}"
+  },
+  {
+    "id": "filters/metafield_tag/2",
+    "kind": "filters",
+    "name": "metafield_tag",
+    "path": "/products/komodo-dragon-scale",
+    "liquid": "{{ product.metafields.details.scale_width | metafield_tag }}"
+  },
+  {
+    "id": "filters/metafield_tag/3",
+    "kind": "filters",
+    "name": "metafield_tag",
+    "path": "/products/health-potion",
+    "liquid": "&lt;!-- Image --&gt;\n{{ product.metafields.information.promo_image | metafield_tag }}\n\n&lt;!-- Video --&gt;\n{{ product.metafields.information.promo_video | metafield_tag }}\n\n&lt;!-- Other --&gt;\n{{ product.metafields.information.disclaimers | metafield_tag }}"
+  },
+  {
+    "id": "filters/metafield_tag/4",
+    "kind": "filters",
+    "name": "metafield_tag",
+    "path": "/products/health-potion",
+    "liquid": "&lt;!-- &lt;ul&gt; element --&gt;\n{{ product.metafields.information.ingredients | metafield_tag: field: 'name' }}\n\n&lt;!-- &lt;ol&gt; element --&gt;\n{{ product.metafields.information.ingredients | metafield_tag: field: 'name', list_format: 'ordered' }}"
+  },
+  {
+    "id": "filters/metafield_tag/5",
+    "kind": "filters",
+    "name": "metafield_tag",
+    "path": "/products/health-potion",
+    "liquid": "&lt;!-- &lt;ul&gt; element --&gt;\n{{ product.metafields.information.pickup_locations | metafield_tag }}\n\n&lt;!-- &lt;ol&gt; element --&gt;\n{{ product.metafields.information.pickup_locations | metafield_tag: list_format: 'ordered' }}"
+  },
+  {
+    "id": "filters/metafield_tag/6",
+    "kind": "filters",
+    "name": "metafield_tag",
+    "path": "/products/health-potion",
+    "liquid": "{{ product.metafields.information.primary_ingredient | metafield_tag: field: 'name' }}"
+  },
+  {
+    "id": "filters/metafield_tag/7",
+    "kind": "filters",
+    "name": "metafield_tag",
+    "path": "/products/dandelion-milk",
+    "liquid": "{{ product.metafields.details.milk_container_volume | metafield_tag }}"
+  },
+  {
+    "id": "filters/metafield_tag/8",
+    "kind": "filters",
+    "name": "metafield_tag",
+    "path": "/products/dried-chamomile",
+    "liquid": "{{ product.metafields.details.chamomile_base_weight | metafield_tag }}"
+  },
+  {
+    "id": "filters/metafield_text/0",
+    "kind": "filters",
+    "name": "metafield_text",
+    "path": "/products/health-potion",
+    "liquid": "{{ product.metafields.information.dosage | metafield_text }}"
+  },
+  {
+    "id": "filters/metafield_text/2",
+    "kind": "filters",
+    "name": "metafield_text",
+    "path": "/products/health-potion",
+    "liquid": "{{ product.metafields.information.ingredients | metafield_text: field: 'name' }}"
+  },
+  {
+    "id": "filters/metafield_text/3",
+    "kind": "filters",
+    "name": "metafield_text",
+    "path": "/products/health-potion",
+    "liquid": "{{ product.metafields.information.primary_ingredient | metafield_tag: field: 'name' }}"
+  },
+  {
+    "id": "filters/money/0",
+    "kind": "filters",
+    "name": "money",
+    "path": "/products/health-potion",
+    "liquid": "{{ product.price | money }}"
+  },
+  {
+    "id": "filters/money_amount/0",
+    "kind": "filters",
+    "name": "money_amount",
+    "path": "/products/health-potion",
+    "liquid": "{{ product.price | money_amount }}"
+  },
+  {
+    "id": "filters/money_with_currency/0",
+    "kind": "filters",
+    "name": "money_with_currency",
+    "path": "/products/health-potion",
+    "liquid": "{{ product.price | money_with_currency }}"
+  },
+  {
+    "id": "filters/money_without_currency/0",
+    "kind": "filters",
+    "name": "money_without_currency",
+    "path": "/products/health-potion",
+    "liquid": "{{ product.price | money_without_currency }}"
+  },
+  {
+    "id": "filters/money_without_trailing_zeros/0",
+    "kind": "filters",
+    "name": "money_without_trailing_zeros",
+    "path": "/products/health-potion",
+    "liquid": "{{ product.price | money_without_trailing_zeros }}"
+  },
+  {
+    "id": "filters/default_pagination/0",
+    "kind": "filters",
+    "name": "default_pagination",
+    "path": "/collections/sale-potions",
+    "liquid": "{% paginate collection.products by 2 %}\n  {% for product in collection.products %}\n    {{- product.title }}\n  {% endfor %}\n\n  {{- paginate | default_pagination -}}\n{% endpaginate %}"
+  },
+  {
+    "id": "filters/default_pagination/1",
+    "kind": "filters",
+    "name": "default_pagination",
+    "path": "/collections/sale-potions",
+    "liquid": "{% paginate collection.products by 2 %}\n  {% for product in collection.products %}\n    {{- product.title }}\n  {% endfor %}\n\n  {{- paginate | default_pagination: previous: 'Previous' -}}\n{% endpaginate %}"
+  },
+  {
+    "id": "filters/default_pagination/2",
+    "kind": "filters",
+    "name": "default_pagination",
+    "path": "/collections/sale-potions",
+    "liquid": "{% paginate collection.products by 2 %}\n  {% for product in collection.products %}\n    {{- product.title }}\n  {% endfor %}\n\n  {{- paginate | default_pagination: next: 'Next' -}}\n{% endpaginate %}"
+  },
+  {
+    "id": "filters/default_pagination/3",
+    "kind": "filters",
+    "name": "default_pagination",
+    "path": "/collections/sale-potions",
+    "liquid": "{% paginate collection.products by 2 %}\n  {% for product in collection.products %}\n    {{- product.title }}\n  {% endfor %}\n\n  &lt;div id=\"pagination\"&gt;\n    {{- paginate | default_pagination: anchor: 'pagination' -}}\n  &lt;/div&gt;\n{% endpaginate %}"
+  },
+  {
+    "id": "filters/standard_event_data/0",
+    "kind": "filters",
+    "name": "standard_event_data",
+    "path": "/products/health-potion",
+    "liquid": "{{ product | standard_event_data: \"view\", context: \"page\" }}"
+  },
+  {
+    "id": "filters/standard_event_data/1",
+    "kind": "filters",
+    "name": "standard_event_data",
+    "path": "/collections/all",
+    "liquid": "{{ collection | standard_event_data: \"view\" }}"
+  },
+  {
+    "id": "filters/standard_event_data/2",
+    "kind": "filters",
+    "name": "standard_event_data",
+    "path": "/cart",
+    "liquid": "{{ cart | standard_event_data: \"view\", context: \"dialog\" }}"
+  },
+  {
+    "id": "filters/camelize/0",
+    "kind": "filters",
+    "name": "camelize",
+    "path": "/",
+    "liquid": "{{ 'variable-name' | camelize }}"
+  },
+  {
+    "id": "filters/handleize/0",
+    "kind": "filters",
+    "name": "handleize",
+    "path": "/products/health-potion",
+    "liquid": "{{ product.title | handleize }}\n{{ product.title | handle }}"
+  },
+  {
+    "id": "filters/url_escape/0",
+    "kind": "filters",
+    "name": "url_escape",
+    "path": "/",
+    "liquid": "{{ '&lt;p&gt;Health &amp; Love potions&lt;/p&gt;' | url_escape }}"
+  },
+  {
+    "id": "filters/url_param_escape/0",
+    "kind": "filters",
+    "name": "url_param_escape",
+    "path": "/",
+    "liquid": "{{ '&lt;p&gt;Health &amp; Love potions&lt;/p&gt;' | url_param_escape }}"
+  },
+  {
+    "id": "filters/structured_data/0",
+    "kind": "filters",
+    "name": "structured_data",
+    "path": "/products/crocodile-tears",
+    "liquid": "&lt;script type=\"application/ld+json\"&gt;\n  {{ product | structured_data }}\n&lt;/script&gt;"
+  },
+  {
+    "id": "filters/highlight_active_tag/0",
+    "kind": "filters",
+    "name": "highlight_active_tag",
+    "path": "/collections/sale-potions/extra-potent",
+    "liquid": "{% for tag in collection.all_tags %}\n  {{- tag | highlight_active_tag | link_to_tag: tag }}\n{% endfor %}"
+  },
+  {
+    "id": "filters/link_to_add_tag/0",
+    "kind": "filters",
+    "name": "link_to_add_tag",
+    "path": "/collections/sale-potions",
+    "liquid": "{% for tag in collection.all_tags %}\n  {%- if current_tags contains tag -%}\n    {{ tag }}\n  {%- else -%}\n    {{ tag | link_to_add_tag: tag }}\n  {%- endif -%}\n{% endfor %}"
+  },
+  {
+    "id": "filters/link_to_remove_tag/0",
+    "kind": "filters",
+    "name": "link_to_remove_tag",
+    "path": "/collections/sale-potions",
+    "liquid": "{% for tag in collection.all_tags %}\n  {%- if current_tags contains tag -%}\n    {{ tag | link_to_remove_tag: tag }}\n  {%- else -%}\n    {{ tag | link_to_add_tag: tag }}\n  {%- endif -%}\n{% endfor %}"
+  },
+  {
+    "id": "filters/link_to_tag/0",
+    "kind": "filters",
+    "name": "link_to_tag",
+    "path": "/collections/sale-potions",
+    "liquid": "{% for tag in collection.all_tags %}\n  {{- tag | link_to_tag: tag }}\n{% endfor %}"
+  },
+  {
+    "id": "filters/format_address/0",
+    "kind": "filters",
+    "name": "format_address",
+    "path": "/",
+    "liquid": "{{ shop.address | format_address }}"
+  },
+  {
+    "id": "filters/format_address/1",
+    "kind": "filters",
+    "name": "format_address",
+    "path": "/",
+    "liquid": "{{ customer.default_address | format_address }}"
+  },
+  {
+    "id": "filters/highlight/0",
+    "kind": "filters",
+    "name": "highlight",
+    "path": "/search?q=love",
+    "liquid": "{% for item in search.results %}\n  {% if item.object_type == 'product' %}\n    {{ item.description | highlight: search.terms }}\n  {% else %}\n    {{ item.content | highlight: search.terms }}\n  {% endif %}\n{% endfor %}"
+  },
+  {
+    "id": "filters/pluralize/0",
+    "kind": "filters",
+    "name": "pluralize",
+    "path": "/cart",
+    "liquid": "Cart item count: {{ cart.item_count }} {{ cart.item_count | pluralize: 'item', 'items' }}"
+  },
+  {
+    "id": "filters/unit_price_with_measurement/0",
+    "kind": "filters",
+    "name": "unit_price_with_measurement",
+    "path": "/products/blue-mountain-flower",
+    "liquid": "{%- assign variant = product.variants.first -%}\n\n{{ variant.unit_price | unit_price_with_measurement: variant.unit_price_measurement }}"
+  },
+  {
+    "id": "filters/unit_price_with_measurement/1",
+    "kind": "filters",
+    "name": "unit_price_with_measurement",
+    "path": "/products/blue-mountain-flower",
+    "liquid": "{%- assign variant = product.variants.first -%}\n\n{{ variant.unit_price | money_with_currency | unit_price_with_measurement: variant.unit_price_measurement }}"
+  },
+  {
+    "id": "filters/article_img_url/0",
+    "kind": "filters",
+    "name": "article_img_url",
+    "path": "/blogs/potion-notions/how-to-tell-if-you-have-run-out-of-invisibility-potion",
+    "liquid": "{{ article.image | article_img_url }}"
+  },
+  {
+    "id": "filters/article_img_url/1",
+    "kind": "filters",
+    "name": "article_img_url",
+    "path": "/blogs/potion-notions/how-to-tell-if-you-have-run-out-of-invisibility-potion",
+    "liquid": "{{ article.image | article_img_url: 'large' }}"
+  },
+  {
+    "id": "filters/asset_img_url/0",
+    "kind": "filters",
+    "name": "asset_img_url",
+    "path": "/",
+    "liquid": "{{ 'red-and-black-bramble-berries.jpg' | asset_img_url }}"
+  },
+  {
+    "id": "filters/asset_img_url/1",
+    "kind": "filters",
+    "name": "asset_img_url",
+    "path": "/",
+    "liquid": "{{ 'red-and-black-bramble-berries.jpg' | asset_img_url: 'large' }}"
+  },
+  {
+    "id": "filters/asset_url/0",
+    "kind": "filters",
+    "name": "asset_url",
+    "path": "/",
+    "liquid": "{{ 'cart.js' | asset_url }}"
+  },
+  {
+    "id": "filters/collection_img_url/0",
+    "kind": "filters",
+    "name": "collection_img_url",
+    "path": "/collections/sale-potions",
+    "liquid": "{{ collection.image | collection_img_url }}"
+  },
+  {
+    "id": "filters/collection_img_url/1",
+    "kind": "filters",
+    "name": "collection_img_url",
+    "path": "/collections/sale-potions",
+    "liquid": "{{ collection.image | collection_img_url: 'large' }}"
+  },
+  {
+    "id": "filters/file_img_url/0",
+    "kind": "filters",
+    "name": "file_img_url",
+    "path": "/",
+    "liquid": "{{ 'potions-header.png' | file_img_url }}"
+  },
+  {
+    "id": "filters/file_img_url/1",
+    "kind": "filters",
+    "name": "file_img_url",
+    "path": "/",
+    "liquid": "{{ 'potions-header.png' | file_img_url: 'large' }}"
+  },
+  {
+    "id": "filters/file_url/0",
+    "kind": "filters",
+    "name": "file_url",
+    "path": "/",
+    "liquid": "{{ 'disclaimer.pdf' | file_url }}"
+  },
+  {
+    "id": "filters/global_asset_url/0",
+    "kind": "filters",
+    "name": "global_asset_url",
+    "path": "/",
+    "liquid": "{{ 'lightbox.js' | global_asset_url | script_tag }}\n\n{{ 'lightbox.css' | global_asset_url | stylesheet_tag }}"
+  },
+  {
+    "id": "filters/image_url/0",
+    "kind": "filters",
+    "name": "image_url",
+    "path": "/products/health-potion",
+    "liquid": "{{ product | image_url: width: 450 }}"
+  },
+  {
+    "id": "filters/image_url/1",
+    "kind": "filters",
+    "name": "image_url",
+    "path": "/products/health-potion",
+    "liquid": "{{ product | image_url: width: 450 }}"
+  },
+  {
+    "id": "filters/image_url/2",
+    "kind": "filters",
+    "name": "image_url",
+    "path": "/products/health-potion",
+    "liquid": "{{ product | image_url: height: 450 }}"
+  },
+  {
+    "id": "filters/image_url/3",
+    "kind": "filters",
+    "name": "image_url",
+    "path": "/products/health-potion",
+    "liquid": "{{ product | image_url: width: 400, height: 400, crop: 'bottom' }}\n\n{{ product | image_url: crop: 'region', crop_left: 32, crop_top: 32, crop_width: 512, crop_height: 512 }}\n\n{{ product | image_url: crop: 'region', width: 100, height: 100, crop_left: 32, crop_top: 32, crop_width: 512, crop_height: 512 }}"
+  },
+  {
+    "id": "filters/image_url/4",
+    "kind": "filters",
+    "name": "image_url",
+    "path": "/products/health-potion",
+    "liquid": "{{ product | image_url: width: 450, format: 'pjpg' }}"
+  },
+  {
+    "id": "filters/image_url/5",
+    "kind": "filters",
+    "name": "image_url",
+    "path": "/products/health-potion",
+    "liquid": "{{ product | image_url: width: 400, height: 400, pad_color: '000' }}"
+  },
+  {
+    "id": "filters/image_url/6",
+    "kind": "filters",
+    "name": "image_url",
+    "path": "/products/health-potion",
+    "liquid": "{{ product | image_url: width: 450, quality: 80 }}"
+  },
+  {
+    "id": "filters/img_tag/0",
+    "kind": "filters",
+    "name": "img_tag",
+    "path": "/products/health-potion",
+    "liquid": "{{ product | img_tag }}"
+  },
+  {
+    "id": "filters/img_tag/1",
+    "kind": "filters",
+    "name": "img_tag",
+    "path": "/products/health-potion",
+    "liquid": "{{ product | img_tag: 'image alt text', '', '450x450' }}"
+  },
+  {
+    "id": "filters/img_url/0",
+    "kind": "filters",
+    "name": "img_url",
+    "path": "/products/health-potion",
+    "liquid": "{{ product | img_url }}"
+  },
+  {
+    "id": "filters/img_url/1",
+    "kind": "filters",
+    "name": "img_url",
+    "path": "/products/health-potion",
+    "liquid": "{{ product | img_url: '480x' }}\n\n{{ product | img_url: 'x480' }}\n\n{{ product | img_url: '480x480' }}\n\n{{ product | img_url: 'large' }}"
+  },
+  {
+    "id": "filters/img_url/2",
+    "kind": "filters",
+    "name": "img_url",
+    "path": "/products/health-potion",
+    "liquid": "{{ product | img_url: crop: 'bottom' }}"
+  },
+  {
+    "id": "filters/img_url/3",
+    "kind": "filters",
+    "name": "img_url",
+    "path": "/products/health-potion",
+    "liquid": "{{ product | img_url: format: 'pjpg' }}"
+  },
+  {
+    "id": "filters/img_url/4",
+    "kind": "filters",
+    "name": "img_url",
+    "path": "/products/health-potion",
+    "liquid": "{{ product | img_url: scale: 2 }}"
+  },
+  {
+    "id": "filters/link_to/0",
+    "kind": "filters",
+    "name": "link_to",
+    "path": "/",
+    "liquid": "{{ 'Shopify' | link_to: 'https://www.shopify.com' }}"
+  },
+  {
+    "id": "filters/link_to/1",
+    "kind": "filters",
+    "name": "link_to",
+    "path": "/",
+    "liquid": "{{ 'Shopify' | link_to: 'https://www.shopify.com', class: 'link-class' }}"
+  },
+  {
+    "id": "filters/payment_type_img_url/0",
+    "kind": "filters",
+    "name": "payment_type_img_url",
+    "path": "/",
+    "liquid": "{% for type in shop.enabled_payment_types %}\n&lt;img src=\"{{ type | payment_type_img_url }}\" width=\"50\" height=\"50\" /&gt;\n{% endfor %}"
+  },
+  {
+    "id": "filters/payment_type_svg_tag/0",
+    "kind": "filters",
+    "name": "payment_type_svg_tag",
+    "path": "/",
+    "liquid": "{% for type in shop.enabled_payment_types -%}\n  {{ type | payment_type_svg_tag }}\n{% endfor %}"
+  },
+  {
+    "id": "filters/payment_type_svg_tag/1",
+    "kind": "filters",
+    "name": "payment_type_svg_tag",
+    "path": "/",
+    "liquid": "{% for type in shop.enabled_payment_types -%}\n  {{ type | payment_type_svg_tag: class: 'custom-class' }}\n{% endfor %}"
+  },
+  {
+    "id": "filters/placeholder_svg_tag/0",
+    "kind": "filters",
+    "name": "placeholder_svg_tag",
+    "path": "/",
+    "liquid": "{{ 'collection-1' | placeholder_svg_tag }}"
+  },
+  {
+    "id": "filters/placeholder_svg_tag/1",
+    "kind": "filters",
+    "name": "placeholder_svg_tag",
+    "path": "/",
+    "liquid": "{{ 'collection-1' | placeholder_svg_tag: 'custom-class' }}"
+  },
+  {
+    "id": "filters/preload_tag/0",
+    "kind": "filters",
+    "name": "preload_tag",
+    "path": "/",
+    "liquid": "{{ 'cart.js' | asset_url | preload_tag: as: 'script' }}"
+  },
+  {
+    "id": "filters/preload_tag/1",
+    "kind": "filters",
+    "name": "preload_tag",
+    "path": "/",
+    "liquid": "{{ 'cart.js' | asset_url | preload_tag: as: 'script', type: 'text/javascript' }}"
+  },
+  {
+    "id": "filters/product_img_url/0",
+    "kind": "filters",
+    "name": "product_img_url",
+    "path": "/products/health-potion",
+    "liquid": "{{ product.featured_image | product_img_url }}"
+  },
+  {
+    "id": "filters/product_img_url/1",
+    "kind": "filters",
+    "name": "product_img_url",
+    "path": "/products/health-potion",
+    "liquid": "{{ product.images[0] | product_img_url: 'large' }}"
+  },
+  {
+    "id": "filters/script_tag/0",
+    "kind": "filters",
+    "name": "script_tag",
+    "path": "/",
+    "liquid": "{{ 'cart.js' | asset_url | script_tag }}"
+  },
+  {
+    "id": "filters/script_tag/1",
+    "kind": "filters",
+    "name": "script_tag",
+    "path": "/",
+    "liquid": "{{ 'cart.js' | asset_url | script_tag: type: 'module', defer: true }}"
+  },
+  {
+    "id": "filters/shopify_asset_url/0",
+    "kind": "filters",
+    "name": "shopify_asset_url",
+    "path": "/",
+    "liquid": "{{ 'option_selection.js' | shopify_asset_url }}"
+  },
+  {
+    "id": "filters/stylesheet_tag/0",
+    "kind": "filters",
+    "name": "stylesheet_tag",
+    "path": "/",
+    "liquid": "{{ 'base.css' | asset_url | stylesheet_tag }}"
+  },
+  {
+    "id": "filters/stylesheet_tag/2",
+    "kind": "filters",
+    "name": "stylesheet_tag",
+    "path": "/",
+    "liquid": "{{ 'base.css' | asset_url | stylesheet_tag: fetchpriority: 'high' }}"
+  },
+  {
+    "id": "filters/weight_with_unit/0",
+    "kind": "filters",
+    "name": "weight_with_unit",
+    "path": "/products/blue-mountain-flower",
+    "liquid": "{%- assign variant = product.variants.first -%}\n\n{{ variant.weight | weight_with_unit }}"
+  },
+  {
+    "id": "filters/weight_with_unit/1",
+    "kind": "filters",
+    "name": "weight_with_unit",
+    "path": "/products/blue-mountain-flower",
+    "liquid": "{%- assign variant = product.variants.first -%}\n\n{{ variant.weight | weight_with_unit: variant.weight_unit }}"
+  },
+  {
+    "id": "tags/form/0",
+    "kind": "tags",
+    "name": "form",
+    "path": "/",
+    "liquid": "{% form 'activate_customer_password' %}\n  &lt;!-- form content --&gt;\n{% endform %}"
+  },
+  {
+    "id": "tags/form/1",
+    "kind": "tags",
+    "name": "form",
+    "path": "/",
+    "liquid": "{% form 'cart', cart %}\n  &lt;!-- form content --&gt;\n{% endform %}"
+  },
+  {
+    "id": "tags/form/2",
+    "kind": "tags",
+    "name": "form",
+    "path": "/",
+    "liquid": "{% form 'contact' %}\n  &lt;!-- form content --&gt;\n{% endform %}"
+  },
+  {
+    "id": "tags/form/3",
+    "kind": "tags",
+    "name": "form",
+    "path": "/",
+    "liquid": "{% form 'create_customer' %}\n  &lt;!-- form content --&gt;\n{% endform %}"
+  },
+  {
+    "id": "tags/form/4",
+    "kind": "tags",
+    "name": "form",
+    "path": "/",
+    "liquid": "{% form 'currency' %}\n  {{ form | currency_selector }}\n{% endform %}"
+  },
+  {
+    "id": "tags/form/5",
+    "kind": "tags",
+    "name": "form",
+    "path": "/",
+    "liquid": "{% form 'customer' %}\n  &lt;!-- form content --&gt;\n{% endform %}"
+  },
+  {
+    "id": "tags/form/6",
+    "kind": "tags",
+    "name": "form",
+    "path": "/",
+    "liquid": "{% form 'customer_address', customer.new_address %}\n  &lt;!-- form content --&gt;\n{% endform %}"
+  },
+  {
+    "id": "tags/form/7",
+    "kind": "tags",
+    "name": "form",
+    "path": "/",
+    "liquid": "{% form 'customer_login' %}\n  &lt;!-- form content --&gt;\n{% endform %}"
+  },
+  {
+    "id": "tags/form/8",
+    "kind": "tags",
+    "name": "form",
+    "path": "/",
+    "liquid": "{% form 'guest_login' %}\n  &lt;!-- form content --&gt;\n{% endform %}"
+  },
+  {
+    "id": "tags/form/9",
+    "kind": "tags",
+    "name": "form",
+    "path": "/",
+    "liquid": "{% form 'localization' %}\n  &lt;!-- form content --&gt;\n{% endform %}"
+  },
+  {
+    "id": "tags/form/10",
+    "kind": "tags",
+    "name": "form",
+    "path": "/blogs/potion-notions/how-to-tell-if-you-have-run-out-of-invisibility-potion",
+    "liquid": "{% form 'new_comment', article %}\n  &lt;!-- form content --&gt;\n{% endform %}"
+  },
+  {
+    "id": "tags/form/11",
+    "kind": "tags",
+    "name": "form",
+    "path": "/products/health-potion",
+    "liquid": "{% form 'product', product %}\n  &lt;!-- form content --&gt;\n{% endform %}"
+  },
+  {
+    "id": "tags/form/12",
+    "kind": "tags",
+    "name": "form",
+    "path": "/",
+    "liquid": "{% form 'recover_customer_password' %}\n  &lt;!-- form content --&gt;\n{% endform %}"
+  },
+  {
+    "id": "tags/form/13",
+    "kind": "tags",
+    "name": "form",
+    "path": "/",
+    "liquid": "{% form 'reset_customer_password' %}\n  &lt;!-- form content --&gt;\n{% endform %}"
+  },
+  {
+    "id": "tags/form/14",
+    "kind": "tags",
+    "name": "form",
+    "path": "/",
+    "liquid": "{% form 'storefront_password' %}\n  &lt;!-- form content --&gt;\n{% endform %}"
+  },
+  {
+    "id": "tags/form/15",
+    "kind": "tags",
+    "name": "form",
+    "path": "/",
+    "liquid": "{% form 'customer_login', return_to: routes.root_url %}\n  &lt;!-- form content --&gt;\n{% endform %}"
+  },
+  {
+    "id": "tags/form/16",
+    "kind": "tags",
+    "name": "form",
+    "path": "/products/health-potion",
+    "liquid": "{% form \"product\", product, id: 'custom-id', class: 'custom-class', data-example: '100' %}\n  &lt;!-- form content --&gt;\n{% endform %}"
+  },
+  {
+    "id": "tags/assign/0",
+    "kind": "tags",
+    "name": "assign",
+    "path": "/products/health-potion",
+    "liquid": "{%- assign product_title = product.title | upcase -%}\n\n{{ product_title }}"
+  },
+  {
+    "id": "tags/break/0",
+    "kind": "tags",
+    "name": "break",
+    "path": "/",
+    "liquid": "{% for i in (1..5) -%}\n  {%- if i == 4 -%}\n    {% break %}\n  {%- else -%}\n    {{ i }}\n  {%- endif -%}\n{%- endfor %}"
+  },
+  {
+    "id": "tags/capture/0",
+    "kind": "tags",
+    "name": "capture",
+    "path": "/products/health-potion",
+    "liquid": "{%- assign up_title = product.title | upcase -%}\n{%- assign down_title = product.title | downcase -%}\n{%- assign show_up_title = true -%}\n\n{%- capture title -%}\n  {% if show_up_title -%}\n    Upcase title: {{ up_title }}\n  {%- else -%}\n    Downcase title: {{ down_title }}\n  {%- endif %}\n{%- endcapture %}\n\n{{ title }}"
+  },
+  {
+    "id": "tags/case/0",
+    "kind": "tags",
+    "name": "case",
+    "path": "/products/health-potion",
+    "liquid": "{% case product.type %}\n  {% when 'Health' %}\n    This is a health potion.\n  {% when 'Love' %}\n    This is a love potion.\n  {% else %}\n    This is a potion.\n{% endcase %}"
+  },
+  {
+    "id": "tags/case/1",
+    "kind": "tags",
+    "name": "case",
+    "path": "/products/health-potion",
+    "liquid": "{% case product.type %}\n  {% when 'Love' or 'Luck' %}\n    This is a love or luck potion.\n  {% when 'Strength','Health' %}\n    This is a strength or health potion.\n  {% else %}\n    This is a potion.\n{% endcase %}"
+  },
+  {
+    "id": "tags/comment/0",
+    "kind": "tags",
+    "name": "comment",
+    "path": "/",
+    "liquid": "{% # this is a comment %}\n\n{% # for i in (1..3) -%}\n  {{ i }}\n{% # endfor %}\n\n{%\n  ###############################\n  # This is a comment\n  # across multiple lines\n  ###############################\n%}"
+  },
+  {
+    "id": "tags/comment/1",
+    "kind": "tags",
+    "name": "comment",
+    "path": "/",
+    "liquid": "{% liquid\n  # this is a comment\n  assign topic = 'Learning about comments!'\n  echo topic\n%}"
+  },
+  {
+    "id": "tags/continue/0",
+    "kind": "tags",
+    "name": "continue",
+    "path": "/",
+    "liquid": "{% for i in (1..5) -%}\n  {%- if i == 4 -%}\n    {% continue %}\n  {%- else -%}\n    {{ i }}\n  {%- endif -%}\n{%- endfor %}"
+  },
+  {
+    "id": "tags/cycle/0",
+    "kind": "tags",
+    "name": "cycle",
+    "path": "/",
+    "liquid": "{% for i in (1..4) -%}\n  {% cycle 'one', 'two', 'three' %}\n{%- endfor %}"
+  },
+  {
+    "id": "tags/cycle/1",
+    "kind": "tags",
+    "name": "cycle",
+    "path": "/",
+    "liquid": "&lt;!-- Iteration 1 --&gt;\n{% for i in (1..4) -%}\n  {% cycle 'one', 'two', 'three' %}\n{%- endfor %}\n\n&lt;!-- Iteration 2 --&gt;\n{% for i in (1..4) -%}\n  {% cycle 'one', 'two', 'three' %}\n{%- endfor %}\n\n&lt;!-- Iteration 3 --&gt;\n{% for i in (1..4) -%}\n  {% cycle 'group_1': 'one', 'two', 'three' %}\n{%- endfor %}\n\n&lt;!-- Iteration 4 --&gt;\n{% for i in (1..4) -%}\n  {% cycle 'group_2': 'one', 'two', 'three' %}\n{%- endfor %}"
+  },
+  {
+    "id": "tags/decrement/0",
+    "kind": "tags",
+    "name": "decrement",
+    "path": "/",
+    "liquid": "{% decrement variable %}\n{% decrement variable %}\n{% decrement variable %}"
+  },
+  {
+    "id": "tags/echo/0",
+    "kind": "tags",
+    "name": "echo",
+    "path": "/products/health-potion",
+    "liquid": "{% echo product.title %}\n\n{% liquid\n  echo product.price | money\n%}"
+  },
+  {
+    "id": "tags/for/0",
+    "kind": "tags",
+    "name": "for",
+    "path": "/collections/sale-potions",
+    "liquid": "{% for product in collection.products -%}\n  {{ product.title }}\n{%- endfor %}"
+  },
+  {
+    "id": "tags/for/1",
+    "kind": "tags",
+    "name": "for",
+    "path": "/collections/sale-potions",
+    "liquid": "{% for product in collection.products limit: 2 -%}\n  {{ product.title }}\n{%- endfor %}"
+  },
+  {
+    "id": "tags/for/2",
+    "kind": "tags",
+    "name": "for",
+    "path": "/collections/sale-potions",
+    "liquid": "{% for product in collection.products offset: 2 -%}\n  {{ product.title }}\n{%- endfor %}"
+  },
+  {
+    "id": "tags/for/3",
+    "kind": "tags",
+    "name": "for",
+    "path": "/collections/all",
+    "liquid": "{% for i in (1..3) -%}\n  {{ i }}\n{%- endfor %}\n\n{%- assign lower_limit = 2 -%}\n{%- assign upper_limit = 4 -%}\n\n{% for i in (lower_limit..upper_limit) -%}\n  {{ i }}\n{%- endfor %}"
+  },
+  {
+    "id": "tags/for/4",
+    "kind": "tags",
+    "name": "for",
+    "path": "/collections/sale-potions",
+    "liquid": "{% for product in collection.products reversed -%}\n  {{ product.title }}\n{%- endfor %}"
+  },
+  {
+    "id": "tags/if/0",
+    "kind": "tags",
+    "name": "if",
+    "path": "/products/glacier-ice",
+    "liquid": "{% if product.compare_at_price &gt; product.price %}\n  This product is on sale!\n{% endif %}"
+  },
+  {
+    "id": "tags/if/1",
+    "kind": "tags",
+    "name": "if",
+    "path": "/products/health-potion",
+    "liquid": "{% if product.type == 'Love' %}\n  This is a love potion!\n{% elsif product.type == 'Health' %}\n  This is a health potion!\n{% endif %}"
+  },
+  {
+    "id": "tags/increment/0",
+    "kind": "tags",
+    "name": "increment",
+    "path": "/",
+    "liquid": "{% increment variable %}\n{% increment variable %}\n{% increment variable %}"
+  },
+  {
+    "id": "tags/raw/0",
+    "kind": "tags",
+    "name": "raw",
+    "path": "/",
+    "liquid": "{% raw %}\n{{ 2 | plus: 2 }} equals 4.\n{% endraw %}"
+  },
+  {
+    "id": "tags/tablerow/0",
+    "kind": "tags",
+    "name": "tablerow",
+    "path": "/collections/sale-potions",
+    "liquid": "&lt;table&gt;\n  {% tablerow product in collection.products %}\n    {{ product.title }}\n  {% endtablerow %}\n&lt;/table&gt;"
+  },
+  {
+    "id": "tags/tablerow/1",
+    "kind": "tags",
+    "name": "tablerow",
+    "path": "/collections/sale-potions",
+    "liquid": "&lt;table&gt;\n  {% tablerow product in collection.products cols: 2 %}\n    {{ product.title }}\n  {% endtablerow %}\n&lt;/table&gt;"
+  },
+  {
+    "id": "tags/tablerow/2",
+    "kind": "tags",
+    "name": "tablerow",
+    "path": "/collections/sale-potions",
+    "liquid": "&lt;table&gt;\n  {% tablerow product in collection.products limit: 2 %}\n    {{ product.title }}\n  {% endtablerow %}\n&lt;/table&gt;"
+  },
+  {
+    "id": "tags/tablerow/3",
+    "kind": "tags",
+    "name": "tablerow",
+    "path": "/collections/sale-potions",
+    "liquid": "&lt;table&gt;\n  {% tablerow product in collection.products offset: 2 %}\n    {{ product.title }}\n  {% endtablerow %}\n&lt;/table&gt;"
+  },
+  {
+    "id": "tags/tablerow/4",
+    "kind": "tags",
+    "name": "tablerow",
+    "path": "/",
+    "liquid": "&lt;table&gt;\n  {% tablerow i in (1..3) %}\n    {{ i }}\n  {% endtablerow %}\n&lt;/table&gt;\n\n{%- assign lower_limit = 2 -%}\n{%- assign upper_limit = 4 -%}\n\n&lt;table&gt;\n  {% tablerow i in (lower_limit..upper_limit) %}\n    {{ i }}\n  {% endtablerow %}\n&lt;/table&gt;"
+  },
+  {
+    "id": "tags/unless/0",
+    "kind": "tags",
+    "name": "unless",
+    "path": "/products/health-potion",
+    "liquid": "{% unless product.has_only_default_variant %}\n  // Variant selection functionality\n{% endunless %}"
+  },
+  {
+    "id": "tags/paginate/0",
+    "kind": "tags",
+    "name": "paginate",
+    "path": "/collections/all",
+    "liquid": "{% paginate collection.products by 5 %}\n  {% for product in collection.products -%}\n    {{ product.title }}\n  {%- endfor %}\n\n  {{- paginate | default_pagination }}\n{% endpaginate %}"
+  },
+  {
+    "id": "tags/paginate/2",
+    "kind": "tags",
+    "name": "paginate",
+    "path": "/collections/all",
+    "liquid": "{% paginate collection.products by 4 %}\n  {% for product in collection.products limit: 4 -%}\n    {{ product.title }}\n  {%- endfor %}\n{% endpaginate -%}\n\n&lt;!-- Less performant method --&gt;\n{% for product in collection.products limit: 4 -%}\n  {{ product.title }}\n{%- endfor -%}"
+  },
+  {
+    "id": "tags/paginate/3",
+    "kind": "tags",
+    "name": "paginate",
+    "path": "/collections/all",
+    "liquid": "{% paginate collection.products by 3, window_size: 1 %}\n  {% for product in collection.products -%}\n    {{ product.title }}\n  {%- endfor %}\n\n  {{- paginate | default_pagination }}\n{% endpaginate %}"
+  },
+  {
+    "id": "tags/section/0",
+    "kind": "tags",
+    "name": "section",
+    "path": "/",
+    "liquid": "{% section 'header' %}"
+  },
+  {
+    "id": "tags/style/0",
+    "kind": "tags",
+    "name": "style",
+    "path": "/",
+    "liquid": "{% style %}\n  .h1 {\n    color: {{ settings.colors_accent_1 }};\n  }\n{% endstyle %}"
+  },
+  {
+    "id": "tags/else/0",
+    "kind": "tags",
+    "name": "else",
+    "path": "/products/health-potion",
+    "liquid": "{% if product.available %}\n  This product is available!\n{% else %}\n  This product is sold out!\n{% endif %}"
+  },
+  {
+    "id": "tags/else/0",
+    "kind": "tags",
+    "name": "else",
+    "path": "/collections/empty",
+    "liquid": "{% for product in collection.products %}\n  {{ product.title }}&lt;br&gt;\n{% else %}\n  There are no products in this collection.\n{% endfor %}"
+  },
+  {
+    "id": "tags/liquid/0",
+    "kind": "tags",
+    "name": "liquid",
+    "path": "/products/health-potion",
+    "liquid": "{% liquid\n  # Show a message that's customized to the product type\n\n  assign product_type = product.type | downcase\n  assign message = ''\n\n  case product_type\n    when 'health'\n      assign message = 'This is a health potion!'\n    when 'love'\n      assign message = 'This is a love potion!'\n    else\n      assign message = 'This is a potion!'\n  endcase\n\n  echo message\n%}"
+  },
+  {
+    "id": "tags/break/0",
+    "kind": "tags",
+    "name": "break",
+    "path": "/",
+    "liquid": "{%- if template.name == 'index' -%}\n  {%- break -%}\n{%- endif -%}\n\n&lt;nav aria-label=\"Breadcrumbs\"&gt;\n  &lt;a href=\"{{ routes.root_url }}\"&gt;Home&lt;/a&gt;\n  &lt;span aria-hidden=\"true\"&gt;/&lt;/span&gt;\n  &lt;span&gt;{{ page_title }}&lt;/span&gt;\n&lt;/nav&gt;"
+  },
+  {
+    "id": "objects/media.media_type/0",
+    "kind": "object-property",
+    "name": "media.media_type",
+    "path": "/products/snake-venom",
+    "liquid": "{% assign images = product.media | where: 'media_type', 'image' %}\n\n{% for image in images %}\n  {{- image | image_url: width: 300 | image_tag }}\n{% endfor %}"
+  },
+  {
+    "id": "objects/collections/0",
+    "kind": "objects",
+    "name": "collections",
+    "path": "/",
+    "liquid": "{% for collection in collections %}\n  {{- collection.title | link_to: collection.url }}\n{% endfor %}"
+  },
+  {
+    "id": "objects/collections/1",
+    "kind": "objects",
+    "name": "collections",
+    "path": "/",
+    "liquid": "{% for product in collections['sale-potions'].products %}\n  {{- product.title | link_to: product.url }}\n{% endfor %}"
+  },
+  {
+    "id": "objects/pages/0",
+    "kind": "objects",
+    "name": "pages",
+    "path": "/",
+    "liquid": "{{ pages.contact.title }}\n{{ pages['about-us'].title }}"
+  },
+  {
+    "id": "objects/pages/1",
+    "kind": "objects",
+    "name": "pages",
+    "path": "/",
+    "liquid": "{% paginate pages by 2 -%}\n  {% for page in pages -%}\n    {{ page.title | link_to: page.url }}\n  {%- endfor %}\n\n  {{- paginate | default_pagination }}\n{%- endpaginate %}"
+  },
+  {
+    "id": "objects/all_products/0",
+    "kind": "objects",
+    "name": "all_products",
+    "path": "/",
+    "liquid": "{{ all_products['love-potion'].title }}"
+  },
+  {
+    "id": "objects/articles/0",
+    "kind": "objects",
+    "name": "articles",
+    "path": "/",
+    "liquid": "{% assign article = articles['potion-notions/new-potions-for-spring'] %}\n{{ article.title | link_to: article.url }}"
+  },
+  {
+    "id": "objects/article.tags/0",
+    "kind": "object-property",
+    "name": "article.tags",
+    "path": "/blogs/potion-notions/how-to-tell-if-you-have-run-out-of-invisibility-potion",
+    "liquid": "{% for tag in article.tags -%}\n  {{ tag }} ({{ tag.total_count }})\n{%- endfor %}"
+  },
+  {
+    "id": "objects/blogs/0",
+    "kind": "objects",
+    "name": "blogs",
+    "path": "/",
+    "liquid": "{% for article in blogs.potion-notions.articles %}\n  {{- article.title | link_to: article.url }}\n{% endfor %}"
+  },
+  {
+    "id": "objects/brand.metafields/0",
+    "kind": "object-property",
+    "name": "brand.metafields",
+    "path": "/",
+    "liquid": "{{ shop.brand.metafields.social_links.twitter.value }}\n{{ shop.brand.metafields.social_links.youtube.value }}"
+  },
+  {
+    "id": "objects/cart.discount_applications/0",
+    "kind": "object-property",
+    "name": "cart.discount_applications",
+    "path": "/cart",
+    "liquid": "{% for discount_application in cart.discount_applications %}\n  Discount name: {{ discount_application.title }}\n  Savings: -{{ discount_application.total_allocated_amount | money }}\n{% endfor %}"
+  },
+  {
+    "id": "objects/cart.cart_level_discount_applications/0",
+    "kind": "object-property",
+    "name": "cart.cart_level_discount_applications",
+    "path": "/cart",
+    "liquid": "{% for discount_application in cart.cart_level_discount_applications %}\n  Discount name: {{ discount_application.title }}\n  Savings: -{{ discount_application.total_allocated_amount | money }}\n{% endfor %}"
+  },
+  {
+    "id": "objects/collection.sort_options/0",
+    "kind": "object-property",
+    "name": "collection.sort_options",
+    "path": "/collections/all",
+    "liquid": "{%- assign sort_by = collection.sort_by | default: collection.default_sort_by -%}\n\n&lt;select&gt;\n{%- for option in collection.sort_options %}\n  &lt;option\n    value=\"{{ option.value }}\"\n    {%- if option.value == sort_by %}\n      selected=\"selected\"\n    {%- endif %}\n  &gt;\n    {{ option.name }}\n  &lt;/option&gt;\n{% endfor -%}\n&lt;/select&gt;"
+  },
+  {
+    "id": "objects/collection.all_types/0",
+    "kind": "object-property",
+    "name": "collection.all_types",
+    "path": "/collections/ingredients",
+    "liquid": "{% for product_type in collection.all_types -%}\n  {{- product_type | link_to_type }}\n{%- endfor %}"
+  },
+  {
+    "id": "objects/collection.all_vendors/0",
+    "kind": "object-property",
+    "name": "collection.all_vendors",
+    "path": "/collections/ingredients",
+    "liquid": "{% for product_vendor in collection.all_vendors %}\n  {{- product_vendor | link_to_vendor }}\n{% endfor %}"
+  },
+  {
+    "id": "objects/brand_color/0",
+    "kind": "objects",
+    "name": "brand_color",
+    "path": "/",
+    "liquid": "{{ shop.brand.colors.primary[0].background }}\n{{ shop.brand.colors.primary[0].foreground }}\n{{ shop.brand.colors.secondary[0].background }}\n{{ shop.brand.colors.secondary[1].background }}\n{{ shop.brand.colors.secondary[0].foreground }}"
+  },
+  {
+    "id": "objects/color/0",
+    "kind": "objects",
+    "name": "color",
+    "path": "/",
+    "liquid": "{{ settings.colors_accent_2 }}"
+  },
+  {
+    "id": "objects/color_scheme/0",
+    "kind": "objects",
+    "name": "color_scheme",
+    "path": "/",
+    "liquid": "{{ settings.card_color_scheme }}"
+  },
+  {
+    "id": "objects/color_scheme_group/0",
+    "kind": "objects",
+    "name": "color_scheme_group",
+    "path": "/",
+    "liquid": "{% for scheme in settings.color_schemes %}\n  .color-{{ scheme.id }} {\n    --color-background: {{ scheme.settings.background }};\n    --color-text: {{ scheme.settings.text }};\n  }\n{% endfor %}"
+  },
+  {
+    "id": "objects/country/0",
+    "kind": "objects",
+    "name": "country",
+    "path": "/",
+    "liquid": "{% for country in localization.available_countries -%}\n  {{ country }}\n{%- endfor %}"
+  },
+  {
+    "id": "objects/country/1",
+    "kind": "objects",
+    "name": "country",
+    "path": "/",
+    "liquid": "{{ localization.country | image_url: width: 32 | image_tag }}"
+  },
+  {
+    "id": "objects/customer/0",
+    "kind": "objects",
+    "name": "customer",
+    "path": "/",
+    "liquid": "{% if customer %}\n  Hello, {{ customer.first_name }}!\n{% endif %}"
+  },
+  {
+    "id": "objects/external_video.media_type/0",
+    "kind": "object-property",
+    "name": "external_video.media_type",
+    "path": "/products/potion-beats",
+    "liquid": "{% assign external_videos = product.media | where: 'media_type', 'external_video' %}\n\n{% for external_video in external_videos %}\n  {{- external_video | external_video_tag }}\n{% endfor %}"
+  },
+  {
+    "id": "objects/focal_point/0",
+    "kind": "objects",
+    "name": "focal_point",
+    "path": "/",
+    "liquid": "{{ images['potions-header.png'].presentation.focal_point }}"
+  },
+  {
+    "id": "objects/image/0",
+    "kind": "objects",
+    "name": "image",
+    "path": "/products/forest-mushroom",
+    "liquid": "{{ product.featured_image }}"
+  },
+  {
+    "id": "objects/image.media_type/0",
+    "kind": "object-property",
+    "name": "image.media_type",
+    "path": "/products/snake-venom",
+    "liquid": "{% assign images = product.media | where: 'media_type', 'image' %}\n\n{% for image in images %}\n  {{- image | image_url: width: 300 | image_tag }}\n{% endfor %}"
+  },
+  {
+    "id": "objects/images/0",
+    "kind": "objects",
+    "name": "images",
+    "path": "/",
+    "liquid": "{{ images['potions-header.png'] | image_url: width: 300 | image_tag }}"
+  },
+  {
+    "id": "objects/line_item.options_with_values/0",
+    "kind": "object-property",
+    "name": "line_item.options_with_values",
+    "path": "/",
+    "liquid": "{% for item in cart.items %}\n&lt;div class=\"cart__item\"&gt;\n  &lt;p class=\"cart__item-title\"&gt;\n    {{ item.title }}\n  &lt;/p&gt;\n\n  {%- unless item.product.has_only_default_variant %}\n  &lt;ul&gt;\n    {% for option in item.options_with_values -%}\n    &lt;li&gt;{{ option.name }}: {{ option.value }}&lt;/li&gt;\n    {%- endfor %}\n  &lt;/ul&gt;\n  {% endunless %}\n&lt;/div&gt;\n{% endfor %}"
+  },
+  {
+    "id": "objects/link.links/0",
+    "kind": "object-property",
+    "name": "link.links",
+    "path": "/",
+    "liquid": "{% for link in linklists.main-menu.links -%}\n  {% if link.links.size &gt; 0 -%}\n    - {{ link.title }} ({{ link.links.size }} children)&lt;br&gt;\n  {%- else -%}\n    - {{ link.title }}&lt;br&gt;\n  {%- endif %}\n{%- endfor %}"
+  },
+  {
+    "id": "objects/linklists/0",
+    "kind": "objects",
+    "name": "linklists",
+    "path": "/",
+    "liquid": "&lt;!-- Main menu --&gt;\n{% for link in linklists.main-menu.links -%}\n  {{ link.title | link_to: link.url }}\n{%- endfor %}\n\n&lt;!-- Footer menu --&gt;\n{% for link in linklists['footer'].links -%}\n  {{ link.title | link_to: link.url }}\n{%- endfor %}"
+  },
+  {
+    "id": "objects/forloop/0",
+    "kind": "objects",
+    "name": "forloop",
+    "path": "/",
+    "liquid": "{% for page in pages -%}\n  {%- if forloop.length &gt; 0 -%}\n    {{ page.title }}{% unless forloop.last %}, {% endunless -%}\n  {%- endif -%}\n{% endfor %}"
+  },
+  {
+    "id": "objects/forloop.parentloop/0",
+    "kind": "object-property",
+    "name": "forloop.parentloop",
+    "path": "/",
+    "liquid": "{% for i in (1..3) -%}\n  {% for j in (1..3) -%}\n    {{ forloop.parentloop.index }} - {{ forloop.index }}\n  {%- endfor %}\n{%- endfor %}"
+  },
+  {
+    "id": "objects/metafield/0",
+    "kind": "objects",
+    "name": "metafield",
+    "path": "/products/health-potion",
+    "liquid": "Type: {{ product.metafields.information.directions.type }}\nValue: {{ product.metafields.information.directions.value }}"
+  },
+  {
+    "id": "objects/metafield/1",
+    "kind": "objects",
+    "name": "metafield",
+    "path": "/products/charcoal",
+    "liquid": "Temperature: {{ product.metafields.information.burn_temperature.value.temperature }}\nUnit: {{ product.metafields.information.burn_temperature.value['unit'] }}\n\n{% for property in product.metafields.information.burn_temperature.value -%}\n  {{ property.first | capitalize }}: {{ property.last }}\n{%- endfor %}"
+  },
+  {
+    "id": "objects/metafield/2",
+    "kind": "objects",
+    "name": "metafield",
+    "path": "/products/ground-mandrake-root",
+    "liquid": "{% for item in product.metafields.information.combine_with.value -%}\n  {{ item.product.title }}\n{%- endfor %}"
+  },
+  {
+    "id": "objects/metafield/3",
+    "kind": "objects",
+    "name": "metafield",
+    "path": "/products/health-potion",
+    "liquid": "First item in list: {{ product.metafields.information.pickup_locations.value[0] }}\nLast item in list: {{ product.metafields.information.pickup_locations.value.last }}"
+  },
+  {
+    "id": "objects/metafield/4",
+    "kind": "objects",
+    "name": "metafield",
+    "path": "/products/health-potion",
+    "liquid": "# list.product_reference\nNumber of similar products: {{ product.metafields.information.similar_products.value.count }}\n\n# list.single_line_text_field\nNumber of pickup locations: {{ product.metafields.information.pickup_locations.value.size }}"
+  },
+  {
+    "id": "objects/model.media_type/0",
+    "kind": "object-property",
+    "name": "model.media_type",
+    "path": "/products/potion-bottle",
+    "liquid": "{% assign models = product.media | where: 'media_type', 'model' %}\n\n{% for model in models %}\n  {{- model | model_viewer_tag }}\n{% endfor %}"
+  },
+  {
+    "id": "objects/money/0",
+    "kind": "objects",
+    "name": "money",
+    "path": "/products/dried-chamomile",
+    "liquid": "{{ product.metafields.details.price_per_100g.value }}"
+  },
+  {
+    "id": "objects/product.options/0",
+    "kind": "object-property",
+    "name": "product.options",
+    "path": "/products/health-potion",
+    "liquid": "{% if product.options.size &gt; 0 -%}\n  {% for option in product.options -%}\n    - {{ option }}\n  {%- endfor %}\n{%- endif %}"
+  },
+  {
+    "id": "objects/product.options_by_name/0",
+    "kind": "object-property",
+    "name": "product.options_by_name",
+    "path": "/products/health-potion",
+    "liquid": "&lt;label&gt;\n  Strength\n  &lt;select&gt;\n    {%- for value in product.options_by_name['strength'].values %}\n    &lt;option&gt;{{ value }}&lt;/option&gt;\n    {%- endfor %}\n  &lt;/select&gt;\n&lt;/label&gt;"
+  },
+  {
+    "id": "objects/variant.title/0",
+    "kind": "object-property",
+    "name": "variant.title",
+    "path": "/products/health-potion",
+    "liquid": "{{ product.variants.first.title }}"
+  },
+  {
+    "id": "objects/variant.options/0",
+    "kind": "object-property",
+    "name": "variant.options",
+    "path": "/products/health-potion",
+    "liquid": "{% for variant in product.variants -%}\n  {%- capture options -%}\n    {% for option in variant.options -%}\n      {{ option }}{%- unless forloop.last -%}/{%- endunless -%}\n    {%- endfor %}\n  {%- endcapture -%}\n  \n  {{ variant.id }}: {{ options }}\n{%- endfor %}"
+  },
+  {
+    "id": "objects/remote_product.options/0",
+    "kind": "object-property",
+    "name": "remote_product.options",
+    "path": "/products/health-potion",
+    "liquid": "{% if product.options.size &gt; 0 -%}\n  {% for option in product.options -%}\n    - {{ option }}\n  {%- endfor %}\n{%- endif %}"
+  },
+  {
+    "id": "objects/remote_product.options_by_name/0",
+    "kind": "object-property",
+    "name": "remote_product.options_by_name",
+    "path": "/products/health-potion",
+    "liquid": "&lt;label&gt;\n  Strength\n  &lt;select&gt;\n    {%- for value in product.options_by_name['strength'].values %}\n    &lt;option&gt;{{ value }}&lt;/option&gt;\n    {%- endfor %}\n  &lt;/select&gt;\n&lt;/label&gt;"
+  },
+  {
+    "id": "objects/request.origin/0",
+    "kind": "object-property",
+    "name": "request.origin",
+    "path": "/products/health-potion",
+    "liquid": "{{ product.selected_variant.url | default: product.url | prepend: request.origin }}"
+  },
+  {
+    "id": "objects/search.results/0",
+    "kind": "object-property",
+    "name": "search.results",
+    "path": "/search?q=potion",
+    "liquid": "{% for item in search.results %}\n&lt;!-- Result {{ forloop.index }}--&gt;\n&lt;h3&gt;\n  {{ item.title | link_to: item.url }}\n&lt;/h3&gt;\n\n{% if item.object_type == 'article' -%}\n  {%- comment -%}\n     'item' is an article\n     All article object properties can be accessed.\n  {%- endcomment -%}\n\n  {% if item.image -%}\n    &lt;div class=\"result-image\"&gt;\n      &lt;a href=\"{{ item.url }}\" title=\"{{ item.title | escape }}\"&gt;\n        {{ item | image_url: width: 100 | image_tag }}\n       &lt;/a&gt;\n    &lt;/div&gt;\n   {% endif %}\n{%- elsif item.object_type == 'page' -%}\n  {%- comment -%}\n    'item' is a page.\n     All page object properties can be accessed.\n  {%- endcomment -%}\n{%- else -%}\n  {%- comment -%}\n     'item' is a product.\n     All product object properties can be accessed.\n  {%- endcomment -%}\n\n  {%- if item.featured_image -%}\n    &lt;div class=\"result-image\"&gt;\n       &lt;a href=\"{{ item.url }}\" title=\"{{ item.title | escape }}\"&gt;\n         {{ item.featured_image | image_url: width: 100 | image_tag }}\n      &lt;/a&gt;\n    &lt;/div&gt;\n  {% endif %}\n{%- endif -%}\n\n&lt;span&gt;{{ item.content | strip_html | truncatewords: 40 | highlight: search.terms }}&lt;/span&gt;\n{% endfor %}"
+  },
+  {
+    "id": "objects/search.sort_options/0",
+    "kind": "object-property",
+    "name": "search.sort_options",
+    "path": "/search?q=potion",
+    "liquid": "{%- assign sort_by = search.sort_by | default: search.default_sort_by -%}\n\n&lt;select&gt;\n{%- for option in search.sort_options %}\n  &lt;option\n    value=\"{{ option.value }}\"\n    {%- if option.value == sort_by %}\n      selected=\"selected\"\n    {%- endif %}\n  &gt;\n    {{ option.name }}\n  &lt;/option&gt;\n{% endfor -%}\n&lt;/select&gt;"
+  },
+  {
+    "id": "objects/shop.policies/0",
+    "kind": "object-property",
+    "name": "shop.policies",
+    "path": "/",
+    "liquid": "&lt;ul&gt;\n{%- for policy in shop.policies %}\n  &lt;li&gt;{{ policy.title }}&lt;/li&gt;\n{%- endfor %}\n&lt;/ul&gt;"
+  },
+  {
+    "id": "objects/shop.vendors/0",
+    "kind": "object-property",
+    "name": "shop.vendors",
+    "path": "/",
+    "liquid": "{% for vendor in shop.vendors %}\n  {{- vendor | link_to_vendor }}\n{% endfor %}"
+  },
+  {
+    "id": "objects/shop.types/0",
+    "kind": "object-property",
+    "name": "shop.types",
+    "path": "/",
+    "liquid": "{% for type in shop.types %}\n  {{- type | link_to_type }}\n{% endfor %}"
+  },
+  {
+    "id": "objects/settings/0",
+    "kind": "objects",
+    "name": "settings",
+    "path": "/",
+    "liquid": "{% if settings.favicon != blank %}\n  &lt;link rel=\"icon\" type=\"image/png\" href=\"{{ settings.favicon | image_url: width: 32, height: 32 }}\"&gt;\n{% endif %}"
+  },
+  {
+    "id": "objects/video.media_type/0",
+    "kind": "object-property",
+    "name": "video.media_type",
+    "path": "/products/potion-beats",
+    "liquid": "{% assign videos = product.media | where: 'media_type', 'video' %}\n\n{% for video in videos %}\n  {{- video | video_tag }}\n{% endfor %}"
+  },
+  {
+    "id": "objects/country_option_tags/0",
+    "kind": "objects",
+    "name": "country_option_tags",
+    "path": "/",
+    "liquid": "&lt;select name=\"country\"&gt;\n  {{ country_option_tags }}\n&lt;/select&gt;"
+  },
+  {
+    "id": "objects/current_page/0",
+    "kind": "objects",
+    "name": "current_page",
+    "path": "/collections/ingredients?page=2",
+    "liquid": "{{ page_title }}{% unless current_page == 1 %} - Page {{ current_page }}{% endunless %}"
+  },
+  {
+    "id": "objects/part/0",
+    "kind": "objects",
+    "name": "part",
+    "path": "/collections/all",
+    "liquid": "{% paginate collection.products by 5 -%}\n  {% for part in paginate.parts -%}\n    {% if part.is_link -%}\n      {{ part.title | link_to: part.url}}\n    {%- else -%}\n      &lt;span&gt;{{ part.title }}&lt;/span&gt;\n    {% endif %}\n  {%- endfor %}\n{%- endpaginate %}"
+  },
+  {
+    "id": "objects/powered_by_link/0",
+    "kind": "objects",
+    "name": "powered_by_link",
+    "path": "/",
+    "liquid": "{{ powered_by_link }}"
+  },
+  {
+    "id": "objects/quantity_rule/0",
+    "kind": "objects",
+    "name": "quantity_rule",
+    "path": "/products/health-potion",
+    "liquid": "{{ product.variants.first.quantity_rule }}"
+  },
+  {
+    "id": "objects/scripts.cart_calculate_line_items/0",
+    "kind": "object-property",
+    "name": "scripts.cart_calculate_line_items",
+    "path": "/",
+    "liquid": "{% if scripts.cart_calculate_line_items %}\n  &lt;p&gt;Don't miss our current sale: &lt;strong&gt;{{ scripts.cart_calculate_line_items.name }}&lt;/strong&gt;&lt;/p&gt;\n{% endif %}"
+  }
+]

@@ -1,0 +1,12 @@
+[
+  {
+    "name": "dawn",
+    "repo": "Shopify/dawn",
+    "commit": "258f00f64365e2018ca4c62778a6bf55a5d3cd18"
+  },
+  {
+    "name": "horizon",
+    "repo": "Shopify/horizon",
+    "commit": "5acd1b6b66c02f61d3216e3adace5dd9e0404fc9"
+  }
+]
