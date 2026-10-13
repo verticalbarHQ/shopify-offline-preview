@@ -55,16 +55,14 @@ export function resolveRoute(snapshot: Snapshot, input: string): ResolvedRoute {
       suffix = product.templateSuffix;
     }
   } else if (namespace === "collections" && handle && decoded.length === 2) {
-    if (handle === "all") {
+    const collection = snapshot.collections.find((item) => item.handle === handle);
+    if (collection) {
+      pageType = "collection";
+      resource = { kind: "collection", handle };
+      suffix = collection.templateSuffix;
+    } else if (handle === "all") {
       pageType = "collection";
       resource = { kind: "all-collection", handle };
-    } else {
-      const collection = snapshot.collections.find((item) => item.handle === handle);
-      if (collection) {
-        pageType = "collection";
-        resource = { kind: "collection", handle };
-        suffix = collection.templateSuffix;
-      }
     }
   } else if (namespace === "pages" && handle && decoded.length === 2) {
     const page = snapshot.pages.find((item) => item.handle === handle);

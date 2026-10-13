@@ -10,6 +10,7 @@ import {
   toPromise,
   type ValueToken,
 } from "liquidjs";
+import { preserveLiquidObjectKind } from "../../data/src/objects.js";
 
 function escapeHtml(value: unknown): string {
   return String(value ?? "").replace(
@@ -236,6 +237,7 @@ export function registerShopifyTags(engine: Liquid, hooks: TagHooks): void {
             return key === property ? slice : value;
           },
         });
+        preserveLiquidObjectKind(original, local);
         context.push({ paginate, [root]: local });
         try {
           return await engine.render(this.templates, context);

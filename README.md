@@ -119,6 +119,11 @@ explicitly: an Admin export's null custom description does not establish the sto
 Missing SEO metadata remains diagnosed. Cart, search, all-products and 404 titles use Shopify's
 English system labels; other locales report the missing system-title translation.
 
+`collections.all` provides the automatic catalog on every route, sorted alphabetically by title.
+A supplied collection with handle `all` takes precedence and retains its template suffix and source
+order. Iterating `collections` lists the supplied collections; the automatic catalog is a lookup
+entry rather than an extra persisted collection.
+
 Source prices are decimal strings in the shop currency, not floating-point numbers or Liquid's
 derived minor-unit prices. Variants have string ids; cart lines refer to a product handle and
 variant id. Images use paths relative to `images/`. Schema validation checks source shape; reference

@@ -7,6 +7,10 @@ const objectKinds = new WeakMap<object, string>();
 export function liquidObjectKind(value: unknown): string | undefined {
   return value !== null && typeof value === "object" ? objectKinds.get(value) : undefined;
 }
+export function preserveLiquidObjectKind(source: unknown, target: object): void {
+  const kind = liquidObjectKind(source);
+  if (kind !== undefined) objectKinds.set(target, kind);
+}
 export interface ObjectHooks {
   read(path: string): void;
   unsupported(type: string, property: string): void;
@@ -305,6 +309,56 @@ export function liquidObjects(
           ),
       });
   }
+  if (!collections.has("all")) {
+    const collator = new Intl.Collator(snapshot.shop.locale, { sensitivity: "base" });
+    const members = [...products.values()].sort((a, b) =>
+      collator.compare(String(a.title), String(b.title)),
+    );
+    collections.set(
+      "all",
+      tracked(
+        {
+          id: null,
+          handle: "all",
+          get title() {
+            if (snapshot.shop.locale.split("-")[0] !== "en")
+              hooks.unsupportedOperation?.(
+                "Localized automatic collection titles are unavailable; English is used.",
+              );
+            return "Products";
+          },
+          description: "",
+          products: members,
+          products_count: members.length,
+          all_products_count: members.length,
+          url: "/collections/all",
+          image: null,
+          template_suffix: null,
+          default_sort_by: "title-ascending",
+          sort_by: route.sortBy,
+          filters: snapshot.filters,
+        },
+        "collection",
+        "collections.all",
+      ),
+    );
+  }
+  const collectionDictionary = Object.fromEntries(collections);
+  // The automatic catalog supports lookup, but is not a persisted collection in iteration.
+  const listedCollections = snapshot.collections.flatMap((source) => {
+    const value = collections.get(source.handle);
+    return value ? [value] : [];
+  });
+  Object.defineProperty(collectionDictionary, Symbol.iterator, {
+    value: () => listedCollections[Symbol.iterator](),
+  });
+  for (const [key, value] of Object.entries({
+    size: listedCollections.length,
+    first: listedCollections[0] ?? null,
+    last: listedCollections.at(-1) ?? null,
+  }))
+    if (!Object.hasOwn(collectionDictionary, key))
+      Object.defineProperty(collectionDictionary, key, { value, enumerable: false });
   const pages = new Map(
     snapshot.pages.map((source, index) => [
       source.handle,
@@ -609,7 +663,7 @@ export function liquidObjects(
     cart,
     search,
     all_products: tracked(Object.fromEntries(products), "dictionary", "all_products"),
-    collections: tracked(Object.fromEntries(collections), "dictionary", "collections"),
+    collections: tracked(collectionDictionary, "dictionary", "collections"),
     pages: tracked(Object.fromEntries(pages), "dictionary", "pages"),
     blogs: tracked(Object.fromEntries(blogs), "dictionary", "blogs"),
     linklists: tracked(menuMap, "dictionary", "linklists"),
@@ -637,21 +691,7 @@ export function liquidObjects(
   if (route.pageType === "product")
     globals.product = products.get(route.resourceHandle ?? "") ?? null;
   if (route.pageType === "collection")
-    globals.collection =
-      route.resourceHandle === "all"
-        ? tracked(
-            {
-              id: null,
-              handle: "all",
-              products: [...products.values()],
-              products_count: products.size,
-              all_products_count: products.size,
-              url: "/collections/all",
-            },
-            "collection",
-            "collection",
-          )
-        : (collections.get(route.resourceHandle ?? "") ?? null);
+    globals.collection = collections.get(route.resourceHandle ?? "") ?? null;
   if (route.pageType === "page") globals.page = pages.get(route.resourceHandle ?? "") ?? null;
   if (route.pageType === "blog") globals.blog = blogs.get(route.resourceHandle ?? "") ?? null;
   if (route.pageType === "article") {
