@@ -24,6 +24,7 @@ import { registerContentFor } from "./content-for.js";
 import { type RenderNode, type RenderResult, renderSchema } from "./contracts.js";
 import { ImageUrlInputError } from "./filters/images.js";
 import { registerShopifyFilters } from "./filters/index.js";
+import { fontSetting } from "./fonts.js";
 import { registerLoopTrace } from "./loop-trace.js";
 import { parseLiquid } from "./parse-liquid.js";
 import { registerRenderTag } from "./render-tag.js";
@@ -447,7 +448,9 @@ export async function renderTheme(
               .then((value) =>
                 definition.type === "color"
                   ? colorSetting(value, (message) => diagnostic("not-implemented", message))
-                  : value,
+                  : definition.type === "font_picker"
+                    ? fontSetting(value, (message) => diagnostic("not-implemented", message))
+                    : value,
               )
               .finally(() => {
                 resolving = false;
@@ -471,6 +474,10 @@ export async function renderTheme(
       }
       if (definition.type === "color") {
         result[key] = colorSetting(raw, (message) => diagnostic("not-implemented", message));
+        continue;
+      }
+      if (definition.type === "font_picker") {
+        result[key] = fontSetting(raw, (message) => diagnostic("not-implemented", message));
         continue;
       }
       if (definition.type === "color_scheme_group") {
@@ -513,7 +520,6 @@ export async function renderTheme(
           "image_picker",
           "video",
           "video_url",
-          "font_picker",
           "product_list",
           "collection_list",
           "metaobject",
