@@ -181,9 +181,17 @@ export const snapshotSchema = z.strictObject({
         productHandle: handle,
         variantId: z.string(),
         quantity: z.number().int().positive(),
+        key: z.string().min(1).optional(),
+        instructions: z
+          .strictObject({ can_remove: z.boolean(), can_update_quantity: z.boolean() })
+          .optional(),
+        parentRelationship: z.record(z.string(), z.json()).nullable().optional(),
+        itemComponents: z.array(z.record(z.string(), z.json())).optional(),
       }),
     ),
     note: z.string(),
+    taxesIncluded: z.boolean().optional(),
+    dutiesIncluded: z.boolean().optional(),
   }),
   filters: z.array(
     z.strictObject({

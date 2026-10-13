@@ -457,6 +457,7 @@ export function liquidObjects(
     return tracked(
       {
         id: id(line.variantId),
+        index,
         variant_id: id(line.variantId),
         product,
         variant,
@@ -487,6 +488,28 @@ export function liquidObjects(
         properties: {},
         selling_plan_allocation: null,
         ...availableFields({
+          key: line.key,
+          instructions: trackedJson(
+            line.instructions,
+            "instructions",
+            `cart.lines[${index}].instructions`,
+          ),
+          parent_relationship: trackedJson(
+            line.parentRelationship,
+            "parent_relationship",
+            `cart.lines[${index}].parent_relationship`,
+          ),
+          item_components: trackedJson(
+            line.itemComponents,
+            "line_item",
+            `cart.lines[${index}].item_components`,
+          ),
+          url_to_remove:
+            line.key === undefined
+              ? undefined
+              : `/cart/change?id=${encodeURIComponent(line.key).replace(/%3A/gi, ":")}&quantity=0`,
+        }),
+        ...availableFields({
           unit_price: variant.unit_price,
           unit_price_measurement: variant.unit_price_measurement,
         }),
@@ -513,6 +536,10 @@ export function liquidObjects(
       discount_applications: [],
       attributes: {},
       currency: { iso_code: snapshot.shop.currency },
+      ...availableFields({
+        taxes_included: snapshot.cart.taxesIncluded,
+        duties_included: snapshot.cart.dutiesIncluded,
+      }),
     },
     "cart",
     "cart",

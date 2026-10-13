@@ -191,7 +191,7 @@ export function defaultFixture(): Snapshot {
       { handle: "footer", title: "Footer", links: [] },
     ],
     metaobjects: [],
-    cart: { lines: [], note: "" },
+    cart: { lines: [], note: "", taxesIncluded: false, dutiesIncluded: false },
     filters: [],
     scenarios: {},
   };
@@ -230,11 +230,23 @@ export function defaultFixture(): Snapshot {
     "with-items": {
       cart: {
         lines: [
-          { productHandle: main.handle, variantId: main.variants[0]?.id ?? "", quantity: 2 },
+          {
+            productHandle: main.handle,
+            variantId: main.variants[0]?.id ?? "",
+            quantity: 2,
+            key: "sop-main-1:00000000000000000000000000000001",
+            instructions: { can_remove: true, can_update_quantity: true },
+            parentRelationship: null,
+            itemComponents: [],
+          },
           {
             productHandle: products[1]?.handle ?? "",
             variantId: products[1]?.variants[0]?.id ?? "",
             quantity: 1,
+            key: "sop-variant-2:00000000000000000000000000000002",
+            instructions: { can_remove: true, can_update_quantity: true },
+            parentRelationship: null,
+            itemComponents: [],
           },
         ],
         note: "Example cart note",

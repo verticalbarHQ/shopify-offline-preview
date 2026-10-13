@@ -82,6 +82,7 @@ export function registerShopifyTags(engine: Liquid, hooks: TagHooks): void {
             class: "shopify-product-form",
             multipart: true,
           },
+          cart: { action: "/cart", id: "cart_form", class: "shopify-cart-form", multipart: true },
           contact: { action: "/contact", id: "contact_form", class: "contact-form" },
           customer: { action: "/contact", id: "contact_form", class: "contact-form" },
           localization: {

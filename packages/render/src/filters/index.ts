@@ -1,4 +1,5 @@
 import { type Liquid, toValue } from "liquidjs";
+import { liquidObjectKind } from "../../../data/src/objects.js";
 import type { Snapshot } from "../../../data/src/schema.js";
 import { themePath } from "../../../theme/src/index.js";
 import { registerFontFilters } from "../fonts.js";
@@ -21,6 +22,31 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
   registerColorFilters(engine);
   registerEventFilters(engine, hooks.snapshot.shop.currency, hooks.diagnostic);
   registerFontFilters(engine, hooks.diagnostic);
+  engine.registerFilter("item_count_for_variant", (input: unknown, variant: unknown) => {
+    if (
+      liquidObjectKind(input) !== "cart" ||
+      input === null ||
+      typeof input !== "object" ||
+      !("items" in input) ||
+      !Array.isArray(input.items)
+    )
+      throw new Error("item_count_for_variant requires a cart");
+    const selected = String(toValue(variant) ?? "");
+    const count = input.items.reduce((total: bigint, item: unknown) => {
+      if (
+        item !== null &&
+        typeof item === "object" &&
+        "variant_id" in item &&
+        "quantity" in item &&
+        String(item.variant_id) === selected
+      )
+        return total + BigInt(Number(item.quantity));
+      return total;
+    }, 0n);
+    if (count > BigInt(Number.MAX_SAFE_INTEGER))
+      throw new Error("Cart item count exceeds safe numeric precision");
+    return Number(count);
+  });
   engine.registerFilter("link_to", (value: unknown, url: unknown, ...args: unknown[]) => {
     const target = String(toValue(url) ?? "");
     const attributes = namedArgs(args);

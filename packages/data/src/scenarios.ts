@@ -105,4 +105,8 @@ export function validateSnapshotReferences(snapshot: Snapshot): void {
     if (!product?.variants.some((v) => v.id === line.variantId))
       throw new Error(`Missing cart variant: ${line.productHandle}/${line.variantId}`);
   }
+  unique(
+    snapshot.cart.lines.flatMap((line) => (line.key === undefined ? [] : [line.key])),
+    "cart line key",
+  );
 }

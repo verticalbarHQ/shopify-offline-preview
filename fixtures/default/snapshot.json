@@ -3175,7 +3175,9 @@
   "metaobjects": [],
   "cart": {
     "lines": [],
-    "note": ""
+    "note": "",
+    "taxesIncluded": false,
+    "dutiesIncluded": false
   },
   "filters": [],
   "scenarios": {
@@ -14843,12 +14845,26 @@
           {
             "productHandle": "sop-matrix-needle",
             "variantId": "sop-main-1",
-            "quantity": 2
+            "quantity": 2,
+            "key": "sop-main-1:00000000000000000000000000000001",
+            "instructions": {
+              "can_remove": true,
+              "can_update_quantity": true
+            },
+            "parentRelationship": null,
+            "itemComponents": []
           },
           {
             "productHandle": "sop-product-02",
             "variantId": "sop-variant-2",
-            "quantity": 1
+            "quantity": 1,
+            "key": "sop-variant-2:00000000000000000000000000000002",
+            "instructions": {
+              "can_remove": true,
+              "can_update_quantity": true
+            },
+            "parentRelationship": null,
+            "itemComponents": []
           }
         ],
         "note": "Example cart note"

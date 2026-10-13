@@ -128,6 +128,12 @@ Pagination supports nested paths to collection products, blog articles, search r
 variants, including collection settings. It overlays the page slice only within the paginate body
 and preserves source tracking and the surrounding scope.
 
+Cart inputs can supply `taxesIncluded`, `dutiesIncluded` and per-line `key`, `instructions`,
+`parentRelationship` and `itemComponents`. Keys come from the external snapshot; Shopify hashes are
+not invented. Line indices derive from source order, removal URLs use the supplied key and
+`item_count_for_variant` totals all matching lines. Cart forms emit initial HTML; submission is
+handled by the preview's existing offline endpoint boundary.
+
 Source prices are decimal strings in the shop currency, not floating-point numbers or Liquid's
 derived minor-unit prices. Variants have string ids; cart lines refer to a product handle and
 variant id. Images use paths relative to `images/`. Schema validation checks source shape; reference
