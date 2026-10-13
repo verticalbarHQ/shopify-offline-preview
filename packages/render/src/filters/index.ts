@@ -1,7 +1,8 @@
-import type { Liquid } from "liquidjs";
+import { type Liquid, toValue } from "liquidjs";
 import type { Snapshot } from "../../../data/src/schema.js";
 import { themePath } from "../../../theme/src/index.js";
 import { imageFilters } from "./images.js";
+import { md5 } from "./md5.js";
 import { formatMoney } from "./money.js";
 import { translateFactory } from "./translations.js";
 
@@ -70,6 +71,7 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
       throw new Error("Inline asset must contain valid UTF-8 text");
     }
   });
+  engine.registerFilter("md5", (value: unknown) => md5(String(toValue(value) ?? "")));
   const images = imageFilters(hooks.snapshot);
   engine.registerFilter("image_url", function (value: unknown, ...args: unknown[]) {
     return images.imageUrl(value, args, (message) =>
