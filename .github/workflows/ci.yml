@@ -17,6 +17,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm verify
+      - run: pnpm benchmarks:fetch
+      - run: pnpm agent:contract-check
   network-off:
     runs-on: ubuntu-latest
     steps:

@@ -121,6 +121,7 @@ untyped properties remain `unknown`. See `THIRD_PARTY_NOTICES.md` for attributio
 pnpm benchmarks:fetch
 pnpm benchmarks:check
 pnpm benchmarks:render-check
+pnpm agent:contract-check
 pnpm browser:render-smoke
 pnpm license-guard
 pnpm test:network-off
@@ -128,6 +129,9 @@ pnpm test:network-off
 
 Dawn and Horizon are fetched at the full commits in `benchmarks.json` into an OS temporary directory,
 outside this project. A local ignored manifest points to them. They are never committed or packaged.
+The agent contract check copies Dawn into a temporary directory, edits a real section and verifies
+the CLI HTML/tree, then checks that an unknown filter is listed with strict exit 5. Usage, input and
+fatal failures also validate against the published schemas with no TTY. The pinned input is preserved.
 The static benchmark check verifies deterministic coverage output, valid result contracts, and no parse
 or missing-reference errors. The initial rendering check compares repeat runs and Node/browser builds
 across all 36 cases while reporting remaining errors and unsupported features. The browser smoke

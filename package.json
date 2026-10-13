@@ -50,7 +50,8 @@
     "browser:render-smoke": "tsx tools/browser-render-smoke.ts",
     "license-guard": "node tools/license-guard.mjs",
     "test:network-off": "node tools/network-off.mjs",
-    "browser:playground-check": "tsx tools/check-playground-browser.ts"
+    "browser:playground-check": "tsx tools/check-playground-browser.ts",
+    "agent:contract-check": "tsx tools/check-agent-contracts.ts"
   },
   "dependencies": {
     "@shopify/liquid-html-parser": "2.10.2",
