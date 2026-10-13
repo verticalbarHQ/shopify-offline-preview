@@ -16,6 +16,7 @@ import { applyScenario, validateSnapshotReferences } from "../../data/src/scenar
 import { type Snapshot, snapshotSchema } from "../../data/src/schema.js";
 import { registry } from "../../spec/src/index.js";
 import { parseThemeJson, type ThemeFileSystem, themePath } from "../../theme/src/index.js";
+import { appendAppEmbeds, appIdentity, appMarkup } from "./apps.js";
 import { registerBasicTags } from "./basic-tags.js";
 import { registerContentFor } from "./content-for.js";
 import { type RenderNode, type RenderResult, renderSchema } from "./contracts.js";
@@ -149,6 +150,7 @@ export async function renderTheme(
     prefix: string;
   }
   const blockOwners = new WeakMap<object, BlockOwner>();
+  const appBlocks = new WeakMap<object, { type: string; file: string; pointer: string }>();
   const classicBlocks = new WeakMap<object, { type: string; file: string; pointer: string }>();
   function object(value: unknown): value is LiquidRecord {
     return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -301,7 +303,30 @@ export async function renderTheme(
       return "[not implemented: dynamic render]";
     },
     (name, run) => inside(node("snippet", name, themePath(`snippets/${name}.liquid`), null), run),
+    async (value) => {
+      const info = object(value) ? appBlocks.get(value) : undefined;
+      if (!info) return null;
+      if (stack.some((n) => n.kind === "block" && n.settingsPath === info.pointer))
+        return placeholder(info.type);
+      return appBlock(info.type, info.file, info.pointer);
+    },
   );
+  function placeholder(type: string): string {
+    const names = appIdentity(type);
+    diagnostic(
+      "app-placeholder",
+      `External app ${names?.app} / ${names?.block} is not available offline.`,
+      "info",
+    );
+    return appMarkup(type);
+  }
+  async function appBlock(type: string, file: string, pointer: string | null): Promise<string> {
+    const entry = node("block", "@app", file, pointer);
+    return inside(
+      entry,
+      async () => `<!--sop:region ${entry.id}-->${placeholder(type)}<!--/sop:region-->`,
+    );
+  }
   function liquidError(error: unknown, file: string, line: number): string {
     if (LiquidError.is(error)) {
       file = sourceFile(error.token.file ?? file) ?? file;
@@ -425,6 +450,7 @@ export async function renderTheme(
     return result;
   }
   let settingsConfig: LiquidRecord = {};
+  let settingsPointer = "config/settings_data.json#/current";
   if (files.has("config/settings_data.json")) {
     const config = settingsDataSchema.parse(
       parseThemeJson(source("config/settings_data.json"), "config/settings_data.json"),
@@ -433,6 +459,7 @@ export async function renderTheme(
       if (!config.presets || !Object.hasOwn(config.presets, config.current))
         throw new Error("Selected settings preset is missing");
       settingsConfig = config.presets[config.current] ?? {};
+      settingsPointer = `config/settings_data.json#/presets/${config.current.replaceAll("~", "~0").replaceAll("/", "~1")}`;
     } else settingsConfig = config.current;
   }
   const definitions = files.has("config/settings_schema.json")
@@ -494,16 +521,19 @@ export async function renderTheme(
       const blocks = (config.block_order ?? Object.keys(config.blocks)).flatMap((blockId) => {
         const configBlock = config.blocks[blockId];
         if (!configBlock || configBlock.disabled || configBlock.static === true) return [];
-        const schemaBlock = schema.blocks.find((block) => block.type === configBlock.type);
+        const isApp = appIdentity(configBlock.type) !== null;
+        const schemaBlock = schema.blocks.find(
+          (block) => block.type === (isApp ? "@app" : configBlock.type),
+        );
         const isThemeBlock = files.has(`blocks/${configBlock.type}.liquid`);
-        if (!schemaBlock && !isThemeBlock)
+        if (!schemaBlock && !isThemeBlock && !isApp)
           diagnostic(
             "not-implemented",
             `Block type ${configBlock.type} has no classic block schema.`,
           );
         const blockData = {
           id: blockId,
-          type: configBlock.type,
+          type: isApp ? "@app" : configBlock.type,
           settings: settings(
             schemaBlock?.settings ?? [],
             configBlock.settings,
@@ -515,6 +545,12 @@ export async function renderTheme(
         };
         if (!isThemeBlock)
           classicBlocks.set(blockData, {
+            type: isApp ? "@app" : configBlock.type,
+            file,
+            pointer: `${configFile}#/sections/${pointer}/blocks/${blockId.replaceAll("~", "~0").replaceAll("/", "~1")}`,
+          });
+        if (isApp)
+          appBlocks.set(blockData, {
             type: configBlock.type,
             file,
             pointer: `${configFile}#/sections/${pointer}/blocks/${blockId.replaceAll("~", "~0").replaceAll("/", "~1")}`,
@@ -566,6 +602,14 @@ export async function renderTheme(
     configured: boolean,
   ): Promise<string> {
     if (config.disabled) return "";
+    if (appIdentity(config.type))
+      return appBlock(
+        config.type,
+        configured ? (parent.pointer.split("#")[0] ?? "") : (location.file ?? ""),
+        configured
+          ? `${parent.pointer}/blocks/${id.replaceAll("~", "~0").replaceAll("/", "~1")}`
+          : null,
+      );
     if (!/^[A-Za-z0-9_-]+$/.test(config.type)) throw new Error("Invalid theme block type");
     if (stack.filter((node) => node.kind === "block").length >= 8)
       throw new Error("Theme blocks cannot be nested beyond eight levels");
@@ -708,6 +752,19 @@ export async function renderTheme(
       });
       return renderFile(file, new Context(globals, engine.options));
     });
+  }
+  if (object(settingsConfig.blocks)) {
+    let embeds = "";
+    for (const [id, value] of Object.entries(settingsConfig.blocks)) {
+      const config = sectionConfigSchema.parse(value);
+      if (!config.disabled && appIdentity(config.type))
+        embeds += await appBlock(
+          config.type,
+          "config/settings_data.json",
+          `${settingsPointer}/blocks/${id.replaceAll("~", "~0").replaceAll("/", "~1")}`,
+        );
+    }
+    html = appendAppEmbeds(html, embeds);
   }
   return renderSchema.parse({
     schemaVersion: "1.0",

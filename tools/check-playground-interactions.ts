@@ -17,10 +17,13 @@ const files = {
   "layout/theme.liquid":
     '<!doctype html><html><head><script type="module" src="/sop/assets/a.js"></script><link rel="stylesheet" href="/sop/assets/main.css"></head><body>{{content_for_layout}}</body></html>',
   "templates/index.json":
-    '{"sections":{"main":{"type":"main","settings":{"featured":"absent"}},"classic":{"type":"classic","blocks":{"label":{"type":"text"}},"block_order":["label"]}},"order":["main","classic"]}',
+    '{"sections":{"main":{"type":"main","settings":{"featured":"absent"}},"classic":{"type":"classic","blocks":{"label":{"type":"text"}},"block_order":["label"]},"apps":{"type":"apps","blocks":{"app":{"type":"shopify://apps/example-reviews/blocks/rating/synthetic-extension"}},"block_order":["app"]}},"order":["main","classic","apps"]}',
   "sections/main.liquid":
     '<h1>{{shop.name}}</h1>{% content_for \'block\', type: \'label\', id: \'label\', label: shop.name %}<p id="mode">{{request.design_mode}}</p><a id="navigate" href="/pages/about">About</a>{% schema %}{"settings":[{"type":"product","id":"featured"}]}{% endschema %}',
   "sections/classic.liquid": `{% for block in section.blocks %}<p id="classic-block" {{block.shopify_attributes}}>{{block.settings.label}}:{{shop.name}}</p>{% endfor %}{% schema %}{"blocks":[{"type":"text","settings":[{"id":"label","type":"text","default":"Classic"}]}]}{% endschema %}`,
+  "sections/apps.liquid": `{% for block in section.blocks %}{% render block %}{% endfor %}{% schema %}{"blocks":[{"type":"@app"}]}{% endschema %}`,
+  "config/settings_data.json":
+    '{"current":{"blocks":{"embed":{"type":"shopify://apps/example-reviews/blocks/embed/synthetic-extension"}}}}',
   "blocks/label.liquid":
     '<p id="theme-block">Block: {{label}}</p>{% schema %}{"tag":null}{% endschema %}',
   "templates/page.json": '{"sections":{"main":{"type":"main"}},"order":["main"]}',
@@ -209,7 +212,7 @@ try {
     true,
   );
   await parent(
-    "[...document.querySelectorAll('[data-kind=block]')].at(-1).dispatchEvent(new MouseEvent('mouseenter'));true",
+    "[...document.querySelectorAll('[data-kind=block]')].find(n=>n.dataset.file==='sections/classic.liquid').dispatchEvent(new MouseEvent('mouseenter'));true",
   );
   assert.equal(
     await frame(
@@ -222,7 +225,22 @@ try {
   );
   assert.equal(
     await parent(
-      `(async()=>{await (${wait})(()=>[...document.querySelectorAll('[data-kind=block]')].at(-1).getAttribute('aria-pressed')==='true'&&document.querySelector('#source').textContent.includes('{{block.settings.label}}'));const id=[...document.querySelectorAll('[data-kind=block]')].at(-1).dataset.nodeId;return window.SOP_INSPECTOR_STATE.result.dataUsed[id].includes('shop.name');})()`,
+      `(async()=>{await (${wait})(()=>[...document.querySelectorAll('[data-kind=block]')].find(n=>n.dataset.file==='sections/classic.liquid').getAttribute('aria-pressed')==='true'&&document.querySelector('#source').textContent.includes('{{block.settings.label}}'));const id=[...document.querySelectorAll('[data-kind=block]')].find(n=>n.dataset.file==='sections/classic.liquid').dataset.nodeId;return window.SOP_INSPECTOR_STATE.result.dataUsed[id].includes('shop.name');})()`,
+    ),
+    true,
+  );
+  assert.equal(
+    await frame(
+      "!!document.querySelector('[data-code=app-placeholder]')&&document.querySelectorAll('.sop-app-placeholder').length===2",
+    ),
+    true,
+  );
+  await parent(
+    "[...document.querySelectorAll('[data-kind=block]')].find(n=>n.dataset.file==='config/settings_data.json').click();true",
+  );
+  assert.equal(
+    await parent(
+      `(async()=>{await (${wait})(()=>document.querySelector('#source').textContent.includes('config/settings_data.json#/current/blocks/embed')&&document.querySelector('#source').textContent.includes('shopify://apps/example-reviews'));return window.SOP_INSPECTOR_STATE.result.diagnostics.filter(d=>d.code==='app-placeholder').length===2;})()`,
     ),
     true,
   );
@@ -301,6 +319,7 @@ try {
     cssImports: true,
     sourceViewer: true,
     sectionHighlight: true,
+    appBlockAndEmbedBadgesAndSource: true,
     classicBlockRangeSourceAndReads: true,
     themeBlockRangeHighlight: true,
     themeBlockHoverAndSource: true,

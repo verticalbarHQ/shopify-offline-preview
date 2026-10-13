@@ -50,7 +50,8 @@ emit visible markers and `not-implemented` diagnostics; unknown filters fail exp
 
 Dynamic, static and nested theme blocks execute locally with isolated parameters, scoped `closest`
 resources, dynamic setting expressions and per-execution source/read mappings. Classic section block
-loops retain native loop control and own their executed snippets and data reads. Several resource settings and several Shopify filters remain pending. Prices convert exactly to
+loops retain native loop control and own their executed snippets and data reads. External app blocks
+and embeds appear as labelled placeholders with source mappings and `app-placeholder` diagnostics. Several resource settings and several Shopify filters remain pending. Prices convert exactly to
 hundredths and reject values requiring greater precision. Liquid behavior still needs
 Shopify oracle verification. Raw schemas, documentation and asset bodies retain their original source
 positions without interpreting embedded Liquid examples. Snippets support isolated named arguments

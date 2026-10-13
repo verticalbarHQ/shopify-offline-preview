@@ -186,3 +186,33 @@ test("file and snapshot edits invalidate cached renders and notify connected ins
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("settings JSON source is available only after an app node references it, with private config still denied", async () => {
+  const { root, theme, data } = await setup();
+  const config = JSON.stringify({
+    current: {
+      blocks: { embed: { type: "shopify://apps/example/blocks/embed/synthetic-extension" } },
+    },
+  });
+  await writeFile(join(theme, "config/settings_data.json"), config);
+  const session = await startDevServer({ themeDirectory: theme, dataDirectory: data, port: 0 });
+  try {
+    const source = `${session.inspectorOrigin}/api/source?file=config/settings_data.json`;
+    assert.equal((await fetch(source)).status, 404);
+    const rendered = await fetch(
+      `${session.inspectorOrigin}/api/render?path=%2F&scenario=default&designMode=false`,
+    );
+    assert.equal(rendered.status, 200);
+    const allowed = await fetch(source);
+    assert.equal(allowed.status, 200);
+    assert.equal(await allowed.text(), config);
+    assert.equal(
+      (await fetch(`${session.inspectorOrigin}/api/source?file=config/private.json`)).status,
+      404,
+    );
+    assert.equal((await fetch(source, { headers: { Origin: session.previewOrigin } })).status, 403);
+  } finally {
+    await session.close();
+    await rm(root, { recursive: true, force: true });
+  }
+});

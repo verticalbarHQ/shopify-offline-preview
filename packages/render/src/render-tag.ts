@@ -20,11 +20,13 @@ export function registerRenderTag(
   render: (name: string, context: Context) => Promise<string>,
   unsupported: () => string,
   trace: (name: string, run: () => Promise<string>) => Promise<string>,
+  resolveApp: (value: unknown) => Promise<string | null>,
 ): void {
   engine.registerTag(
     "render",
     class extends Tag {
       private readonly snippetName: string | null;
+      private readonly dynamicExpression: string | null;
       private readonly args: Hash;
       private readonly bindings: Binding[] = [];
       constructor(token: TagToken, tokens: TopLevelToken[], liquid: Liquid) {
@@ -32,6 +34,7 @@ export function registerRenderTag(
         const file = this.tokenizer.readValue();
         const quoted = file && /^(['"])([^'"]+)\1$/.exec(file.getText());
         this.snippetName = quoted?.[2] ?? null;
+        this.dynamicExpression = this.snippetName === null ? (file?.getText() ?? null) : null;
         if (this.snippetName === null) {
           this.args = new Hash("");
           return;
@@ -63,7 +66,15 @@ export function registerRenderTag(
         this.args = new Hash(this.tokenizer, liquid.options.keyValueSeparator);
       }
       async render(context: Context) {
-        if (this.snippetName === null) return unsupported();
+        if (this.snippetName === null) {
+          if (this.dynamicExpression) {
+            const result = await resolveApp(
+              await engine.evalValue(this.dynamicExpression, context),
+            );
+            if (result !== null) return result;
+          }
+          return unsupported();
+        }
         const name = this.snippetName;
         return trace(name, async () => {
           const args: Record<string, unknown> = Object.assign(

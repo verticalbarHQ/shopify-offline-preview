@@ -114,6 +114,13 @@ export async function startDevServer(options: DevOptions): Promise<DevSession> {
   let revision = 0;
   const events = new Set<ServerResponse>();
   const cache = new Map<string, Promise<RenderResult>>();
+  const nodeSources = new Set<string>();
+  function rememberSources(nodes: RenderResult["tree"]): void {
+    for (const node of nodes) {
+      nodeSources.add(node.file);
+      rememberSources(node.children);
+    }
+  }
   const watchers: FSWatcher[] = [];
   let changeTimer: ReturnType<typeof setTimeout> | undefined;
   const currentInput = (url: URL) => {
@@ -134,9 +141,15 @@ export async function startDevServer(options: DevOptions): Promise<DevSession> {
     const key = JSON.stringify([revision, path, scenario, designMode]);
     let pending = cache.get(key);
     if (!pending) {
-      pending = snapshot().then((snapshot) =>
-        renderTheme(theme, path, { snapshot, scenario, designMode, inspect: true }),
-      );
+      const renderRevision = revision;
+      pending = snapshot()
+        .then((snapshot) =>
+          renderTheme(theme, path, { snapshot, scenario, designMode, inspect: true }),
+        )
+        .then((result) => {
+          if (revision === renderRevision) rememberSources(result.tree);
+          return result;
+        });
       cache.set(key, pending);
       // A bounded cache avoids retaining every path typed during a long editing session.
       if (cache.size > 64) cache.delete(cache.keys().next().value ?? "");
@@ -151,6 +164,7 @@ export async function startDevServer(options: DevOptions): Promise<DevSession> {
     changeTimer = setTimeout(() => {
       revision++;
       cache.clear();
+      nodeSources.clear();
       for (const response of events) response.write(`event: changed\ndata: ${revision}\n\n`);
     }, 75);
   }
@@ -207,7 +221,8 @@ export async function startDevServer(options: DevOptions): Promise<DevSession> {
     if (url.pathname === "/api/source") {
       const file = themePath(url.searchParams.get("file") ?? "");
       if (
-        !/^(?:layout|sections|blocks|snippets)\/.*\.(?:liquid|json)$/.test(file) ||
+        (!/^(?:layout|sections|blocks|snippets)\/.*\.(?:liquid|json)$/.test(file) &&
+          !nodeSources.has(file)) ||
         !(await theme.listFiles()).includes(file)
       ) {
         json(response, 404, { error: "Source file is not a theme node" });
@@ -350,6 +365,7 @@ export async function startDevServer(options: DevOptions): Promise<DevSession> {
       for (const response of events) response.end();
       events.clear();
       cache.clear();
+      nodeSources.clear();
       await Promise.all([close(inspectorServer), close(previewServer)]);
     },
   };
