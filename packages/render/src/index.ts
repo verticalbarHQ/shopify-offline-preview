@@ -221,10 +221,19 @@ export async function renderTheme(
     path: route.path,
     unsupported: (message) => diagnostic("not-implemented", message),
   });
+  const assetBytes = new Map<string, Promise<Uint8Array>>();
   registerShopifyFilters(engine, {
     snapshot,
     files,
     paths: allPaths,
+    readAsset(path) {
+      let bytes = assetBytes.get(path);
+      if (!bytes) {
+        bytes = theme.readBytes(path);
+        assetBytes.set(path, bytes);
+      }
+      return bytes;
+    },
     sectionLocales() {
       return [...stack]
         .reverse()

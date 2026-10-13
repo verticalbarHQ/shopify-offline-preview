@@ -9,6 +9,7 @@ interface FilterHooks {
   snapshot: Snapshot;
   files: Map<string, string>;
   paths: ReadonlySet<string>;
+  readAsset(path: string): Promise<Uint8Array>;
   sectionLocales(): unknown;
   diagnostic(code: string, message: string, file: string | null, line: number | null): void;
 }
@@ -46,6 +47,28 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
         this.token.getPosition()[0] ?? null,
       );
     return `/sop/assets/${path.slice(7).split("/").map(encodeURIComponent).join("/")}`;
+  });
+  engine.registerFilter("inline_asset_content", async function (value: unknown) {
+    if (typeof value !== "string") throw new Error("inline_asset_content requires an asset name");
+    const path = themePath(`assets/${value}`);
+    if (!/\.(?:svg|js|css)$/i.test(path))
+      throw new Error("Only SVG, JS and CSS assets can be inlined");
+    if (!hooks.paths.has(path)) {
+      hooks.diagnostic(
+        "missing-resource",
+        `Theme asset ${path} is missing.`,
+        this.token.file ?? null,
+        this.token.getPosition()[0] ?? null,
+      );
+      throw new Error("Theme asset is missing");
+    }
+    const bytes = await hooks.readAsset(path);
+    if (bytes.byteLength >= 15 * 1024) throw new Error("Inline asset must be smaller than 15 KB");
+    try {
+      return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    } catch {
+      throw new Error("Inline asset must contain valid UTF-8 text");
+    }
   });
   const images = imageFilters(hooks.snapshot);
   engine.registerFilter("image_url", function (value: unknown, ...args: unknown[]) {

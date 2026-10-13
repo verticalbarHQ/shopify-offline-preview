@@ -128,3 +128,73 @@ test("variant featured media derives from its assigned image and nil image URLs 
   assert.ok(absent.html.includes(">|</div>"));
   assert.deepEqual(absent.diagnostics, []);
 });
+
+test("inline asset content preserves SVG, JS and CSS bytes without evaluating Liquid", async () => {
+  const snapshot = defaultFixture();
+  const svg =
+    '<svg xmlns="http://www.w3.org/2000/svg"><title>Own Icon</title><path d="M0 0h10v10z"/></svg>';
+  const css = 'p::after{content:"{{literal}}"}';
+  const js = 'window.literal="{{literal}}";';
+  const theme = new MemoryThemeFileSystem({
+    ...files,
+    "assets/own.svg": svg,
+    "assets/own.css": css,
+    "assets/own.js": js,
+    "sections/main.liquid":
+      "{{'own.svg'|inline_asset_content}}{{'own.css'|inline_asset_content}}{{'own.js'|inline_asset_content}}",
+  });
+  const result = await renderTheme(theme, `/products/${snapshot.products[0]?.handle}`, {
+    snapshot,
+  });
+  assert.ok(result.html.includes(svg + css + js));
+  assert.deepEqual(result.diagnostics, []);
+});
+test("inline assets enforce type, UTF-8 byte size, missing files and filesystem boundaries", async () => {
+  const snapshot = defaultFixture();
+  for (const [name, text] of [
+    ["large.svg", "x".repeat(15 * 1024)],
+    ["unicode.svg", "한".repeat(6000)],
+    ["bad.png", "not svg"],
+    ["missing.svg", null],
+    ["../escape.svg", null],
+  ] as const) {
+    const theme = new MemoryThemeFileSystem({
+      ...files,
+      ...(text === null ? {} : { [`assets/${name}`]: text }),
+      "sections/main.liquid": `{{'${name}'|inline_asset_content}}After`,
+    });
+    const result = await renderTheme(theme, `/products/${snapshot.products[0]?.handle}`, {
+      snapshot,
+    });
+    assert.ok(result.diagnostics.some((d) => d.code === "liquid-error"));
+    assert.ok(result.html.includes("After"));
+    if (name === "missing.svg")
+      assert.ok(result.diagnostics.some((d) => d.code === "missing-resource"));
+  }
+});
+
+test("inline assets accept the last valid byte size and report invalid UTF-8 consistently", async () => {
+  const snapshot = defaultFixture();
+  const content = `<svg></svg>${" ".repeat(15 * 1024 - 12)}`;
+  const result = await renderTheme(
+    new MemoryThemeFileSystem({
+      ...files,
+      "assets/boundary.svg": content,
+      "sections/main.liquid": "{{'boundary.svg'|inline_asset_content}}",
+    }),
+    `/products/${snapshot.products[0]?.handle}`,
+    { snapshot },
+  );
+  assert.ok(result.html.includes(content));
+  assert.deepEqual(result.diagnostics, []);
+  const bad = await renderTheme(
+    new MemoryThemeFileSystem({
+      ...files,
+      "assets/bad.svg": new Uint8Array([255]),
+      "sections/main.liquid": "{{'bad.svg'|inline_asset_content}}",
+    }),
+    `/products/${snapshot.products[0]?.handle}`,
+    { snapshot },
+  );
+  assert.equal(bad.diagnostics[0]?.message, "Inline asset must contain valid UTF-8 text");
+});

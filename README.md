@@ -58,7 +58,8 @@ positions without interpreting embedded Liquid examples. Snippets support isolat
 and `with`/`for` bindings through the same parser. The feature registry continues to report zero verified implementations.
 Theme/section translations, regional locales, plural counts and HTML escaping are handled locally.
 Money filters use the snapshot templates; assets, image URL parameters and preload hints use local
-files. The server serves the original image bytes and the browser scales them, as specified.
+files. `inline_asset_content` reads local SVG, JS and CSS files under the documented 15 KB limit,
+keeping their contents literal. The server serves the original image bytes and the browser scales them, as specified.
 
 Initial `product`, `customer`, `contact` and `localization` forms render their HTML and initial form
 state. Resource lists (`collection.products`, `blog.articles`, `search.results`, `product.variants`)
