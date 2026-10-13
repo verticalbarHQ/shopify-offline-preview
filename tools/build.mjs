@@ -52,4 +52,11 @@ if (Object.keys(browser.metafile.inputs).some((input) => input.includes("node:")
   throw new Error("Node dependency leaked into browser bundle");
 await writeFile("dist/browser-meta.json", `${JSON.stringify(browser.metafile, null, 2)}\n`);
 execFileSync("pnpm", ["exec", "tsc", "-p", "tsconfig.build.json"], { stdio: "inherit" });
-console.log("Built CLI, check, render, and browser bundles.");
+await build({
+  ...shared,
+  entryPoints: ["packages/playground/src/shell.ts"],
+  outfile: "dist/playground-shell.js",
+  platform: "browser",
+});
+await import("./build-playground.mjs");
+console.log("Built CLI, check, render, browser, inspector, and playground bundles.");

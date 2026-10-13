@@ -4,9 +4,9 @@
 
 | | |
 |---|---|
-| Status | Local M0 foundation implemented and verified. Remote CI awaits repository publication approval. Rendering and the Shopify oracle are not implemented yet. |
+| Status | Offline renderer, dev inspector, and static browser playground implemented. Real Shopify oracle parity and feature completion remain pending. |
 | Date | 2026-10-13 |
-| Repository (planned) | `verticalbarHQ/shopify-offline-preview` (public) |
+| Repository | `verticalbarHQ/shopify-offline-preview` (public) |
 | npm package (planned) | `shopify-offline-preview` (name unclaimed on npm as of 2026-10-13) |
 | License | MIT |
 | Language | TypeScript, Node.js ≥ 22 and evergreen browsers |

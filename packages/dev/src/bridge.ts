@@ -15,6 +15,8 @@ interface Configuration {
   locale?: string;
   currency?: string;
   viewId?: string;
+  previewOrigin?: string;
+  virtualResources?: Record<string, string>;
 }
 const element = document.getElementById("sop-bridge-config");
 const configuration: Configuration = JSON.parse(element?.textContent ?? "{}");
@@ -31,6 +33,8 @@ platform.routes = { root: "/" };
 if (configuration.locale) platform.locale = configuration.locale;
 if (configuration.currency) platform.currency = { active: configuration.currency };
 const prefix = "shopify-offline-preview";
+const previewOrigin = configuration.previewOrigin ?? location.origin;
+const baseUrl = new URL(configuration.path, previewOrigin).href;
 function send(kind: string, value: unknown) {
   if (window.parent !== window)
     window.parent.postMessage(
@@ -94,14 +98,14 @@ function report(code: string, message: string) {
 }
 function blocked(url: URL) {
   return (
-    (url.origin === location.origin || url.hostname === configuration.shopDomain) &&
+    (url.origin === previewOrigin || url.hostname === configuration.shopDomain) &&
     isBlockedEndpoint(url)
   );
 }
 function request(input: string) {
   let url: URL;
   try {
-    url = new URL(input, location.href);
+    url = new URL(input, baseUrl);
   } catch {
     return;
   }
@@ -111,7 +115,21 @@ function request(input: string) {
 const originalFetch = window.fetch.bind(window);
 window.fetch = (input, init) => {
   const target = request(input instanceof Request ? input.url : String(input));
-  if (target && target.origin !== location.origin && blocked(target)) {
+  if (
+    target &&
+    (configuration.virtualResources || target.origin !== location.origin) &&
+    blocked(target)
+  ) {
+    return Promise.resolve(
+      new Response(JSON.stringify({ error: "not available offline" }), {
+        status: 501,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  }
+  if (target && configuration.virtualResources && target.origin === previewOrigin) {
+    const resource = configuration.virtualResources[target.origin + target.pathname];
+    if (resource) return originalFetch(resource, init);
     return Promise.resolve(
       new Response(JSON.stringify({ error: "not available offline" }), {
         status: 501,
@@ -130,8 +148,32 @@ XMLHttpRequest.prototype.open = function (
   password?: string | null,
 ) {
   const target = request(String(url));
-  const local =
-    target && blocked(target) ? new URL(target.pathname + target.search, location.origin) : url;
+  // The virtual preview uses a local data response; override its status to retain the 501 contract.
+  for (const name of ["status", "statusText"])
+    if (Object.hasOwn(this, name)) Reflect.deleteProperty(this, name);
+  const unavailable =
+    configuration.virtualResources &&
+    target &&
+    (blocked(target) ||
+      (target.origin === previewOrigin &&
+        !configuration.virtualResources[target.origin + target.pathname]));
+  if (unavailable) {
+    Object.defineProperty(this, "status", {
+      configurable: true,
+      get: () => (this.readyState < 2 ? 0 : 501),
+    });
+    Object.defineProperty(this, "statusText", {
+      configurable: true,
+      get: () => (this.readyState < 2 ? "" : "Not Implemented"),
+    });
+  }
+  const local = unavailable
+    ? "data:application/json,%7B%22error%22%3A%22not%20available%20offline%22%7D"
+    : target && configuration.virtualResources && target.origin === previewOrigin
+      ? (configuration.virtualResources[target.origin + target.pathname] ?? url)
+      : target && blocked(target)
+        ? new URL(target.pathname + target.search, previewOrigin)
+        : url;
   return originalOpen.call(this, method, local, async, username ?? null, password ?? null);
 };
 function regionElement(region: Region): HTMLElement | null {
@@ -194,7 +236,7 @@ function ready() {
       return;
     const url = new URL(anchor.href);
     if (
-      url.origin === location.origin &&
+      url.origin === previewOrigin &&
       !blocked(url) &&
       !/^\/sop\//.test(url.pathname) &&
       !url.hash
@@ -215,7 +257,7 @@ function observe(entries: PerformanceEntry[]) {
       const url = new URL(entry.name);
       if (
         !["http:", "https:"].includes(url.protocol) ||
-        url.origin === location.origin ||
+        url.origin === previewOrigin ||
         external.has(url.href)
       )
         continue;

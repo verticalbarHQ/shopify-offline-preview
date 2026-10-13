@@ -7,8 +7,8 @@ An offline theme reader and editor for Shopify Online Store 2.0 themes, for peop
 **Status: initial offline rendering is available locally; Shopify parity is pending.** JSON templates,
 layouts, sections/groups, source mappings and isolated snippets are assembled using local snapshots.
 Fixture generation and guarded read-only oracle tools exist; no real goldens have been captured.
-The dev server and inspector are available with section highlighting; theme-block fidelity and the
-playground remain pending. No Shopify-verified feature implementation is claimed. This package is
+The dev server, inspector and static browser playground are available with section highlighting;
+theme-block fidelity remains pending. No Shopify-verified feature implementation is claimed. This package is
 private during development and has not been published.
 
 ## Local development
@@ -78,6 +78,25 @@ Unsupported Shopify endpoints return 501 with `{"error":"not available offline"}
 The bridge also prevents those requests from reaching the snapshot's shop domain. Third-party resource
 requests are listed separately. Bridge markup is added only to the served view, leaving `render` output
 unchanged. The inspector rejects cross-origin requests and filesystem escapes.
+
+## Browser playground
+
+`pnpm build` writes the static site to `dist/playground/`. Serve that directory locally with any static
+HTTP server; it also works under a static hosting subdirectory. Open a theme zip, drop it onto the
+page, or choose a folder. Supply a snapshot zip/folder containing `snapshot.json` and `images/`, or
+use the bundled fixture. Theme and snapshot files are processed in browser memory and are never
+uploaded. A folder opened through File System Access can be read again with **Reload folder**;
+there is no file watcher. Browsers without that API can use the folder input or zip input.
+
+The playground shares the inspector tree, diagnostics, source and controls with `dev`. The theme
+runs in an opaque sandboxed iframe and cannot read the inspector's input files. Local assets and
+snapshot images use data URLs; module imports use an import map, including cyclic imports. Fetch
+and XHR calls to unsupported Shopify endpoints retain the 501 response and diagnostic badges.
+Third-party theme requests remain visible separately. Core render output is preserved.
+
+Scoped import maps and circular CSS imports currently fail explicitly rather than changing their
+meaning. These are preview-adapter limitations; Shopify rendering parity is still pending.
+GitHub Pages has not been configured or deployed.
 
 ## Generated Shopify documentation
 

@@ -49,7 +49,8 @@
     "benchmarks:render-check": "tsx tools/check-render-benchmarks.ts",
     "browser:render-smoke": "tsx tools/browser-render-smoke.ts",
     "license-guard": "node tools/license-guard.mjs",
-    "test:network-off": "node tools/network-off.mjs"
+    "test:network-off": "node tools/network-off.mjs",
+    "browser:playground-check": "tsx tools/check-playground-browser.ts"
   },
   "dependencies": {
     "@shopify/liquid-html-parser": "2.10.2",
@@ -61,7 +62,9 @@
     "@biomejs/biome": "2.5.15",
     "@types/node": "22.20.5",
     "ajv": "8.17.1",
+    "es-module-lexer": "3.0.3",
     "esbuild": "0.28.2",
+    "fflate": "0.8.3",
     "parse5": "8.0.1",
     "tsx": "4.23.15",
     "typescript": "5.9.3"

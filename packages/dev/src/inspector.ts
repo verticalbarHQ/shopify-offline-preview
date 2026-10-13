@@ -1,6 +1,10 @@
 import { diagnosticSchema } from "../../check/src/contracts.js";
 import { type RenderNode, type RenderResult, renderSchema } from "../../render/src/contracts.js";
 
+import { localTransport } from "./transport.js";
+
+const transport = window.SOP_INSPECTOR_TRANSPORT ?? localTransport;
+
 const prefix = "shopify-offline-preview";
 function element<T extends HTMLElement>(selector: string, elementType: { new (): T }): T {
   const result = document.querySelector(selector);
@@ -31,7 +35,10 @@ declare global {
 }
 window.SOP_INSPECTOR_STATE = { result: null, runtime: [], previewOrigin: "" };
 function message(kind: string, value: unknown) {
-  frame.contentWindow?.postMessage({ source: prefix, kind, value }, previewOrigin);
+  frame.contentWindow?.postMessage(
+    { source: prefix, kind, value },
+    previewOrigin === "null" ? "*" : previewOrigin,
+  );
 }
 function showDiagnostic(value: unknown, parent: HTMLElement) {
   const parsed = diagnosticSchema.safeParse(value);
@@ -74,9 +81,7 @@ async function select(id: string) {
   if (!node) return;
   source.textContent = `${node.file}\nLoading source…`;
   try {
-    const response = await fetch(`/api/source?file=${encodeURIComponent(node.file)}`);
-    if (!response.ok) throw new Error(`Source returned ${response.status}`);
-    const text = await response.text();
+    const text = await transport.source(node.file);
     if (selected === id)
       source.textContent = `${node.file}${node.settingsPath ? `\n${node.settingsPath}` : ""}\n\n${text}`;
   } catch (error) {
@@ -115,21 +120,12 @@ async function load() {
   status.textContent = "Rendering…";
   status.dataset.state = "loading";
   try {
-    const query = new URLSearchParams({
+    const input = {
       path: path.value,
       scenario: scenario.value || "default",
-      designMode: String(design.checked),
-    });
-    const response = await fetch(`/api/render?${query}`, { signal: controller.signal });
-    if (!response.ok) {
-      const body: unknown = await response.json();
-      throw new Error(
-        body && typeof body === "object" && "error" in body
-          ? String(body.error)
-          : `Render returned ${response.status}`,
-      );
-    }
-    const result = renderSchema.parse(await response.json());
+      designMode: design.checked,
+    };
+    const result = renderSchema.parse(await transport.render(input, controller.signal));
     if (sequence !== generation) return;
     current = result;
     window.SOP_INSPECTOR_STATE.result = result;
@@ -143,14 +139,9 @@ async function load() {
     selected = null;
     appendNodes(result.tree, tree);
     for (const diagnostic of result.diagnostics) showDiagnostic(diagnostic, diagnostics);
-    const url = new URL(result.route.path, previewOrigin);
-    url.searchParams.set("__sop_scenario", scenario.value || "default");
-    url.searchParams.set("__sop_design_mode", String(design.checked));
-    url.searchParams.set("__sop_route", result.route.path);
     activeView = String(sequence);
-    url.searchParams.set("__sop_view", activeView);
-    frame.removeAttribute("srcdoc");
-    frame.src = url.href;
+    await transport.preview(frame, result, input, activeView, controller.signal);
+    if (sequence !== generation) return;
     status.textContent = `${result.route.pageType} · ${result.diagnostics.length} diagnostics`;
     status.dataset.state = "ready";
     const saved = new URL(location.href);
@@ -236,9 +227,7 @@ element("#collapse", HTMLButtonElement).addEventListener("click", () => {
   );
 });
 async function start() {
-  const response = await fetch("/api/config");
-  if (!response.ok) throw new Error(`Configuration returned ${response.status}`);
-  const config: unknown = await response.json();
+  const config: unknown = await transport.config();
   if (
     !config ||
     typeof config !== "object" ||
@@ -266,43 +255,43 @@ async function start() {
     ? query.get("design") === "true"
     : "designMode" in config && config.designMode === true;
   if (!scenario.value) scenario.value = "default";
-  const events = new EventSource("/events");
-  events.addEventListener("changed", () => {
-    void (async () => {
-      try {
-        const response = await fetch("/api/config");
-        if (response.ok) {
-          const updated: unknown = await response.json();
-          if (
-            updated &&
-            typeof updated === "object" &&
-            "scenarios" in updated &&
-            Array.isArray(updated.scenarios)
-          ) {
-            const previous = scenario.value;
-            scenario.replaceChildren();
-            for (const name of updated.scenarios)
-              if (typeof name === "string") {
-                const option = document.createElement("option");
-                option.value = name;
-                option.textContent = name;
-                scenario.append(option);
-              }
-            scenario.value = previous;
-            if (!scenario.value) scenario.value = "default";
+  transport.subscribe(
+    () => {
+      void (async () => {
+        try {
+          {
+            const updated: unknown = await transport.config();
+            if (
+              updated &&
+              typeof updated === "object" &&
+              "scenarios" in updated &&
+              Array.isArray(updated.scenarios)
+            ) {
+              const previous = scenario.value;
+              scenario.replaceChildren();
+              for (const name of updated.scenarios)
+                if (typeof name === "string") {
+                  const option = document.createElement("option");
+                  option.value = name;
+                  option.textContent = name;
+                  scenario.append(option);
+                }
+              scenario.value = previous;
+              if (!scenario.value) scenario.value = "default";
+            }
           }
+        } finally {
+          await load();
         }
-      } finally {
-        await load();
-      }
-    })().catch((error) => {
-      status.textContent = String(error);
-      status.dataset.state = "error";
-    });
-  });
-  events.addEventListener("error", () => {
-    status.textContent = "Waiting for the local server…";
-  });
+      })().catch((error) => {
+        status.textContent = String(error);
+        status.dataset.state = "error";
+      });
+    },
+    () => {
+      status.textContent = "Waiting for the local server…";
+    },
+  );
   await load();
 }
 void start().catch((error) => {
