@@ -54,7 +54,8 @@
     "agent:contract-check": "tsx tools/check-agent-contracts.ts",
     "browser:inspector-check": "tsx tools/check-inspector-matrix.ts",
     "test:browser-offline": "node tools/browser-network-off.mjs",
-    "oracle:offline-check": "tsx tools/oracle/check-offline-comparison.ts"
+    "oracle:offline-check": "tsx tools/oracle/check-offline-comparison.ts",
+    "parity:check": "tsx tools/check-parity.ts"
   },
   "dependencies": {
     "@shopify/liquid-html-parser": "2.10.2",

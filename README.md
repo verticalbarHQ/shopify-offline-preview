@@ -228,6 +228,13 @@ Shopify render parity and do not waive acceptance gates. `oracle:offline-check` 
 theme copies and runs all 36 cases through the tree/text summary and repeat-capture stability
 pipeline. Its output is local pipeline evidence, never a Shopify golden.
 
+`pnpm parity:check [--snapshot <snapshot.json>] [--release]` compares instrumented offline renders
+against actual captures in `oracle/goldens/{dawn,horizon}/`. It requires all 36 cases, the exact theme
+pins, paths, scenarios and snapshot hash, and fails on Liquid errors or unimplemented events.
+`--release` also enforces the seven-day capture window. It currently fails because real captures
+have not been collected. No foundation CI result substitutes for this gate; static oracle-backed
+coverage and any explicitly evidenced server-only differences remain separate requirements.
+
 The Docker command prepares dependencies and benchmarks while online, then runs the foundation checks
 in a container with `--network none`. `test:browser-offline` also installs Chromium during the image
 build, then runs every browser test in a separate container with networking disabled. GitHub workflow
