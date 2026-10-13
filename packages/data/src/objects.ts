@@ -50,7 +50,15 @@ export function liquidObjects(
   hooks: ObjectHooks,
 ): LiquidRecord {
   const cache = new WeakMap<object, Map<string, object>>();
-  const internal = new Set(["then", "toLiquid", "toJSON", "constructor", "__proto__", "prototype"]);
+  const internal = new Set([
+    "next", // LiquidJS probes this descriptor when resolving generator results.
+    "then",
+    "toLiquid",
+    "toJSON",
+    "constructor",
+    "__proto__",
+    "prototype",
+  ]);
   function tracked<T extends object>(value: T, type: string, path: string): T {
     let entries = cache.get(value);
     if (!entries) {
@@ -278,8 +286,94 @@ export function liquidObjects(
       { handle: menu.handle, title: menu.title, links: menu.links },
     ]),
   );
+  function amount(value: bigint): number {
+    if (value > BigInt(Number.MAX_SAFE_INTEGER))
+      throw new Error("Cart amount exceeds safe Liquid numeric precision");
+    return Number(value);
+  }
+  const items = snapshot.cart.lines.map((line, index) => {
+    const source = snapshot.products.find((product) => product.handle === line.productHandle);
+    const variantIndex =
+      source?.variants.findIndex((variant) => variant.id === line.variantId) ?? -1;
+    const variantSource = source?.variants[variantIndex];
+    const product = products.get(line.productHandle);
+    if (!source || !variantSource || !product)
+      throw new Error("Cart variant is absent from snapshot");
+    const variants = product.variants;
+    const variant = Array.isArray(variants) ? variants[variantIndex] : undefined;
+    if (!variant || typeof variant !== "object")
+      throw new Error("Cart variant derivation is unavailable");
+    const price = liquidPrice(variantSource.price);
+    const linePrice = amount(BigInt(price) * BigInt(line.quantity));
+    const variantTitle = source.options
+      .map(
+        (option) =>
+          variantSource.optionValues.find((value) => value.name === option.name)?.value ?? "",
+      )
+      .join(" / ");
+    const lineImage = source.images.find((image) => image.file === variantSource.image);
+    return tracked(
+      {
+        id: id(line.variantId),
+        variant_id: id(line.variantId),
+        product,
+        variant,
+        quantity: line.quantity,
+        title: product.has_only_default_variant
+          ? source.title
+          : `${source.title} - ${variantTitle}`,
+        product_title: source.title,
+        variant_title: variantTitle,
+        vendor: source.vendor,
+        sku: variantSource.sku,
+        image: lineImage
+          ? image(lineImage, source.images.indexOf(lineImage))
+          : product.featured_image,
+        url: `/products/${source.handle}?variant=${encodeURIComponent(line.variantId)}`,
+        options_with_values: variantSource.optionValues,
+        original_price: price,
+        final_price: price,
+        price,
+        original_line_price: linePrice,
+        final_line_price: linePrice,
+        line_price: linePrice,
+        line_level_discount_allocations: [],
+        line_level_total_discount: 0,
+        discount_allocations: [],
+        discounts: [],
+        total_discount: 0,
+        properties: {},
+        selling_plan_allocation: null,
+      },
+      "line_item",
+      `cart.lines[${index}]`,
+    );
+  });
+  const cartTotal = amount(
+    items.reduce((sum, item) => sum + BigInt(Number(item.final_line_price)), 0n),
+  );
+  const count = amount(snapshot.cart.lines.reduce((sum, line) => sum + BigInt(line.quantity), 0n));
+  const cart = tracked(
+    {
+      items,
+      item_count: count,
+      "empty?": items.length === 0,
+      note: snapshot.cart.note,
+      original_total_price: cartTotal,
+      items_subtotal_price: cartTotal,
+      total_price: cartTotal,
+      total_discount: 0,
+      cart_level_discount_applications: [],
+      discount_applications: [],
+      attributes: {},
+      currency: { iso_code: snapshot.shop.currency },
+    },
+    "cart",
+    "cart",
+  );
   const globals: LiquidRecord = {
     shop: tracked(snapshot.shop, "shop", "shop"),
+    cart,
     all_products: tracked(Object.fromEntries(products), "dictionary", "all_products"),
     collections: tracked(Object.fromEntries(collections), "dictionary", "collections"),
     pages: tracked(Object.fromEntries(pages), "dictionary", "pages"),

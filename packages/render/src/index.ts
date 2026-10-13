@@ -21,6 +21,7 @@ import { parseThemeJson, type ThemeFileSystem, themePath } from "../../theme/src
 import { registerBasicTags } from "./basic-tags.js";
 import { type RenderNode, type RenderResult, renderSchema } from "./contracts.js";
 import { resolveRoute } from "./routes.js";
+import { registerShopifyTags } from "./shopify-tags.js";
 import {
   type SectionConfig,
   type SectionSchema,
@@ -180,6 +181,10 @@ export async function renderTheme(
   });
   engine.registerTag("schema", SchemaTag);
   registerBasicTags(engine, (message) => diagnostic("not-implemented", message));
+  registerShopifyTags(engine, {
+    path: route.path,
+    unsupported: (message) => diagnostic("not-implemented", message),
+  });
   const nativeDate = engine.filters.date;
   if (typeof nativeDate === "function")
     engine.registerFilter("date", function (value: unknown, ...args: unknown[]) {
@@ -365,7 +370,7 @@ export async function renderTheme(
     suffix: route.template.slice(10, -5).split(".")[1] ?? null,
   };
   globals.current_page = Number(route.query.page ?? 1);
-  for (const property of ["page_title", "cart", "search"])
+  for (const property of ["page_title", "search"])
     Object.defineProperty(globals, property, {
       get() {
         diagnostic("not-implemented", `Global ${property} derivation is not implemented.`);

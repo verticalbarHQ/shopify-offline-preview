@@ -49,9 +49,15 @@ exit with 4; recoverable Liquid errors appear inline and in diagnostics. Known u
 emit visible markers and `not-implemented` diagnostics; unknown filters fail explicitly.
 
 Initial rendering is incomplete: theme block execution, classic block tracing, several resource
-settings, cart/search derivation and Shopify filters remain pending. Prices convert exactly to
+settings, search derivation and Shopify filters remain pending. Prices convert exactly to
 hundredths and reject values requiring greater precision. Native LiquidJS behavior still needs
 Shopify oracle verification. The feature registry continues to report zero verified implementations.
+
+Initial `product`, `customer`, `contact` and `localization` forms render their HTML and initial form
+state. Resource lists (`collection.products`, `blog.articles`, `search.results`, `product.variants`)
+can be paginated without mutating their source; page links preserve the URL query. Independent
+setting-array pagination is diagnosed as pending. Cart lines and exact undiscounted totals derive
+from snapshot variant prices and quantities; compare-at prices do not count as discounts.
 
 ## Bring your own data
 

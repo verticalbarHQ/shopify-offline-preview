@@ -101,3 +101,60 @@ test("articles and product collection membership resolve without unsafe object c
     `${blog.title}|${article.title}`,
   );
 });
+
+test("cart quantities and totals derive from actual variant prices, not compare-at sale prices", async () => {
+  const snapshot = applyScenario(defaultFixture(), "with-items");
+  const before = JSON.stringify(snapshot);
+  const objects = liquidObjects(
+    snapshot,
+    { ...route, pageType: "cart", resourceHandle: null },
+    silent,
+  );
+  const sum = snapshot.cart.lines.reduce((sum, line) => {
+    const product = snapshot.products.find((p) => p.handle === line.productHandle);
+    const variant = product?.variants.find((v) => v.id === line.variantId);
+    assert.ok(variant);
+    return sum + liquidPrice(variant.price) * line.quantity;
+  }, 0);
+  assert.equal(
+    await new Liquid().parseAndRender(
+      "{{cart.item_count}}|{{cart.total_price}}|{{cart.original_total_price}}|{{cart.total_discount}}|{{cart.note}}",
+      objects,
+    ),
+    `3|${sum}|${sum}|0|Example cart note`,
+  );
+  assert.equal(
+    await new Liquid().parseAndRender(
+      "{% for item in cart.items %}{{item.quantity}}:{{item.final_price}}:{{item.variant.id}}|{% endfor %}",
+      objects,
+    ),
+    snapshot.cart.lines
+      .map((line) => {
+        const p = snapshot.products.find((p) => p.handle === line.productHandle);
+        const v = p?.variants.find((v) => v.id === line.variantId);
+        assert.ok(v);
+        return `${line.quantity}:${liquidPrice(v.price)}:${v.id}|`;
+      })
+      .join(""),
+  );
+  assert.equal(JSON.stringify(snapshot), before);
+  const empty = liquidObjects(
+    defaultFixture(),
+    { ...route, pageType: "cart", resourceHandle: null },
+    silent,
+  );
+  assert.equal(
+    await new Liquid().parseAndRender(
+      "{{cart.empty?}}|{{cart.items.size}}|{{cart.total_price}}",
+      empty,
+    ),
+    "true|0|0",
+  );
+});
+test("cart derivation refuses unsafe multiplication instead of losing monetary precision", () => {
+  const snapshot = applyScenario(defaultFixture(), "with-items");
+  const line = snapshot.cart.lines[0];
+  assert.ok(line);
+  line.quantity = Number.MAX_SAFE_INTEGER;
+  assert.throws(() => liquidObjects(snapshot, route, silent), /Cart amount exceeds safe/);
+});
