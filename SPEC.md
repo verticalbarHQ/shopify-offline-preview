@@ -568,8 +568,9 @@ M0 local verification (2026-10-13): generated-spec/schema drift checks, TypeScri
 browser foundation builds, 17 tests, deterministic static analysis of 11 JSON templates each for
 pinned Dawn and Horizon, benchmark-file license guard, and the same foundation checks in a Node 22
 container with networking disabled all pass. An offline tarball install, TypeScript consumer,
-runtime subpath imports, and installed CLI also pass. Workflow definitions exist, but remote CI has
-not run because public repository creation and pushing remain approval gates. Static analysis is
+runtime subpath imports, and installed CLI also pass. Owner-approved repository publication and the
+CI cache repair are complete: all three jobs passed in run `38401111761` at commit `744be2a`.
+Every subsequent push remains an action-time approval gate. Static analysis is
 conservative: unresolved argument/resource types and dynamic references remain diagnostics with
 `complete: false` for both benchmarks. No renderer parity, real browser e2e, or Shopify-verified
 implementation is claimed by M0.

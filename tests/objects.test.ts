@@ -1,0 +1,103 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { Liquid } from "liquidjs";
+import { defaultFixture } from "../packages/data/src/fixture.js";
+import { liquidObjects, liquidPrice } from "../packages/data/src/objects.js";
+import { applyScenario } from "../packages/data/src/scenarios.js";
+
+const route = {
+  pageType: "product",
+  path: "/",
+  variant: null,
+  q: "",
+  sortBy: null,
+  resourceHandle: "sop-matrix-needle",
+  designMode: false,
+};
+const silent = { read() {}, unsupported() {} };
+
+test("decimal prices convert exactly to hundredths and reject silent precision loss", () => {
+  assert.equal(liquidPrice("12.34"), 1234);
+  assert.equal(liquidPrice("1000"), 100000);
+  assert.equal(liquidPrice("00012.3400"), 1234);
+  for (const value of ["1.234", "-1", "1.2.3", "NaN", "9007199254740992"])
+    assert.throws(() => liquidPrice(value), value);
+});
+
+test("product selection, prices, image URLs and sold-out fallback derive from source", async () => {
+  const snapshot = defaultFixture();
+  const product = snapshot.products[0];
+  assert.ok(product);
+  const selected = product.variants.find((variant) => !variant.available);
+  assert.ok(selected);
+  const objects = liquidObjects(
+    snapshot,
+    { ...route, resourceHandle: product.handle, variant: selected.id },
+    silent,
+  );
+  const engine = new Liquid();
+  assert.equal(
+    await engine.parseAndRender(
+      "{{product.selected_variant.id}}|{{product.selected_or_first_available_variant.id}}|{{product.available}}",
+      objects,
+    ),
+    `${selected.id}|${selected.id}|true`,
+  );
+  assert.equal(
+    await engine.parseAndRender("{{product.price_min}}|{{product.price_max}}", objects),
+    `${Math.min(...product.variants.map((v) => liquidPrice(v.price)))}|${Math.max(...product.variants.map((v) => liquidPrice(v.price)))}`,
+  );
+  const soldOut = applyScenario(snapshot, "sold-out");
+  assert.equal(
+    await engine.parseAndRender(
+      "{% if product.first_available_variant == nil %}nil{% endif %}|{{product.selected_or_first_available_variant.id}}",
+      liquidObjects(soldOut, { ...route, resourceHandle: product.handle }, silent),
+    ),
+    `nil|${product.variants[0]?.id}`,
+  );
+  assert.match(
+    await engine.parseAndRender("{{product.featured_image.src}}", objects),
+    /^\/sop\/images\//,
+  );
+});
+
+test("Liquid's own-property check reports absent data and reads use indices without customer handles", async () => {
+  const snapshot = defaultFixture();
+  const product = snapshot.products[0];
+  assert.ok(product);
+  const reads: string[] = [];
+  const unsupported: string[] = [];
+  const before = JSON.stringify(snapshot);
+  const objects = liquidObjects(
+    snapshot,
+    { ...route, resourceHandle: product.handle },
+    {
+      read: (path) => reads.push(path),
+      unsupported: (type, property) => unsupported.push(`${type}.${property}`),
+    },
+  );
+  assert.equal(
+    await new Liquid().parseAndRender("{{product.title}}|{{product.id}}", objects),
+    `${product.title}|`,
+  );
+  assert.ok(reads.includes("products[0].title"));
+  assert.ok(unsupported.includes("product.id"));
+  assert.ok(reads.every((path) => !path.includes(product.handle)));
+  assert.equal(JSON.stringify(snapshot), before);
+});
+
+test("articles and product collection membership resolve without unsafe object casts", async () => {
+  const snapshot = defaultFixture();
+  const blog = snapshot.blogs[0];
+  const article = blog?.articles[0];
+  assert.ok(blog && article);
+  const objects = liquidObjects(
+    snapshot,
+    { ...route, pageType: "article", blogHandle: blog.handle, resourceHandle: article.handle },
+    silent,
+  );
+  assert.equal(
+    await new Liquid().parseAndRender("{{blog.title}}|{{article.title}}", objects),
+    `${blog.title}|${article.title}`,
+  );
+});

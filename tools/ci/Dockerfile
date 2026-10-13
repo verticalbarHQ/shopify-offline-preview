@@ -4,4 +4,4 @@ RUN npm install -g pnpm@10.34.7
 WORKDIR /app
 COPY . .
 RUN pnpm install --frozen-lockfile && pnpm build && pnpm benchmarks:fetch
-CMD ["sh", "-c", "pnpm generate:check && pnpm typecheck && pnpm lint && pnpm test && pnpm benchmarks:check && pnpm license-guard"]
+CMD ["sh", "-c", "pnpm generate:check && pnpm typecheck && pnpm lint && pnpm test && pnpm benchmarks:check && pnpm benchmarks:render-check && pnpm license-guard"]

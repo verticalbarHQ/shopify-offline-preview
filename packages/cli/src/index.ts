@@ -1,10 +1,97 @@
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { type CheckResult, checkTheme } from "../../check/src/index.js";
+import { defaultFixture } from "../../data/src/fixture.js";
+import { applyScenario, validateSnapshotReferences } from "../../data/src/scenarios.js";
+import { parseSnapshot } from "../../data/src/schema.js";
+import { type RenderResult, renderTheme } from "../../render/src/index.js";
+import { resolveRoute } from "../../render/src/routes.js";
+import { templateConfig } from "../../render/src/theme-config.js";
 import { registry } from "../../spec/src/index.js";
 import { NodeThemeFileSystem } from "../../theme/src/node.js";
 
 const usage =
-  "Usage: shopify-offline-preview check <theme> [--json] [--strict] | schema <render|check|snapshot>";
+  "Usage: shopify-offline-preview check <theme> [--json] [--strict] | render <theme> <path> [--data <directory>] [--scenario <name>] [--design-mode] [--json] [--out <file>] | schema <render|check|snapshot>";
+function renderFailure(code: string, message: string, json: boolean): void {
+  console.error(message);
+  if (json) {
+    const result: RenderResult = {
+      schemaVersion: "1.0",
+      html: "",
+      tree: [],
+      dataUsed: {},
+      diagnostics: [{ code, severity: "error", file: null, line: null, nodeId: null, message }],
+      route: { path: "", pageType: "", template: "" },
+    };
+    console.log(JSON.stringify(result));
+  }
+}
+async function renderCommand(args: string[]): Promise<number> {
+  const [target, path, ...flags] = args;
+  const json = args.includes("--json");
+  const parsed = new Map<string, string | true>();
+  if (!target || target.startsWith("-") || !path || !path.startsWith("/")) {
+    renderFailure("usage-error", usage, json);
+    return 2;
+  }
+  for (let index = 0; index < flags.length; index++) {
+    const flag = flags[index];
+    if (
+      !flag ||
+      parsed.has(flag) ||
+      !["--data", "--scenario", "--design-mode", "--json", "--out"].includes(flag)
+    ) {
+      renderFailure("usage-error", usage, json);
+      return 2;
+    }
+    if (["--design-mode", "--json"].includes(flag)) parsed.set(flag, true);
+    else {
+      const value = flags[++index];
+      if (!value || value.startsWith("--")) {
+        renderFailure("usage-error", usage, json);
+        return 2;
+      }
+      parsed.set(flag, value);
+    }
+  }
+  let phase = 3;
+  try {
+    const data = parsed.get("--data");
+    const scenario = parsed.get("--scenario");
+    const snapshot = applyScenario(
+      typeof data === "string"
+        ? parseSnapshot(await readFile(join(data, "snapshot.json"), "utf8"))
+        : defaultFixture(),
+      typeof scenario === "string" ? scenario : "default",
+    );
+    validateSnapshotReferences(snapshot);
+    const theme = new NodeThemeFileSystem(target);
+    const route = resolveRoute(snapshot, path);
+    templateConfig(await theme.readText(route.template), route.template);
+    phase = 4;
+    const result = await renderTheme(theme, path, {
+      snapshot,
+      designMode: parsed.has("--design-mode"),
+      inspect: json,
+    });
+    const out = parsed.get("--out");
+    if (typeof out === "string") await writeFile(out, result.html);
+    if (json) console.log(JSON.stringify(result));
+    else {
+      if (!out) process.stdout.write(result.html);
+      for (const diagnostic of result.diagnostics)
+        console.error(`${diagnostic.code}: ${diagnostic.file ?? "theme"}: ${diagnostic.message}`);
+    }
+    return 0;
+  } catch (error) {
+    renderFailure(
+      phase === 3 ? "load-error" : "render-error",
+      error instanceof Error ? error.message : String(error),
+      json,
+    );
+    return phase;
+  }
+}
 function reportFailure(code: string, message: string, json: boolean): void {
   console.error(message);
   if (json) {
@@ -25,6 +112,7 @@ async function main(args: string[]): Promise<number> {
     console.log(usage);
     return 0;
   }
+  if (command === "render") return renderCommand(args.slice(1));
   if (
     command === "schema" &&
     target &&

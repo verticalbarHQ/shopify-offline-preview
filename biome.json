@@ -6,6 +6,7 @@
       "!!vendor",
       "!!packages/spec/src/generated",
       "!!schemas",
+      "!!fixtures/default",
       "!!dist",
       "!!.local",
       "!!HANDOFF-2026-10-13.md"

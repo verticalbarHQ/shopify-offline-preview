@@ -170,3 +170,82 @@ test("browser bundle runs without Node globals in an isolated JavaScript context
   const nodeResult = await checkTheme(new MemoryThemeFileSystem(theme()));
   assert.equal(JSON.stringify(browserResult), JSON.stringify(nodeResult));
 });
+
+test("render CLI consumes local snapshots, emits schema-valid JSON on success/failure and writes HTML separately", async () => {
+  const root = await mkdtemp(join(tmpdir(), "sop-render-cli-"));
+  const files = {
+    "templates/index.json": JSON.stringify({
+      layout: false,
+      sections: { a: { type: "text" } },
+      order: ["a"],
+    }),
+    "sections/text.liquid": '{{shop.name}}|{{request.design_mode}}|{{"now" | date:"%Y"}}',
+  };
+  try {
+    for (const [path, text] of Object.entries(files)) {
+      await mkdir(dirname(join(root, path)), { recursive: true });
+      await writeFile(join(root, path), text);
+    }
+    await writeFile(join(root, "snapshot.json"), JSON.stringify(snapshot()));
+    const run = (...args: string[]) =>
+      spawnSync(process.execPath, ["dist/cli.js", "render", ...args], {
+        encoding: "utf8",
+        stdio: ["pipe", "pipe", "pipe"],
+      });
+    const out = join(root, "out.html");
+    const normal = run(root, "/", "--data", root, "--design-mode", "--json", "--out", out);
+    assert.equal(normal.status, 0, normal.stderr);
+    assert.equal(normal.stderr, "");
+    const validate = await validator("render");
+    const parsed: unknown = JSON.parse(normal.stdout);
+    assert.equal(validate(parsed), true, JSON.stringify(validate.errors));
+    const { renderSchema } = await import("../packages/render/src/contracts.js");
+    const result = renderSchema.parse(parsed);
+    assert.equal(await readFile(out, "utf8"), result.html);
+    assert.match(result.html, /Example\|true/);
+    for (const [args, status] of [
+      [["--json"], 2],
+      [[root, "/", "--json", "--bad"], 2],
+      [[root, "/", "--json", "--data", join(root, "missing")], 3],
+      [[root, "/", "--json", "--scenario", "absent"], 3],
+      [[root, "/products/missing", "--json"], 3],
+    ] as const) {
+      const failure = run(...args);
+      assert.equal(failure.status, status, failure.stderr);
+      assert.equal(validate(JSON.parse(failure.stdout)), true, JSON.stringify(validate.errors));
+    }
+    await writeFile(
+      join(root, "templates/index.json"),
+      JSON.stringify({ sections: { a: { type: "text" } }, order: ["a"] }),
+    );
+    const fatal = run(root, "/", "--json");
+    assert.equal(fatal.status, 4);
+    assert.equal(validate(JSON.parse(fatal.stdout)), true);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("browser renderer executes without Node globals and matches Node's HTML/tree/diagnostics", async () => {
+  const source = await readFile("dist/browser.js", "utf8");
+  const { code } = await transform(source, { format: "iife", globalName: "SOP", target: "es2022" });
+  const context = createContext({ TextEncoder, TextDecoder, URL, structuredClone, performance });
+  const files = {
+    "templates/index.json": JSON.stringify({
+      layout: false,
+      sections: { a: { type: "text" } },
+      order: ["a"],
+    }),
+    "sections/text.liquid": '{{shop.name}}|{{"now" | date:"%Y-%m-%d"}}|{{"x" | t}}',
+  };
+  const { renderTheme } = await import("../packages/render/src/index.js");
+  const node = await renderTheme(new MemoryThemeFileSystem(files), "/", {
+    snapshot: snapshot(),
+    inspect: true,
+  });
+  const browser: unknown = await runInContext(
+    `${code}\nSOP.renderTheme(new SOP.MemoryThemeFileSystem(${JSON.stringify(files)}),"/",{snapshot:${JSON.stringify(snapshot())},inspect:true})`,
+    context,
+  );
+  assert.equal(JSON.stringify(browser), JSON.stringify(node));
+});

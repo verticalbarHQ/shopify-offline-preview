@@ -19,7 +19,7 @@ export const renderNodeSchema: z.ZodType<RenderNode> = z.lazy(() =>
     children: z.array(renderNodeSchema),
   }),
 );
-// Contract only in M0. No renderer is claimed or exported until M2.
+// Shared CLI/browser contract; Shopify parity requires separate oracle evidence.
 export const renderSchema = z.strictObject({
   schemaVersion: z.literal("1.0"),
   html: z.string(),

@@ -26,6 +26,12 @@ await build({
   platform: "neutral",
   mainFields: ["module", "main"],
 });
+await build({
+  ...shared,
+  entryPoints: ["packages/render/src/index.ts"],
+  outfile: "dist/render.js",
+  platform: "browser",
+});
 const browser = await build({
   ...shared,
   entryPoints: ["packages/check/src/browser.ts"],
@@ -37,4 +43,4 @@ if (Object.keys(browser.metafile.inputs).some((input) => input.includes("node:")
   throw new Error("Node dependency leaked into browser bundle");
 await writeFile("dist/browser-meta.json", `${JSON.stringify(browser.metafile, null, 2)}\n`);
 execFileSync("pnpm", ["exec", "tsc", "-p", "tsconfig.build.json"], { stdio: "inherit" });
-console.log("Built CLI, check, and browser foundation bundles (no renderer yet).");
+console.log("Built CLI, check, render, and browser bundles.");

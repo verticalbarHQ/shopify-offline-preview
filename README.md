@@ -4,8 +4,10 @@ Unofficial — not affiliated with or endorsed by Shopify
 
 An offline theme reader and editor for Shopify Online Store 2.0 themes, for people and coding agents.
 
-**Status: local M0 foundation implemented and verified.** Rendering, the dev server, inspector, playground, and Shopify oracle
-are not implemented yet. No Shopify-verified feature implementation is claimed. This package is
+**Status: initial offline rendering is available locally; Shopify parity is pending.** JSON templates,
+layouts, sections/groups, source mappings and isolated snippets are assembled using local snapshots.
+Fixture generation and guarded read-only oracle tools exist; no real goldens have been captured.
+The dev server, inspector and playground are pending. No Shopify-verified feature implementation is claimed. This package is
 private during development and has not been published.
 
 ## Local development
@@ -18,6 +20,7 @@ pnpm generate
 pnpm verify
 node dist/cli.js check /path/to/theme --json
 node dist/cli.js check /path/to/theme --json --strict
+node dist/cli.js render /path/to/theme /products/example --data /path/to/data --json
 node dist/cli.js schema snapshot
 ```
 
@@ -36,17 +39,29 @@ exit 3 means an invalid or unsupported theme/input. `check --json` produces one 
 document, including usage and load failures; human-readable errors go to stderr. Results and file
 ordering are deterministic.
 
+`render --json` also emits one schema-valid document on success and failure. JSON mode records
+snapshot reads per tree node. `--out <file>` writes HTML separately; JSON remains on stdout.
+`--scenario <name>` applies an immutable JSON merge patch from the snapshot; `--design-mode` sets
+`request.design_mode`. Without `--data`, the bundled synthetic fixture is used. Fatal assembly errors
+exit with 4; recoverable Liquid errors appear inline and in diagnostics. Known unsupported filters
+emit visible markers and `not-implemented` diagnostics; unknown filters fail explicitly.
+
+Initial rendering is incomplete: theme block execution, classic block tracing, several resource
+settings, cart/search derivation and Shopify filters remain pending. Prices convert exactly to
+hundredths and reject values requiring greater precision. Native LiquidJS behavior still needs
+Shopify oracle verification. The feature registry continues to report zero verified implementations.
+
 ## Bring your own data
 
 Data may come from any external collection or export tool. Prepare a local directory containing
 `snapshot.json` and `images/`, following `schemas/snapshot.schema.json`. The library does not collect
 live-store data or convert vendor-specific exports. Local snapshot validation is available in the
-browser foundation export; `dev --data` and `render --data` arrive with rendering.
+browser export and `render --data`; `dev --data` arrives with the dev server.
 
 Source prices are decimal strings in the shop currency, not floating-point numbers or Liquid's
 derived minor-unit prices. Variants have string ids; cart lines refer to a product handle and
 variant id. Images use paths relative to `images/`. Schema validation checks source shape; reference
-integrity and scenario derivation are future M1/M2 work. The runtime also validates IANA timezone
+integrity and scenario derivation are also checked by the renderer. The runtime validates IANA timezone
 names, beyond the JSON Schema's string shape. No real customer data belongs in fixtures.
 
 ## Generated Shopify documentation
@@ -62,20 +77,25 @@ untyped properties remain `unknown`. See `THIRD_PARTY_NOTICES.md` for attributio
 ```sh
 pnpm benchmarks:fetch
 pnpm benchmarks:check
+pnpm benchmarks:render-check
+pnpm browser:render-smoke
 pnpm license-guard
 pnpm test:network-off
 ```
 
 Dawn and Horizon are fetched at the full commits in `benchmarks.json` into an OS temporary directory,
 outside this project. A local ignored manifest points to them. They are never committed or packaged.
-The benchmark check verifies deterministic coverage output, valid result contracts, and no parse or
-missing-reference errors. It does **not** assert Shopify render parity.
+The static benchmark check verifies deterministic coverage output, valid result contracts, and no parse
+or missing-reference errors. The initial rendering check compares repeat runs and Node/browser builds
+across all 36 cases while reporting remaining errors and unsupported features. The browser smoke
+command starts a loopback-only verification page for those same cases. These checks do **not** assert
+Shopify render parity and do not waive acceptance gates.
 
 The Docker command prepares dependencies and benchmarks while online, then runs the foundation checks
 in a container with `--network none`. GitHub workflow definitions include unit, network-off, and
-license-guard jobs; these run remotely only after repository publication is separately authorized.
-Browser foundation tests exercise the browser bundle's analysis in Node; real browser rendering and
-playground tests are later milestones.
+license-guard jobs. Remote M0 CI passed at `744be2a`; subsequent local changes require separate push
+approval. Browser contract tests also exercise the renderer without Node globals; the loopback smoke
+page checks real browser execution. Inspector and playground e2e remain later milestones.
 
 ## License
 
