@@ -4,6 +4,10 @@ const handle = z.string().min(1);
 // Source prices use decimal currency units, like Admin API exports; no float conversion at input.
 const money = z.string().regex(/^\d+(?:\.\d+)?$/);
 const metafields = z.record(z.string(), z.record(z.string(), z.json()));
+const seo = z.strictObject({
+  title: z.string().nullable().optional(),
+  description: z.string().nullable().optional(),
+});
 const imagePathPattern =
   // biome-ignore lint/suspicious/noControlCharactersInRegex: NUL must be rejected in local file paths and their published JSON Schema.
   /^(?!\/)(?!.*[\\\u0000])(?!.*(?:^|\/)\.{1,2}(?:\/|$))(?!.*\/\/)(?!.*\/$).+$/;
@@ -49,6 +53,7 @@ const variant = z.strictObject({
   storeAvailabilities: z.array(z.record(z.string(), z.json())).optional(),
 });
 const product = z.strictObject({
+  seo: seo.optional(),
   id: z.string().min(1).optional(),
   handle,
   title: z.string(),
@@ -67,6 +72,7 @@ const product = z.strictObject({
   quantityPriceBreaksConfigured: z.boolean().optional(),
 });
 const page = z.strictObject({
+  seo: seo.optional(),
   id: z.string().min(1).optional(),
   handle,
   title: z.string(),
@@ -75,6 +81,7 @@ const page = z.strictObject({
   metafields,
 });
 const article = z.strictObject({
+  seo: seo.optional(),
   id: z.string().min(1).optional(),
   handle,
   title: z.string(),
@@ -107,6 +114,7 @@ export interface MenuLink {
 export const snapshotSchema = z.strictObject({
   meta: z.strictObject({ now: z.iso.datetime({ offset: true }), schemaVersion: z.literal("1.0") }),
   shop: z.strictObject({
+    seo: seo.optional(),
     name: z.string(),
     domain: z.string(),
     locale: z.string(),
@@ -140,6 +148,7 @@ export const snapshotSchema = z.strictObject({
   products: z.array(product),
   collections: z.array(
     z.strictObject({
+      seo: seo.optional(),
       id: z.string().min(1).optional(),
       handle,
       title: z.string(),
@@ -153,6 +162,7 @@ export const snapshotSchema = z.strictObject({
   pages: z.array(page),
   blogs: z.array(
     z.strictObject({
+      seo: seo.optional(),
       id: z.string().min(1).optional(),
       handle,
       title: z.string(),

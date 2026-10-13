@@ -31,6 +31,10 @@ function variantMetadata() {
 /** Original synthetic content only; no benchmark code or customer content. */
 export function defaultFixture(): Snapshot {
   const products: Snapshot["products"] = Array.from({ length: 40 }, (_, i) => ({
+    seo: {
+      title: null,
+      description: `Original synthetic product ${i + 1} for offline theme verification.`,
+    },
     id: String(100001 + i),
     handle: i === 0 ? fixtureProductHandle : `sop-product-${String(i + 1).padStart(2, "0")}`,
     title: i === 0 ? "SOP Matrix Needle" : `SOP Product ${String(i + 1).padStart(2, "0")}`,
@@ -97,6 +101,7 @@ export function defaultFixture(): Snapshot {
   const snapshot: Snapshot = {
     meta: { now: fixtureNow, schemaVersion: "1.0" },
     shop: {
+      seo: { title: null, description: "A synthetic catalog for local theme development." },
       name: "Offline Example Shop",
       domain: "example.test",
       locale: "en",
@@ -114,6 +119,7 @@ export function defaultFixture(): Snapshot {
     products,
     collections: [
       {
+        seo: { title: null, description: "Original synthetic collection." },
         id: "200001",
         handle: "sop-catalog",
         title: "Example Catalog",
@@ -126,6 +132,7 @@ export function defaultFixture(): Snapshot {
     ],
     pages: [
       {
+        seo: { title: null, description: "Original offline examples from Example Studio." },
         id: "300001",
         handle: "about",
         title: "About Example Studio",
@@ -137,12 +144,14 @@ export function defaultFixture(): Snapshot {
     ],
     blogs: [
       {
+        seo: { title: null, description: "Original example journal." },
         id: "400001",
         handle: "news",
         title: "Example Journal",
         templateSuffix: null,
         metafields: {},
         articles: Array.from({ length: 3 }, (_, i) => ({
+          seo: { title: null, description: `Original example article ${i + 1}.` },
           id: String(500001 + i),
           handle: `story-${i + 1}`,
           title: `Example Story ${i + 1}`,

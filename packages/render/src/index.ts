@@ -27,6 +27,7 @@ import { ImageUrlInputError } from "./filters/images.js";
 import { registerShopifyFilters } from "./filters/index.js";
 import { fontSetting } from "./fonts.js";
 import { registerLoopTrace } from "./loop-trace.js";
+import { registerPageMetadata } from "./page-metadata.js";
 import { parseLiquid } from "./parse-liquid.js";
 import { registerRenderTag } from "./render-tag.js";
 import { resolveRoute } from "./routes.js";
@@ -164,6 +165,17 @@ export async function renderTheme(
   function object(value: unknown): value is LiquidRecord {
     return value !== null && typeof value === "object" && !Array.isArray(value);
   }
+  function readSnapshot(dataPath: string) {
+    if (!options.inspect) return;
+    const id = stack.at(-1)?.id;
+    if (!id) return;
+    let paths = data.get(id);
+    if (!paths) {
+      paths = new Set();
+      data.set(id, paths);
+    }
+    paths.add(dataPath);
+  }
   const globals = liquidObjects(
     snapshot,
     {
@@ -177,17 +189,7 @@ export async function renderTheme(
       designMode: options.designMode ?? false,
     },
     {
-      read(dataPath) {
-        if (!options.inspect) return;
-        const id = stack.at(-1)?.id;
-        if (!id) return;
-        let paths = data.get(id);
-        if (!paths) {
-          paths = new Set();
-          data.set(id, paths);
-        }
-        paths.add(dataPath);
-      },
+      read: readSnapshot,
       unsupportedOperation(message) {
         diagnostic("not-implemented", message);
       },
@@ -596,13 +598,10 @@ export async function renderTheme(
     suffix: route.template.slice(10, -5).split(".")[1] ?? null,
   };
   globals.current_page = Number(route.query.page ?? 1);
-  for (const property of ["page_title"])
-    Object.defineProperty(globals, property, {
-      get() {
-        diagnostic("not-implemented", `Global ${property} derivation is not implemented.`);
-        return null;
-      },
-    });
+  registerPageMetadata(globals, snapshot, route, {
+    read: readSnapshot,
+    unsupported: (message) => diagnostic("not-implemented", message),
+  });
   async function section(
     id: string,
     config: SectionConfig,

@@ -4,6 +4,10 @@
     "schemaVersion": "1.0"
   },
   "shop": {
+    "seo": {
+      "title": null,
+      "description": "A synthetic catalog for local theme development."
+    },
     "name": "Offline Example Shop",
     "domain": "example.test",
     "locale": "en",
@@ -22,6 +26,10 @@
   },
   "products": [
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 1 for offline theme verification."
+      },
       "id": "100001",
       "handle": "sop-matrix-needle",
       "title": "SOP Matrix Needle",
@@ -359,6 +367,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 2 for offline theme verification."
+      },
       "id": "100002",
       "handle": "sop-product-02",
       "title": "SOP Product 02",
@@ -422,6 +434,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 3 for offline theme verification."
+      },
       "id": "100003",
       "handle": "sop-product-03",
       "title": "SOP Product 03",
@@ -485,6 +501,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 4 for offline theme verification."
+      },
       "id": "100004",
       "handle": "sop-product-04",
       "title": "SOP Product 04",
@@ -548,6 +568,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 5 for offline theme verification."
+      },
       "id": "100005",
       "handle": "sop-product-05",
       "title": "SOP Product 05",
@@ -611,6 +635,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 6 for offline theme verification."
+      },
       "id": "100006",
       "handle": "sop-product-06",
       "title": "SOP Product 06",
@@ -674,6 +702,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 7 for offline theme verification."
+      },
       "id": "100007",
       "handle": "sop-product-07",
       "title": "SOP Product 07",
@@ -737,6 +769,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 8 for offline theme verification."
+      },
       "id": "100008",
       "handle": "sop-product-08",
       "title": "SOP Product 08",
@@ -800,6 +836,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 9 for offline theme verification."
+      },
       "id": "100009",
       "handle": "sop-product-09",
       "title": "SOP Product 09",
@@ -863,6 +903,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 10 for offline theme verification."
+      },
       "id": "100010",
       "handle": "sop-product-10",
       "title": "SOP Product 10",
@@ -926,6 +970,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 11 for offline theme verification."
+      },
       "id": "100011",
       "handle": "sop-product-11",
       "title": "SOP Product 11",
@@ -989,6 +1037,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 12 for offline theme verification."
+      },
       "id": "100012",
       "handle": "sop-product-12",
       "title": "SOP Product 12",
@@ -1052,6 +1104,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 13 for offline theme verification."
+      },
       "id": "100013",
       "handle": "sop-product-13",
       "title": "SOP Product 13",
@@ -1115,6 +1171,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 14 for offline theme verification."
+      },
       "id": "100014",
       "handle": "sop-product-14",
       "title": "SOP Product 14",
@@ -1178,6 +1238,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 15 for offline theme verification."
+      },
       "id": "100015",
       "handle": "sop-product-15",
       "title": "SOP Product 15",
@@ -1241,6 +1305,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 16 for offline theme verification."
+      },
       "id": "100016",
       "handle": "sop-product-16",
       "title": "SOP Product 16",
@@ -1304,6 +1372,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 17 for offline theme verification."
+      },
       "id": "100017",
       "handle": "sop-product-17",
       "title": "SOP Product 17",
@@ -1367,6 +1439,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 18 for offline theme verification."
+      },
       "id": "100018",
       "handle": "sop-product-18",
       "title": "SOP Product 18",
@@ -1430,6 +1506,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 19 for offline theme verification."
+      },
       "id": "100019",
       "handle": "sop-product-19",
       "title": "SOP Product 19",
@@ -1493,6 +1573,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 20 for offline theme verification."
+      },
       "id": "100020",
       "handle": "sop-product-20",
       "title": "SOP Product 20",
@@ -1556,6 +1640,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 21 for offline theme verification."
+      },
       "id": "100021",
       "handle": "sop-product-21",
       "title": "SOP Product 21",
@@ -1619,6 +1707,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 22 for offline theme verification."
+      },
       "id": "100022",
       "handle": "sop-product-22",
       "title": "SOP Product 22",
@@ -1682,6 +1774,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 23 for offline theme verification."
+      },
       "id": "100023",
       "handle": "sop-product-23",
       "title": "SOP Product 23",
@@ -1745,6 +1841,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 24 for offline theme verification."
+      },
       "id": "100024",
       "handle": "sop-product-24",
       "title": "SOP Product 24",
@@ -1808,6 +1908,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 25 for offline theme verification."
+      },
       "id": "100025",
       "handle": "sop-product-25",
       "title": "SOP Product 25",
@@ -1871,6 +1975,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 26 for offline theme verification."
+      },
       "id": "100026",
       "handle": "sop-product-26",
       "title": "SOP Product 26",
@@ -1934,6 +2042,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 27 for offline theme verification."
+      },
       "id": "100027",
       "handle": "sop-product-27",
       "title": "SOP Product 27",
@@ -1997,6 +2109,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 28 for offline theme verification."
+      },
       "id": "100028",
       "handle": "sop-product-28",
       "title": "SOP Product 28",
@@ -2060,6 +2176,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 29 for offline theme verification."
+      },
       "id": "100029",
       "handle": "sop-product-29",
       "title": "SOP Product 29",
@@ -2123,6 +2243,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 30 for offline theme verification."
+      },
       "id": "100030",
       "handle": "sop-product-30",
       "title": "SOP Product 30",
@@ -2186,6 +2310,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 31 for offline theme verification."
+      },
       "id": "100031",
       "handle": "sop-product-31",
       "title": "SOP Product 31",
@@ -2249,6 +2377,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 32 for offline theme verification."
+      },
       "id": "100032",
       "handle": "sop-product-32",
       "title": "SOP Product 32",
@@ -2312,6 +2444,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 33 for offline theme verification."
+      },
       "id": "100033",
       "handle": "sop-product-33",
       "title": "SOP Product 33",
@@ -2375,6 +2511,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 34 for offline theme verification."
+      },
       "id": "100034",
       "handle": "sop-product-34",
       "title": "SOP Product 34",
@@ -2438,6 +2578,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 35 for offline theme verification."
+      },
       "id": "100035",
       "handle": "sop-product-35",
       "title": "SOP Product 35",
@@ -2501,6 +2645,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 36 for offline theme verification."
+      },
       "id": "100036",
       "handle": "sop-product-36",
       "title": "SOP Product 36",
@@ -2564,6 +2712,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 37 for offline theme verification."
+      },
       "id": "100037",
       "handle": "sop-product-37",
       "title": "SOP Product 37",
@@ -2627,6 +2779,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 38 for offline theme verification."
+      },
       "id": "100038",
       "handle": "sop-product-38",
       "title": "SOP Product 38",
@@ -2690,6 +2846,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 39 for offline theme verification."
+      },
       "id": "100039",
       "handle": "sop-product-39",
       "title": "SOP Product 39",
@@ -2753,6 +2913,10 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic product 40 for offline theme verification."
+      },
       "id": "100040",
       "handle": "sop-product-40",
       "title": "SOP Product 40",
@@ -2818,6 +2982,10 @@
   ],
   "collections": [
     {
+      "seo": {
+        "title": null,
+        "description": "Original synthetic collection."
+      },
       "id": "200001",
       "handle": "sop-catalog",
       "title": "Example Catalog",
@@ -2876,6 +3044,10 @@
   ],
   "pages": [
     {
+      "seo": {
+        "title": null,
+        "description": "Original offline examples from Example Studio."
+      },
       "id": "300001",
       "handle": "about",
       "title": "About Example Studio",
@@ -2886,11 +3058,19 @@
   ],
   "blogs": [
     {
+      "seo": {
+        "title": null,
+        "description": "Original example journal."
+      },
       "id": "400001",
       "handle": "news",
       "title": "Example Journal",
       "articles": [
         {
+          "seo": {
+            "title": null,
+            "description": "Original example article 1."
+          },
           "id": "500001",
           "handle": "story-1",
           "title": "Example Story 1",
@@ -2911,6 +3091,10 @@
           "metafields": {}
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original example article 2."
+          },
           "id": "500002",
           "handle": "story-2",
           "title": "Example Story 2",
@@ -2926,6 +3110,10 @@
           "metafields": {}
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original example article 3."
+          },
           "id": "500003",
           "handle": "story-3",
           "title": "Example Story 3",
@@ -2994,6 +3182,10 @@
     "sold-out": {
       "products": [
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 1 for offline theme verification."
+          },
           "id": "100001",
           "handle": "sop-matrix-needle",
           "title": "SOP Matrix Needle",
@@ -3331,6 +3523,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 2 for offline theme verification."
+          },
           "id": "100002",
           "handle": "sop-product-02",
           "title": "SOP Product 02",
@@ -3394,6 +3590,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 3 for offline theme verification."
+          },
           "id": "100003",
           "handle": "sop-product-03",
           "title": "SOP Product 03",
@@ -3457,6 +3657,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 4 for offline theme verification."
+          },
           "id": "100004",
           "handle": "sop-product-04",
           "title": "SOP Product 04",
@@ -3520,6 +3724,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 5 for offline theme verification."
+          },
           "id": "100005",
           "handle": "sop-product-05",
           "title": "SOP Product 05",
@@ -3583,6 +3791,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 6 for offline theme verification."
+          },
           "id": "100006",
           "handle": "sop-product-06",
           "title": "SOP Product 06",
@@ -3646,6 +3858,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 7 for offline theme verification."
+          },
           "id": "100007",
           "handle": "sop-product-07",
           "title": "SOP Product 07",
@@ -3709,6 +3925,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 8 for offline theme verification."
+          },
           "id": "100008",
           "handle": "sop-product-08",
           "title": "SOP Product 08",
@@ -3772,6 +3992,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 9 for offline theme verification."
+          },
           "id": "100009",
           "handle": "sop-product-09",
           "title": "SOP Product 09",
@@ -3835,6 +4059,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 10 for offline theme verification."
+          },
           "id": "100010",
           "handle": "sop-product-10",
           "title": "SOP Product 10",
@@ -3898,6 +4126,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 11 for offline theme verification."
+          },
           "id": "100011",
           "handle": "sop-product-11",
           "title": "SOP Product 11",
@@ -3961,6 +4193,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 12 for offline theme verification."
+          },
           "id": "100012",
           "handle": "sop-product-12",
           "title": "SOP Product 12",
@@ -4024,6 +4260,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 13 for offline theme verification."
+          },
           "id": "100013",
           "handle": "sop-product-13",
           "title": "SOP Product 13",
@@ -4087,6 +4327,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 14 for offline theme verification."
+          },
           "id": "100014",
           "handle": "sop-product-14",
           "title": "SOP Product 14",
@@ -4150,6 +4394,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 15 for offline theme verification."
+          },
           "id": "100015",
           "handle": "sop-product-15",
           "title": "SOP Product 15",
@@ -4213,6 +4461,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 16 for offline theme verification."
+          },
           "id": "100016",
           "handle": "sop-product-16",
           "title": "SOP Product 16",
@@ -4276,6 +4528,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 17 for offline theme verification."
+          },
           "id": "100017",
           "handle": "sop-product-17",
           "title": "SOP Product 17",
@@ -4339,6 +4595,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 18 for offline theme verification."
+          },
           "id": "100018",
           "handle": "sop-product-18",
           "title": "SOP Product 18",
@@ -4402,6 +4662,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 19 for offline theme verification."
+          },
           "id": "100019",
           "handle": "sop-product-19",
           "title": "SOP Product 19",
@@ -4465,6 +4729,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 20 for offline theme verification."
+          },
           "id": "100020",
           "handle": "sop-product-20",
           "title": "SOP Product 20",
@@ -4528,6 +4796,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 21 for offline theme verification."
+          },
           "id": "100021",
           "handle": "sop-product-21",
           "title": "SOP Product 21",
@@ -4591,6 +4863,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 22 for offline theme verification."
+          },
           "id": "100022",
           "handle": "sop-product-22",
           "title": "SOP Product 22",
@@ -4654,6 +4930,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 23 for offline theme verification."
+          },
           "id": "100023",
           "handle": "sop-product-23",
           "title": "SOP Product 23",
@@ -4717,6 +4997,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 24 for offline theme verification."
+          },
           "id": "100024",
           "handle": "sop-product-24",
           "title": "SOP Product 24",
@@ -4780,6 +5064,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 25 for offline theme verification."
+          },
           "id": "100025",
           "handle": "sop-product-25",
           "title": "SOP Product 25",
@@ -4843,6 +5131,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 26 for offline theme verification."
+          },
           "id": "100026",
           "handle": "sop-product-26",
           "title": "SOP Product 26",
@@ -4906,6 +5198,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 27 for offline theme verification."
+          },
           "id": "100027",
           "handle": "sop-product-27",
           "title": "SOP Product 27",
@@ -4969,6 +5265,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 28 for offline theme verification."
+          },
           "id": "100028",
           "handle": "sop-product-28",
           "title": "SOP Product 28",
@@ -5032,6 +5332,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 29 for offline theme verification."
+          },
           "id": "100029",
           "handle": "sop-product-29",
           "title": "SOP Product 29",
@@ -5095,6 +5399,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 30 for offline theme verification."
+          },
           "id": "100030",
           "handle": "sop-product-30",
           "title": "SOP Product 30",
@@ -5158,6 +5466,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 31 for offline theme verification."
+          },
           "id": "100031",
           "handle": "sop-product-31",
           "title": "SOP Product 31",
@@ -5221,6 +5533,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 32 for offline theme verification."
+          },
           "id": "100032",
           "handle": "sop-product-32",
           "title": "SOP Product 32",
@@ -5284,6 +5600,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 33 for offline theme verification."
+          },
           "id": "100033",
           "handle": "sop-product-33",
           "title": "SOP Product 33",
@@ -5347,6 +5667,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 34 for offline theme verification."
+          },
           "id": "100034",
           "handle": "sop-product-34",
           "title": "SOP Product 34",
@@ -5410,6 +5734,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 35 for offline theme verification."
+          },
           "id": "100035",
           "handle": "sop-product-35",
           "title": "SOP Product 35",
@@ -5473,6 +5801,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 36 for offline theme verification."
+          },
           "id": "100036",
           "handle": "sop-product-36",
           "title": "SOP Product 36",
@@ -5536,6 +5868,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 37 for offline theme verification."
+          },
           "id": "100037",
           "handle": "sop-product-37",
           "title": "SOP Product 37",
@@ -5599,6 +5935,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 38 for offline theme verification."
+          },
           "id": "100038",
           "handle": "sop-product-38",
           "title": "SOP Product 38",
@@ -5662,6 +6002,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 39 for offline theme verification."
+          },
           "id": "100039",
           "handle": "sop-product-39",
           "title": "SOP Product 39",
@@ -5725,6 +6069,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 40 for offline theme verification."
+          },
           "id": "100040",
           "handle": "sop-product-40",
           "title": "SOP Product 40",
@@ -5792,6 +6140,10 @@
     "single-variant": {
       "products": [
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 1 for offline theme verification."
+          },
           "id": "100001",
           "handle": "sop-matrix-needle",
           "title": "SOP Matrix Needle",
@@ -5861,6 +6213,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 2 for offline theme verification."
+          },
           "id": "100002",
           "handle": "sop-product-02",
           "title": "SOP Product 02",
@@ -5924,6 +6280,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 3 for offline theme verification."
+          },
           "id": "100003",
           "handle": "sop-product-03",
           "title": "SOP Product 03",
@@ -5987,6 +6347,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 4 for offline theme verification."
+          },
           "id": "100004",
           "handle": "sop-product-04",
           "title": "SOP Product 04",
@@ -6050,6 +6414,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 5 for offline theme verification."
+          },
           "id": "100005",
           "handle": "sop-product-05",
           "title": "SOP Product 05",
@@ -6113,6 +6481,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 6 for offline theme verification."
+          },
           "id": "100006",
           "handle": "sop-product-06",
           "title": "SOP Product 06",
@@ -6176,6 +6548,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 7 for offline theme verification."
+          },
           "id": "100007",
           "handle": "sop-product-07",
           "title": "SOP Product 07",
@@ -6239,6 +6615,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 8 for offline theme verification."
+          },
           "id": "100008",
           "handle": "sop-product-08",
           "title": "SOP Product 08",
@@ -6302,6 +6682,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 9 for offline theme verification."
+          },
           "id": "100009",
           "handle": "sop-product-09",
           "title": "SOP Product 09",
@@ -6365,6 +6749,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 10 for offline theme verification."
+          },
           "id": "100010",
           "handle": "sop-product-10",
           "title": "SOP Product 10",
@@ -6428,6 +6816,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 11 for offline theme verification."
+          },
           "id": "100011",
           "handle": "sop-product-11",
           "title": "SOP Product 11",
@@ -6491,6 +6883,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 12 for offline theme verification."
+          },
           "id": "100012",
           "handle": "sop-product-12",
           "title": "SOP Product 12",
@@ -6554,6 +6950,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 13 for offline theme verification."
+          },
           "id": "100013",
           "handle": "sop-product-13",
           "title": "SOP Product 13",
@@ -6617,6 +7017,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 14 for offline theme verification."
+          },
           "id": "100014",
           "handle": "sop-product-14",
           "title": "SOP Product 14",
@@ -6680,6 +7084,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 15 for offline theme verification."
+          },
           "id": "100015",
           "handle": "sop-product-15",
           "title": "SOP Product 15",
@@ -6743,6 +7151,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 16 for offline theme verification."
+          },
           "id": "100016",
           "handle": "sop-product-16",
           "title": "SOP Product 16",
@@ -6806,6 +7218,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 17 for offline theme verification."
+          },
           "id": "100017",
           "handle": "sop-product-17",
           "title": "SOP Product 17",
@@ -6869,6 +7285,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 18 for offline theme verification."
+          },
           "id": "100018",
           "handle": "sop-product-18",
           "title": "SOP Product 18",
@@ -6932,6 +7352,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 19 for offline theme verification."
+          },
           "id": "100019",
           "handle": "sop-product-19",
           "title": "SOP Product 19",
@@ -6995,6 +7419,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 20 for offline theme verification."
+          },
           "id": "100020",
           "handle": "sop-product-20",
           "title": "SOP Product 20",
@@ -7058,6 +7486,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 21 for offline theme verification."
+          },
           "id": "100021",
           "handle": "sop-product-21",
           "title": "SOP Product 21",
@@ -7121,6 +7553,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 22 for offline theme verification."
+          },
           "id": "100022",
           "handle": "sop-product-22",
           "title": "SOP Product 22",
@@ -7184,6 +7620,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 23 for offline theme verification."
+          },
           "id": "100023",
           "handle": "sop-product-23",
           "title": "SOP Product 23",
@@ -7247,6 +7687,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 24 for offline theme verification."
+          },
           "id": "100024",
           "handle": "sop-product-24",
           "title": "SOP Product 24",
@@ -7310,6 +7754,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 25 for offline theme verification."
+          },
           "id": "100025",
           "handle": "sop-product-25",
           "title": "SOP Product 25",
@@ -7373,6 +7821,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 26 for offline theme verification."
+          },
           "id": "100026",
           "handle": "sop-product-26",
           "title": "SOP Product 26",
@@ -7436,6 +7888,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 27 for offline theme verification."
+          },
           "id": "100027",
           "handle": "sop-product-27",
           "title": "SOP Product 27",
@@ -7499,6 +7955,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 28 for offline theme verification."
+          },
           "id": "100028",
           "handle": "sop-product-28",
           "title": "SOP Product 28",
@@ -7562,6 +8022,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 29 for offline theme verification."
+          },
           "id": "100029",
           "handle": "sop-product-29",
           "title": "SOP Product 29",
@@ -7625,6 +8089,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 30 for offline theme verification."
+          },
           "id": "100030",
           "handle": "sop-product-30",
           "title": "SOP Product 30",
@@ -7688,6 +8156,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 31 for offline theme verification."
+          },
           "id": "100031",
           "handle": "sop-product-31",
           "title": "SOP Product 31",
@@ -7751,6 +8223,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 32 for offline theme verification."
+          },
           "id": "100032",
           "handle": "sop-product-32",
           "title": "SOP Product 32",
@@ -7814,6 +8290,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 33 for offline theme verification."
+          },
           "id": "100033",
           "handle": "sop-product-33",
           "title": "SOP Product 33",
@@ -7877,6 +8357,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 34 for offline theme verification."
+          },
           "id": "100034",
           "handle": "sop-product-34",
           "title": "SOP Product 34",
@@ -7940,6 +8424,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 35 for offline theme verification."
+          },
           "id": "100035",
           "handle": "sop-product-35",
           "title": "SOP Product 35",
@@ -8003,6 +8491,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 36 for offline theme verification."
+          },
           "id": "100036",
           "handle": "sop-product-36",
           "title": "SOP Product 36",
@@ -8066,6 +8558,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 37 for offline theme verification."
+          },
           "id": "100037",
           "handle": "sop-product-37",
           "title": "SOP Product 37",
@@ -8129,6 +8625,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 38 for offline theme verification."
+          },
           "id": "100038",
           "handle": "sop-product-38",
           "title": "SOP Product 38",
@@ -8192,6 +8692,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 39 for offline theme verification."
+          },
           "id": "100039",
           "handle": "sop-product-39",
           "title": "SOP Product 39",
@@ -8255,6 +8759,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 40 for offline theme verification."
+          },
           "id": "100040",
           "handle": "sop-product-40",
           "title": "SOP Product 40",
@@ -8322,6 +8830,10 @@
     "no-images": {
       "products": [
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 1 for offline theme verification."
+          },
           "id": "100001",
           "handle": "sop-matrix-needle",
           "title": "SOP Matrix Needle",
@@ -8646,6 +9158,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 2 for offline theme verification."
+          },
           "id": "100002",
           "handle": "sop-product-02",
           "title": "SOP Product 02",
@@ -8709,6 +9225,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 3 for offline theme verification."
+          },
           "id": "100003",
           "handle": "sop-product-03",
           "title": "SOP Product 03",
@@ -8772,6 +9292,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 4 for offline theme verification."
+          },
           "id": "100004",
           "handle": "sop-product-04",
           "title": "SOP Product 04",
@@ -8835,6 +9359,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 5 for offline theme verification."
+          },
           "id": "100005",
           "handle": "sop-product-05",
           "title": "SOP Product 05",
@@ -8898,6 +9426,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 6 for offline theme verification."
+          },
           "id": "100006",
           "handle": "sop-product-06",
           "title": "SOP Product 06",
@@ -8961,6 +9493,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 7 for offline theme verification."
+          },
           "id": "100007",
           "handle": "sop-product-07",
           "title": "SOP Product 07",
@@ -9024,6 +9560,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 8 for offline theme verification."
+          },
           "id": "100008",
           "handle": "sop-product-08",
           "title": "SOP Product 08",
@@ -9087,6 +9627,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 9 for offline theme verification."
+          },
           "id": "100009",
           "handle": "sop-product-09",
           "title": "SOP Product 09",
@@ -9150,6 +9694,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 10 for offline theme verification."
+          },
           "id": "100010",
           "handle": "sop-product-10",
           "title": "SOP Product 10",
@@ -9213,6 +9761,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 11 for offline theme verification."
+          },
           "id": "100011",
           "handle": "sop-product-11",
           "title": "SOP Product 11",
@@ -9276,6 +9828,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 12 for offline theme verification."
+          },
           "id": "100012",
           "handle": "sop-product-12",
           "title": "SOP Product 12",
@@ -9339,6 +9895,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 13 for offline theme verification."
+          },
           "id": "100013",
           "handle": "sop-product-13",
           "title": "SOP Product 13",
@@ -9402,6 +9962,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 14 for offline theme verification."
+          },
           "id": "100014",
           "handle": "sop-product-14",
           "title": "SOP Product 14",
@@ -9465,6 +10029,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 15 for offline theme verification."
+          },
           "id": "100015",
           "handle": "sop-product-15",
           "title": "SOP Product 15",
@@ -9528,6 +10096,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 16 for offline theme verification."
+          },
           "id": "100016",
           "handle": "sop-product-16",
           "title": "SOP Product 16",
@@ -9591,6 +10163,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 17 for offline theme verification."
+          },
           "id": "100017",
           "handle": "sop-product-17",
           "title": "SOP Product 17",
@@ -9654,6 +10230,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 18 for offline theme verification."
+          },
           "id": "100018",
           "handle": "sop-product-18",
           "title": "SOP Product 18",
@@ -9717,6 +10297,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 19 for offline theme verification."
+          },
           "id": "100019",
           "handle": "sop-product-19",
           "title": "SOP Product 19",
@@ -9780,6 +10364,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 20 for offline theme verification."
+          },
           "id": "100020",
           "handle": "sop-product-20",
           "title": "SOP Product 20",
@@ -9843,6 +10431,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 21 for offline theme verification."
+          },
           "id": "100021",
           "handle": "sop-product-21",
           "title": "SOP Product 21",
@@ -9906,6 +10498,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 22 for offline theme verification."
+          },
           "id": "100022",
           "handle": "sop-product-22",
           "title": "SOP Product 22",
@@ -9969,6 +10565,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 23 for offline theme verification."
+          },
           "id": "100023",
           "handle": "sop-product-23",
           "title": "SOP Product 23",
@@ -10032,6 +10632,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 24 for offline theme verification."
+          },
           "id": "100024",
           "handle": "sop-product-24",
           "title": "SOP Product 24",
@@ -10095,6 +10699,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 25 for offline theme verification."
+          },
           "id": "100025",
           "handle": "sop-product-25",
           "title": "SOP Product 25",
@@ -10158,6 +10766,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 26 for offline theme verification."
+          },
           "id": "100026",
           "handle": "sop-product-26",
           "title": "SOP Product 26",
@@ -10221,6 +10833,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 27 for offline theme verification."
+          },
           "id": "100027",
           "handle": "sop-product-27",
           "title": "SOP Product 27",
@@ -10284,6 +10900,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 28 for offline theme verification."
+          },
           "id": "100028",
           "handle": "sop-product-28",
           "title": "SOP Product 28",
@@ -10347,6 +10967,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 29 for offline theme verification."
+          },
           "id": "100029",
           "handle": "sop-product-29",
           "title": "SOP Product 29",
@@ -10410,6 +11034,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 30 for offline theme verification."
+          },
           "id": "100030",
           "handle": "sop-product-30",
           "title": "SOP Product 30",
@@ -10473,6 +11101,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 31 for offline theme verification."
+          },
           "id": "100031",
           "handle": "sop-product-31",
           "title": "SOP Product 31",
@@ -10536,6 +11168,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 32 for offline theme verification."
+          },
           "id": "100032",
           "handle": "sop-product-32",
           "title": "SOP Product 32",
@@ -10599,6 +11235,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 33 for offline theme verification."
+          },
           "id": "100033",
           "handle": "sop-product-33",
           "title": "SOP Product 33",
@@ -10662,6 +11302,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 34 for offline theme verification."
+          },
           "id": "100034",
           "handle": "sop-product-34",
           "title": "SOP Product 34",
@@ -10725,6 +11369,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 35 for offline theme verification."
+          },
           "id": "100035",
           "handle": "sop-product-35",
           "title": "SOP Product 35",
@@ -10788,6 +11436,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 36 for offline theme verification."
+          },
           "id": "100036",
           "handle": "sop-product-36",
           "title": "SOP Product 36",
@@ -10851,6 +11503,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 37 for offline theme verification."
+          },
           "id": "100037",
           "handle": "sop-product-37",
           "title": "SOP Product 37",
@@ -10914,6 +11570,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 38 for offline theme verification."
+          },
           "id": "100038",
           "handle": "sop-product-38",
           "title": "SOP Product 38",
@@ -10977,6 +11637,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 39 for offline theme verification."
+          },
           "id": "100039",
           "handle": "sop-product-39",
           "title": "SOP Product 39",
@@ -11040,6 +11704,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 40 for offline theme verification."
+          },
           "id": "100040",
           "handle": "sop-product-40",
           "title": "SOP Product 40",
@@ -11107,6 +11775,10 @@
     "long-content": {
       "products": [
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 1 for offline theme verification."
+          },
           "id": "100001",
           "handle": "sop-matrix-needle",
           "title": "SOP Matrix Needle — SOP Matrix Needle — SOP Matrix Needle — SOP Matrix Needle — SOP Matrix Needle — SOP Matrix Needle — SOP Matrix Needle — SOP Matrix Needle — SOP Matrix Needle — SOP Matrix Needle — SOP Matrix Needle — SOP Matrix Needle —",
@@ -11528,6 +12200,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 2 for offline theme verification."
+          },
           "id": "100002",
           "handle": "sop-product-02",
           "title": "SOP Product 02",
@@ -11591,6 +12267,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 3 for offline theme verification."
+          },
           "id": "100003",
           "handle": "sop-product-03",
           "title": "SOP Product 03",
@@ -11654,6 +12334,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 4 for offline theme verification."
+          },
           "id": "100004",
           "handle": "sop-product-04",
           "title": "SOP Product 04",
@@ -11717,6 +12401,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 5 for offline theme verification."
+          },
           "id": "100005",
           "handle": "sop-product-05",
           "title": "SOP Product 05",
@@ -11780,6 +12468,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 6 for offline theme verification."
+          },
           "id": "100006",
           "handle": "sop-product-06",
           "title": "SOP Product 06",
@@ -11843,6 +12535,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 7 for offline theme verification."
+          },
           "id": "100007",
           "handle": "sop-product-07",
           "title": "SOP Product 07",
@@ -11906,6 +12602,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 8 for offline theme verification."
+          },
           "id": "100008",
           "handle": "sop-product-08",
           "title": "SOP Product 08",
@@ -11969,6 +12669,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 9 for offline theme verification."
+          },
           "id": "100009",
           "handle": "sop-product-09",
           "title": "SOP Product 09",
@@ -12032,6 +12736,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 10 for offline theme verification."
+          },
           "id": "100010",
           "handle": "sop-product-10",
           "title": "SOP Product 10",
@@ -12095,6 +12803,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 11 for offline theme verification."
+          },
           "id": "100011",
           "handle": "sop-product-11",
           "title": "SOP Product 11",
@@ -12158,6 +12870,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 12 for offline theme verification."
+          },
           "id": "100012",
           "handle": "sop-product-12",
           "title": "SOP Product 12",
@@ -12221,6 +12937,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 13 for offline theme verification."
+          },
           "id": "100013",
           "handle": "sop-product-13",
           "title": "SOP Product 13",
@@ -12284,6 +13004,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 14 for offline theme verification."
+          },
           "id": "100014",
           "handle": "sop-product-14",
           "title": "SOP Product 14",
@@ -12347,6 +13071,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 15 for offline theme verification."
+          },
           "id": "100015",
           "handle": "sop-product-15",
           "title": "SOP Product 15",
@@ -12410,6 +13138,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 16 for offline theme verification."
+          },
           "id": "100016",
           "handle": "sop-product-16",
           "title": "SOP Product 16",
@@ -12473,6 +13205,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 17 for offline theme verification."
+          },
           "id": "100017",
           "handle": "sop-product-17",
           "title": "SOP Product 17",
@@ -12536,6 +13272,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 18 for offline theme verification."
+          },
           "id": "100018",
           "handle": "sop-product-18",
           "title": "SOP Product 18",
@@ -12599,6 +13339,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 19 for offline theme verification."
+          },
           "id": "100019",
           "handle": "sop-product-19",
           "title": "SOP Product 19",
@@ -12662,6 +13406,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 20 for offline theme verification."
+          },
           "id": "100020",
           "handle": "sop-product-20",
           "title": "SOP Product 20",
@@ -12725,6 +13473,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 21 for offline theme verification."
+          },
           "id": "100021",
           "handle": "sop-product-21",
           "title": "SOP Product 21",
@@ -12788,6 +13540,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 22 for offline theme verification."
+          },
           "id": "100022",
           "handle": "sop-product-22",
           "title": "SOP Product 22",
@@ -12851,6 +13607,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 23 for offline theme verification."
+          },
           "id": "100023",
           "handle": "sop-product-23",
           "title": "SOP Product 23",
@@ -12914,6 +13674,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 24 for offline theme verification."
+          },
           "id": "100024",
           "handle": "sop-product-24",
           "title": "SOP Product 24",
@@ -12977,6 +13741,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 25 for offline theme verification."
+          },
           "id": "100025",
           "handle": "sop-product-25",
           "title": "SOP Product 25",
@@ -13040,6 +13808,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 26 for offline theme verification."
+          },
           "id": "100026",
           "handle": "sop-product-26",
           "title": "SOP Product 26",
@@ -13103,6 +13875,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 27 for offline theme verification."
+          },
           "id": "100027",
           "handle": "sop-product-27",
           "title": "SOP Product 27",
@@ -13166,6 +13942,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 28 for offline theme verification."
+          },
           "id": "100028",
           "handle": "sop-product-28",
           "title": "SOP Product 28",
@@ -13229,6 +14009,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 29 for offline theme verification."
+          },
           "id": "100029",
           "handle": "sop-product-29",
           "title": "SOP Product 29",
@@ -13292,6 +14076,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 30 for offline theme verification."
+          },
           "id": "100030",
           "handle": "sop-product-30",
           "title": "SOP Product 30",
@@ -13355,6 +14143,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 31 for offline theme verification."
+          },
           "id": "100031",
           "handle": "sop-product-31",
           "title": "SOP Product 31",
@@ -13418,6 +14210,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 32 for offline theme verification."
+          },
           "id": "100032",
           "handle": "sop-product-32",
           "title": "SOP Product 32",
@@ -13481,6 +14277,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 33 for offline theme verification."
+          },
           "id": "100033",
           "handle": "sop-product-33",
           "title": "SOP Product 33",
@@ -13544,6 +14344,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 34 for offline theme verification."
+          },
           "id": "100034",
           "handle": "sop-product-34",
           "title": "SOP Product 34",
@@ -13607,6 +14411,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 35 for offline theme verification."
+          },
           "id": "100035",
           "handle": "sop-product-35",
           "title": "SOP Product 35",
@@ -13670,6 +14478,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 36 for offline theme verification."
+          },
           "id": "100036",
           "handle": "sop-product-36",
           "title": "SOP Product 36",
@@ -13733,6 +14545,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 37 for offline theme verification."
+          },
           "id": "100037",
           "handle": "sop-product-37",
           "title": "SOP Product 37",
@@ -13796,6 +14612,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 38 for offline theme verification."
+          },
           "id": "100038",
           "handle": "sop-product-38",
           "title": "SOP Product 38",
@@ -13859,6 +14679,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 39 for offline theme verification."
+          },
           "id": "100039",
           "handle": "sop-product-39",
           "title": "SOP Product 39",
@@ -13922,6 +14746,10 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic product 40 for offline theme verification."
+          },
           "id": "100040",
           "handle": "sop-product-40",
           "title": "SOP Product 40",
@@ -13989,6 +14817,10 @@
     "empty": {
       "collections": [
         {
+          "seo": {
+            "title": null,
+            "description": "Original synthetic collection."
+          },
           "id": "200001",
           "handle": "sop-catalog",
           "title": "Example Catalog",
@@ -14025,6 +14857,10 @@
     "with-image": {
       "blogs": [
         {
+          "seo": {
+            "title": null,
+            "description": "Original example journal."
+          },
           "id": "400001",
           "handle": "news",
           "title": "Example Journal",
@@ -14032,6 +14868,10 @@
           "metafields": {},
           "articles": [
             {
+              "seo": {
+                "title": null,
+                "description": "Original example article 1."
+              },
               "id": "500001",
               "handle": "story-1",
               "title": "Example Story 1",
@@ -14052,6 +14892,10 @@
               "metafields": {}
             },
             {
+              "seo": {
+                "title": null,
+                "description": "Original example article 2."
+              },
               "id": "500002",
               "handle": "story-2",
               "title": "Example Story 2",
@@ -14067,6 +14911,10 @@
               "metafields": {}
             },
             {
+              "seo": {
+                "title": null,
+                "description": "Original example article 3."
+              },
               "id": "500003",
               "handle": "story-3",
               "title": "Example Story 3",
@@ -14093,6 +14941,10 @@
     "without-image": {
       "blogs": [
         {
+          "seo": {
+            "title": null,
+            "description": "Original example journal."
+          },
           "id": "400001",
           "handle": "news",
           "title": "Example Journal",
@@ -14100,6 +14952,10 @@
           "metafields": {},
           "articles": [
             {
+              "seo": {
+                "title": null,
+                "description": "Original example article 1."
+              },
               "id": "500001",
               "handle": "story-1",
               "title": "Example Story 1",
@@ -14115,6 +14971,10 @@
               "metafields": {}
             },
             {
+              "seo": {
+                "title": null,
+                "description": "Original example article 2."
+              },
               "id": "500002",
               "handle": "story-2",
               "title": "Example Story 2",
@@ -14130,6 +14990,10 @@
               "metafields": {}
             },
             {
+              "seo": {
+                "title": null,
+                "description": "Original example article 3."
+              },
               "id": "500003",
               "handle": "story-3",
               "title": "Example Story 3",

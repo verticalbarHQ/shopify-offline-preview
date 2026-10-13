@@ -563,7 +563,7 @@ export function liquidObjects(
   const globals: LiquidRecord = {
     shop: tracked(
       {
-        ...snapshot.shop,
+        ...Object.fromEntries(Object.entries(snapshot.shop).filter(([key]) => key !== "seo")),
         products_count: snapshot.products.length,
         collections_count: snapshot.collections.length,
         ...(snapshot.shop.features

@@ -113,6 +113,12 @@ Missing metadata remains diagnosed. `variants_count` derives from the supplied v
 variant options and prices. Cart view payloads omit Shopify's server session and report that omission;
 the cart page continues to render the supplied cart lines.
 
+Optional resource/shop `seo` fields provide a nullable `title` override and the resolved storefront
+`description`. A null title uses the resource title or shop name. Supply the resolved description
+explicitly: an Admin export's null custom description does not establish the storefront fallback.
+Missing SEO metadata remains diagnosed. Cart, search, all-products and 404 titles use Shopify's
+English system labels; other locales report the missing system-title translation.
+
 Source prices are decimal strings in the shop currency, not floating-point numbers or Liquid's
 derived minor-unit prices. Variants have string ids; cart lines refer to a product handle and
 variant id. Images use paths relative to `images/`. Schema validation checks source shape; reference

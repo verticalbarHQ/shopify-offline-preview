@@ -24,6 +24,24 @@
     "shop": {
       "type": "object",
       "properties": {
+        "seo": {
+          "type": "object",
+          "properties": {
+            "title": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "description": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
         "name": {
           "type": "string"
         },
@@ -116,6 +134,24 @@
       "items": {
         "type": "object",
         "properties": {
+          "seo": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "description": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
           "id": {
             "type": "string",
             "minLength": 1
@@ -474,6 +510,24 @@
       "items": {
         "type": "object",
         "properties": {
+          "seo": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "description": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
           "id": {
             "type": "string",
             "minLength": 1
@@ -559,6 +613,24 @@
       "items": {
         "type": "object",
         "properties": {
+          "seo": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "description": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
           "id": {
             "type": "string",
             "minLength": 1
@@ -610,6 +682,24 @@
       "items": {
         "type": "object",
         "properties": {
+          "seo": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "description": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
           "id": {
             "type": "string",
             "minLength": 1
@@ -626,6 +716,24 @@
             "items": {
               "type": "object",
               "properties": {
+                "seo": {
+                  "type": "object",
+                  "properties": {
+                    "title": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "description": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                },
                 "id": {
                   "type": "string",
                   "minLength": 1
