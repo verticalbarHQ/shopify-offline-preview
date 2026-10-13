@@ -134,6 +134,14 @@ not invented. Line indices derive from source order, removal URLs use the suppli
 `item_count_for_variant` totals all matching lines. Cart forms emit initial HTML; submission is
 handled by the preview's existing offline endpoint boundary.
 
+`money_amount` emits the plain decimal amount with Shopify-style cent rounding and no locale
+separators. `handleize`/`handle` normalize punctuation and Latin accents while retaining other
+scripts and underscores.
+
+Date and `time_tag` named formats read `date_formats` from the selected theme locale. English system
+patterns are provided; missing formats or other unsupplied locale patterns stay diagnosed. Display
+dates use the shop timezone, `<time>` datetime values use UTC, and `now` uses the snapshot timestamp.
+
 Source prices are decimal strings in the shop currency, not floating-point numbers or Liquid's
 derived minor-unit prices. Variants have string ids; cart lines refer to a product handle and
 variant id. Images use paths relative to `images/`. Schema validation checks source shape; reference

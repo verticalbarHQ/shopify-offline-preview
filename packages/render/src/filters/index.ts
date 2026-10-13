@@ -4,10 +4,12 @@ import type { Snapshot } from "../../../data/src/schema.js";
 import { themePath } from "../../../theme/src/index.js";
 import { registerFontFilters } from "../fonts.js";
 import { registerColorFilters } from "./colors.js";
+import { registerDateFilters } from "./dates.js";
 import { registerEventFilters } from "./events.js";
+import { handleize } from "./handle.js";
 import { imageFilters, namedArgs } from "./images.js";
 import { md5 } from "./md5.js";
-import { formatMoney } from "./money.js";
+import { formatMoney, moneyAmount } from "./money.js";
 import { translateFactory } from "./translations.js";
 
 interface FilterHooks {
@@ -20,8 +22,11 @@ interface FilterHooks {
 }
 export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void {
   registerColorFilters(engine);
+  registerDateFilters(engine, hooks.snapshot, hooks.files, hooks.diagnostic);
   registerEventFilters(engine, hooks.snapshot.shop.currency, hooks.diagnostic);
   registerFontFilters(engine, hooks.diagnostic);
+  engine.registerFilter("money_amount", (value) => moneyAmount(toValue(value)));
+  engine.registerFilter("handleize", handleize);
   engine.registerFilter("item_count_for_variant", (input: unknown, variant: unknown) => {
     if (
       liquidObjectKind(input) !== "cart" ||

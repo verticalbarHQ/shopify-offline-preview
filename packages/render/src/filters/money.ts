@@ -1,3 +1,14 @@
+export function moneyAmount(input: unknown): string {
+  const value = Number(input ?? 0);
+  if (!Number.isFinite(value) || Math.abs(value) > Number.MAX_SAFE_INTEGER)
+    throw new Error("money_amount requires a finite amount within safe numeric precision");
+  const rounded = Number.isInteger(value) ? Math.abs(value) : Math.round(Math.abs(value));
+  if (!Number.isSafeInteger(rounded))
+    throw new Error("money_amount exceeds safe numeric precision");
+  const cents = BigInt(rounded);
+  return `${cents / 100n}.${(cents % 100n).toString().padStart(2, "0").replace(/0+$/, "") || "0"}`;
+}
+
 /** Liquid inputs are already hundredths; templates come directly from snapshot.shop. */
 export function formatMoney(
   input: unknown,
