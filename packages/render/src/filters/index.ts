@@ -3,6 +3,7 @@ import type { Snapshot } from "../../../data/src/schema.js";
 import { themePath } from "../../../theme/src/index.js";
 import { registerFontFilters } from "../fonts.js";
 import { registerColorFilters } from "./colors.js";
+import { registerEventFilters } from "./events.js";
 import { imageFilters, namedArgs } from "./images.js";
 import { md5 } from "./md5.js";
 import { formatMoney } from "./money.js";
@@ -18,6 +19,7 @@ interface FilterHooks {
 }
 export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void {
   registerColorFilters(engine);
+  registerEventFilters(engine, hooks.snapshot.shop.currency, hooks.diagnostic);
   registerFontFilters(engine, hooks.diagnostic);
   engine.registerFilter("link_to", (value: unknown, url: unknown, ...args: unknown[]) => {
     const target = String(toValue(url) ?? "");

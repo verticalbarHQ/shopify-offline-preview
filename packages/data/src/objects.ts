@@ -3,6 +3,10 @@ import type { Snapshot } from "./schema.js";
 import { type SearchCandidate, searchResults } from "./search.js";
 
 export type LiquidRecord = Record<string, unknown>;
+const objectKinds = new WeakMap<object, string>();
+export function liquidObjectKind(value: unknown): string | undefined {
+  return value !== null && typeof value === "object" ? objectKinds.get(value) : undefined;
+}
 export interface ObjectHooks {
   read(path: string): void;
   unsupported(type: string, property: string): void;
@@ -64,6 +68,11 @@ export function liquidObjects(
     "constructor",
     "__proto__",
     "prototype",
+    "equals", // LiquidJS probes its public Comparable protocol during comparisons.
+    "gt",
+    "geq",
+    "lt",
+    "leq",
   ]);
   function tracked<T extends object>(value: T, type: string, path: string): T {
     let entries = cache.get(value);
@@ -102,6 +111,7 @@ export function liquidObjects(
       },
     });
     entries.set(`${type}:${path}`, result);
+    objectKinds.set(result, type);
     return result;
   }
   function trackedJson(value: unknown, type: string, path: string): unknown {
@@ -211,6 +221,7 @@ export function liquidObjects(
         "quantity_price_breaks_configured?": source.quantityPriceBreaksConfigured,
       }),
       variants_count: variants.length,
+      object_type: "product",
       handle: source.handle,
       title: source.title,
       description: source.descriptionHtml,
@@ -507,22 +518,24 @@ export function liquidObjects(
       hooks.unsupportedOperation
         ? hooks.unsupportedOperation(message)
         : hooks.unsupported("search", message),
-    ).map(
-      (candidate) =>
-        new Proxy(candidate.value, {
-          ownKeys(target) {
-            return [...Reflect.ownKeys(target), "object_type"];
-          },
-          getOwnPropertyDescriptor(target, key) {
-            return key === "object_type"
-              ? { configurable: true, enumerable: true, writable: false, value: candidate.type }
-              : Reflect.getOwnPropertyDescriptor(target, key);
-          },
-          get(target, key, receiver) {
-            return key === "object_type" ? candidate.type : Reflect.get(target, key, receiver);
-          },
-        }),
-    );
+    ).map((candidate) => {
+      const result = new Proxy(candidate.value, {
+        ownKeys(target) {
+          const keys = Reflect.ownKeys(target);
+          return keys.includes("object_type") ? keys : [...keys, "object_type"];
+        },
+        getOwnPropertyDescriptor(target, key) {
+          return key === "object_type"
+            ? { configurable: true, enumerable: true, writable: false, value: candidate.type }
+            : Reflect.getOwnPropertyDescriptor(target, key);
+        },
+        get(target, key, receiver) {
+          return key === "object_type" ? candidate.type : Reflect.get(target, key, receiver);
+        },
+      });
+      objectKinds.set(result, candidate.type);
+      return result;
+    });
     return results;
   }
   const search = tracked(
@@ -628,6 +641,7 @@ export function liquidObjects(
       route.resourceHandle === "all"
         ? tracked(
             {
+              id: null,
               handle: "all",
               products: [...products.values()],
               products_count: products.size,

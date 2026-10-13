@@ -109,6 +109,10 @@ or nondecimal IDs remain strings. Variant metadata can include `quantityRule`, d
 prepared Liquid-shaped JSON objects; the library does not collect or convert their source exports.
 Missing metadata remains diagnosed. `variants_count` derives from the supplied variants.
 
+`standard_event_data` supports view payloads for snapshot products and collections, including selected
+variant options and prices. Cart view payloads omit Shopify's server session and report that omission;
+the cart page continues to render the supplied cart lines.
+
 Source prices are decimal strings in the shop currency, not floating-point numbers or Liquid's
 derived minor-unit prices. Variants have string ids; cart lines refer to a product handle and
 variant id. Images use paths relative to `images/`. Schema validation checks source shape; reference
