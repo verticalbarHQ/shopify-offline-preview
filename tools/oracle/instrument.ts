@@ -30,7 +30,7 @@ export function instrumentLiquid(source: string, path: string): InstrumentedSour
   for (const range of ranges.sort((a, b) => b.start - a.start)) {
     output =
       output.slice(0, range.start) +
-      'data-sop-block-id="{{ block.id }}" data-sop-block-type="{{ block.type }}"' +
+      '{% if block.id and block.type %}data-sop-block-id="{{ block.id }}" data-sop-block-type="{{ block.type }}"{% endif %}' +
       output.slice(range.end);
   }
   const themeBlock = /^blocks\/[^/]+\.liquid$/.test(path);

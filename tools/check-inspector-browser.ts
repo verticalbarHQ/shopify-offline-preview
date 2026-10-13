@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
+import { setTimeout as delay } from "node:timers/promises";
 import { z } from "zod";
 import { benchmarkMatrix, defaultFixture } from "../packages/data/src/fixture.js";
+import type { RenderNode } from "../packages/render/src/contracts.js";
 import { renderTheme } from "../packages/render/src/index.js";
 import { NodeThemeFileSystem } from "../packages/theme/src/node.js";
 import { BrowserProtocol } from "./browser/cdp.js";
@@ -56,29 +58,35 @@ const manifest = z
   .array(z.object({ name: z.string(), path: z.string() }))
   .parse(JSON.parse(await readFile(".local/benchmark-paths.json", "utf8")));
 const rows = [];
+function flatten(nodes: RenderNode[]): RenderNode[] {
+  return nodes.flatMap((node) => [node, ...flatten(node.children)]);
+}
 const wait = `async predicate => {const until=Date.now()+10000;while(!predicate()){if(Date.now()>until) throw new Error('Inspector did not become ready');await new Promise(resolve=>setTimeout(resolve,20));}}`;
 try {
   for (const [index, item] of manifest.entries()) {
-    let unsubscribe: (() => void) | undefined;
-    const loaded = new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(() => {
-        unsubscribe?.();
-        reject(new Error("Inspector navigation timed out"));
-      }, 15000);
-      unsubscribe = client.on((event) => {
-        if (event.sessionId === attached.sessionId && event.method === "Page.loadEventFired") {
-          clearTimeout(timer);
-          unsubscribe?.();
-          resolve();
-        }
-      });
-    });
-    await client.call("Page.navigate", { url: `${origins[index]}/` }, attached.sessionId);
-    await loaded;
-    await client.evaluate(
-      attached.sessionId,
-      `(async()=>{await (${wait})(()=>window.SOP_INSPECTOR_STATE?.result && document.querySelector('#status').dataset.state==='ready');return true;})()`,
-    );
+    const origin = origins[index];
+    await client.call("Page.navigate", { url: `${origin}/` }, attached.sessionId);
+    let parentReady = false;
+    // A late load event from the previous page can arrive after navigation starts.
+    // Wait for this document's ready state; retry only destroyed navigation contexts.
+    for (let attempt = 0; attempt < 200; attempt++) {
+      try {
+        parentReady =
+          (await client.evaluate(
+            attached.sessionId,
+            `location.origin===${JSON.stringify(origin)} && !!window.SOP_INSPECTOR_STATE?.result && document.querySelector('#status')?.dataset.state==='ready'`,
+          )) === true;
+        if (parentReady) break;
+      } catch (error) {
+        if (
+          !(error instanceof Error) ||
+          !/Cannot find context|Execution context was destroyed/.test(error.message)
+        )
+          throw error;
+      }
+      await delay(50);
+    }
+    assert.ok(parentReady, `${item.name}: inspector document did not become ready`);
     for (const page of benchmarkMatrix) {
       const expected = await renderTheme(new NodeThemeFileSystem(item.path), page.path, {
         snapshot: defaultFixture(),
@@ -90,6 +98,7 @@ try {
         .object({
           hash: z.string(),
           nodes: z.number(),
+          sourceNodes: z.array(z.object({ id: z.string(), kind: z.string(), file: z.string() })),
           coreDiagnostics: z.number(),
           iframeIsolated: z.boolean(),
         })
@@ -101,11 +110,23 @@ try {
       await (${wait})(()=>document.querySelector('#status').dataset.state==='ready');
       const result=window.SOP_INSPECTOR_STATE.result;
       const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(result))))].map(b=>b.toString(16).padStart(2,'0')).join('');
-      return {hash,nodes:document.querySelectorAll('.tree-node').length,coreDiagnostics:document.querySelectorAll('#diagnostics .diagnostic').length,iframeIsolated:document.querySelector('#preview').contentDocument===null};})()`,
+      return {hash,nodes:document.querySelectorAll('.tree-node').length,sourceNodes:[...document.querySelectorAll('.tree-node')].map(node=>({id:node.dataset.nodeId,kind:node.dataset.kind,file:node.dataset.file})),coreDiagnostics:document.querySelectorAll('#diagnostics .diagnostic').length,iframeIsolated:document.querySelector('#preview').contentDocument===null};})()`,
           ),
         );
       assert.equal(actual.hash, expectedHash, `${item.name}/${page.id}: CLI/core contract differs`);
       assert.equal(actual.coreDiagnostics, expected.diagnostics.length);
+      const nodes = flatten(expected.tree);
+      assert.deepEqual(
+        actual.sourceNodes,
+        nodes.map(({ id, kind, file }) => ({ id, kind, file })),
+        `${item.name}/${page.id}: visible source tree differs`,
+      );
+      const files = new Set(await new NodeThemeFileSystem(item.path).listFiles());
+      for (const node of nodes)
+        assert.ok(
+          files.has(node.file),
+          `${item.name}/${page.id}: source file absent for ${node.id}`,
+        );
       assert.equal(actual.iframeIsolated, true);
       let frameId: string | undefined;
       let frameContext: number | undefined;
@@ -171,7 +192,7 @@ try {
     `${JSON.stringify(
       {
         status: "pass",
-        scope: "Current initial renderer; Shopify parity and block execution remain pending",
+        scope: "Full offline inspector matrix; Shopify parity remains pending",
         rows,
       },
       null,
@@ -180,4 +201,5 @@ try {
   );
 } finally {
   client.close();
+  browser("close");
 }

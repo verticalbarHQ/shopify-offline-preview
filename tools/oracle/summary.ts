@@ -56,7 +56,8 @@ export function summarizeHtml(html: string, options: SummaryOptions): PrivateSum
   const sectionText: Record<string, string> = {};
   const sections: PublicSummary["sections"] = [];
   const markers: { id: string; type: string; node: ComparisonNode; sectionId: string }[] = [];
-  const seenBlocks = new Map<string, string>();
+  const seenBlocks = new Map<string, ComparisonNode>();
+  const blockIds = new WeakMap<ComparisonNode, string>();
   const parentIds = new WeakMap<ComparisonNode, number>();
   let parentSerial = 0;
   let markedBlockCount = 0;
@@ -67,18 +68,28 @@ export function summarizeHtml(html: string, options: SummaryOptions): PrivateSum
     parent: ComparisonNode,
     paired = false,
   ): ComparisonNode {
+    if (!id || !type) throw new Error("Empty block marker id/type");
+    const normalizedId = normalizeId(id);
+    if (!paired && blockIds.get(parent) === normalizedId) {
+      if (parent.type !== type) throw new Error(`Duplicate block marker: ${normalizedId}`);
+      return parent;
+    }
     let parentId = parentIds.get(parent);
     if (parentId === undefined) {
       parentId = ++parentSerial;
       parentIds.set(parent, parentId);
     }
     const key = `${sectionId}:${parentId}:${normalizeId(id)}`;
-    if (seenBlocks.has(key) && (!paired || seenBlocks.get(key) !== type))
-      throw new Error(`Duplicate block marker: ${normalizeId(id)}`);
-    if (!id || !type) throw new Error("Empty block marker id/type");
-    seenBlocks.set(key, type);
+    const existing = seenBlocks.get(key);
+    if (existing && existing.type !== type)
+      throw new Error(`Duplicate block marker: ${normalizedId}`);
+    // One classic block can mark several sibling or nested DOM roots. Its identity
+    // is section + parent + id. Whole-file comment pairs still represent each render.
+    if (existing && !paired) return existing;
     markedBlockCount++;
     const node: ComparisonNode = { kind: "block", type, children: [] };
+    seenBlocks.set(key, node);
+    blockIds.set(node, normalizedId);
     parent.children.push(node);
     return node;
   }

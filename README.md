@@ -205,10 +205,14 @@ untyped properties remain `unknown`. See `THIRD_PARTY_NOTICES.md` for attributio
 pnpm benchmarks:fetch
 pnpm benchmarks:check
 pnpm benchmarks:render-check
+pnpm oracle:offline-check
 pnpm agent:contract-check
 pnpm browser:render-smoke
+pnpm browser:playground-check
+pnpm browser:inspector-check
 pnpm license-guard
 pnpm test:network-off
+pnpm test:browser-offline
 ```
 
 Dawn and Horizon are fetched at the full commits in `benchmarks.json` into an OS temporary directory,
@@ -220,12 +224,17 @@ The static benchmark check verifies deterministic coverage output, valid result 
 or missing-reference errors. The initial rendering check compares repeat runs and Node/browser builds
 across all 36 cases while reporting remaining errors and unsupported features. The browser smoke
 command starts a loopback-only verification page for those same cases. These checks do **not** assert
-Shopify render parity and do not waive acceptance gates.
+Shopify render parity and do not waive acceptance gates. `oracle:offline-check` instruments temporary
+theme copies and runs all 36 cases through the tree/text summary and repeat-capture stability
+pipeline. Its output is local pipeline evidence, never a Shopify golden.
 
 The Docker command prepares dependencies and benchmarks while online, then runs the foundation checks
-in a container with `--network none`. GitHub workflow definitions include unit, network-off, license-guard and browser jobs. The browser lane
-checks all 36 playground cases, no-upload behavior, playground interactions and dev-inspector
-regressions against the current renderer. Synthetic classic/theme block execution and DOM-range interactions are checked. Real Shopify parity remains pending.
+in a container with `--network none`. `test:browser-offline` also installs Chromium during the image
+build, then runs every browser test in a separate container with networking disabled. GitHub workflow
+definitions include unit, network-off, license-guard and browser jobs. The browser lane checks all 36
+playground and dev-inspector cases, no-upload behavior, playground interactions and inspector
+regressions against the current renderer. Every inspector node maps to an existing source file and
+the visible tree matches the render result. Synthetic classic/theme block execution and DOM-range interactions are checked. Real Shopify parity remains pending.
 
 ## License
 

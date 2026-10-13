@@ -51,7 +51,10 @@
     "license-guard": "node tools/license-guard.mjs",
     "test:network-off": "node tools/network-off.mjs",
     "browser:playground-check": "tsx tools/check-playground-browser.ts",
-    "agent:contract-check": "tsx tools/check-agent-contracts.ts"
+    "agent:contract-check": "tsx tools/check-agent-contracts.ts",
+    "browser:inspector-check": "tsx tools/check-inspector-matrix.ts",
+    "test:browser-offline": "node tools/browser-network-off.mjs",
+    "oracle:offline-check": "tsx tools/oracle/check-offline-comparison.ts"
   },
   "dependencies": {
     "@shopify/liquid-html-parser": "2.10.2",

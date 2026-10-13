@@ -7,6 +7,7 @@ import {
   mergePatch,
   validateSnapshotReferences,
 } from "../packages/data/src/scenarios.js";
+import { renderTheme } from "../packages/render/src/index.js";
 import { MemoryThemeFileSystem } from "../packages/theme/src/index.js";
 import { readOracleIdentity, readOracleTheme } from "../tools/oracle/admin-read.js";
 import { assertGoldenFreshness, makeGoldenArtifact } from "../tools/oracle/artifacts.js";
@@ -367,13 +368,66 @@ test("capture tree preserves repeated static executions and identifiers scoped t
   );
 });
 
-test("unpaired classic block markers remain unique within their immediate parent", () => {
+test("classic sibling markers retain all visible text under one logical block", () => {
+  const result = summarizeHtml(
+    '<div id="shopify-section-template--1__main"><p data-sop-block-id="same" data-sop-block-type="text">One</p><p data-sop-block-id="same" data-sop-block-type="text">Two</p></div>',
+    { sectionTypes },
+  );
+  assert.equal(result.summary.markedBlockCount, 1);
+  assert.equal(result.summary.tree[0]?.children.length, 1);
+  assert.equal(result.sectionText["template--N__main"], "OneTwo");
+});
+
+test("classic multi-root markers describe one logical block and conflicting types still fail", () => {
+  const source = `<div id="shopify-section-template--123__main"><p data-sop-block-id="price" data-sop-block-type="price">Price <span data-sop-block-id="price" data-sop-block-type="price">12.50</span></p><p data-sop-block-id="price" data-sop-block-type="price">Tax included</p><button data-sop-block-id="buy" data-sop-block-type="button">Buy</button></div>`;
+  const result = summarizeHtml(source, { sectionTypes });
+  assert.equal(result.summary.markedBlockCount, 2);
+  assert.deepEqual(result.summary.tree[0]?.children, [
+    { kind: "block", type: "price", children: [] },
+    { kind: "block", type: "button", children: [] },
+  ]);
+  assert.equal(result.sectionText["template--N__main"], "Price 12.50Tax includedBuy");
   assert.throws(
     () =>
-      summarizeHtml(
-        '<div id="shopify-section-template--1__main"><p data-sop-block-id="same" data-sop-block-type="text">One</p><p data-sop-block-id="same" data-sop-block-type="text">Two</p></div>',
-        { sectionTypes },
-      ),
+      summarizeHtml(source.replace('type="price">Tax', 'type="different">Tax'), { sectionTypes }),
     /Duplicate/,
   );
+  const repeated = summarizeHtml(
+    `<div id="shopify-section-template--123__main"><!--sop:block label text--><p>A</p><!--/sop:block--><!--sop:block label text--><p>B</p><!--/sop:block--></div>`,
+    { sectionTypes },
+  );
+  assert.equal(repeated.summary.markedBlockCount, 2);
+});
+
+test("instrumentation outside a block preserves absent attributes instead of emitting empty markers", async () => {
+  const source = instrumentLiquid(
+    "<span {{block.shopify_attributes}}>Outside a block</span>",
+    "sections/main.liquid",
+  ).source;
+  const fs = new MemoryThemeFileSystem({
+    "layout/theme.liquid": "{{content_for_layout}}",
+    "templates/index.json": '{"sections":{"main":{"type":"main"}},"order":["main"]}',
+    "sections/main.liquid": source,
+  });
+  const result = await renderTheme(fs, "/");
+  assert.deepEqual(result.diagnostics, []);
+  assert.ok(!result.html.includes("data-sop-block-id"));
+  const summary = summarizeHtml(result.html, { sectionTypes: { "template--N__main": "main" } });
+  assert.equal(summary.summary.markedBlockCount, 0);
+  assert.equal(summary.sectionText["template--N__main"], "Outside a block");
+});
+
+test("source mapping binds snippet-owned literal wrappers only to exact real section files", async () => {
+  const fs = new MemoryThemeFileSystem({
+    "layout/theme.liquid": "{{content_for_layout}}{% render 'drawer' %}",
+    "templates/index.json": '{"sections":{"main":{"type":"main"}},"order":["main"]}',
+    "sections/main.liquid": "Main",
+    "sections/drawer-api.liquid": "Drawer API section",
+    "snippets/drawer.liquid":
+      '<div id="shopify-section-drawer-api" class="shopify-section">Drawer</div><div id="shopify-section-unknown">Unknown</div>',
+  });
+  const mapping = await sectionTypeMap(fs, "templates/index.json");
+  assert.equal(mapping["drawer-api"], "drawer-api");
+  assert.ok(!("unknown" in mapping));
+  assert.ok(!("drawer" in mapping));
 });
