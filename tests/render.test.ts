@@ -68,7 +68,7 @@ test("JSON order, disabled sections, groups, defaults and isolated snippets asse
   );
 });
 
-test("no layout, schema defaults, missing references and unsupported filters remain observable", async () => {
+test("no layout, schema defaults, missing references and invalid image inputs remain observable", async () => {
   const theme = new MemoryThemeFileSystem({
     "templates/index.json": JSON.stringify({
       layout: false,
@@ -79,11 +79,11 @@ test("no layout, schema defaults, missing references and unsupported filters rem
       '{{section.settings.heading}}|{% if section.settings.featured == nil %}nil{% endif %}|{{"x" | image_url}}{% schema %}{"settings":[{"type":"text","id":"heading","default":"Default"},{"type":"product","id":"featured"}]}{% endschema %}',
   });
   const result = await renderTheme(theme, "/", { snapshot: fixture });
-  assert.match(result.html, /Default\|nil\|\[not implemented: filter image_url\]/);
+  assert.match(result.html, /Default\|nil\|Liquid error \(sections\/basic.liquid line 1\)/);
   assert.deepEqual(result.dataUsed, {});
   assert.deepEqual(
     result.diagnostics.map((d) => d.code),
-    ["missing-resource", "not-implemented"],
+    ["missing-resource", "liquid-error"],
   );
   assert.equal(result.diagnostics[1]?.file, "sections/basic.liquid");
   assert.equal(result.tree[0]?.kind, "section");
@@ -169,7 +169,7 @@ test("style evaluates Liquid, doc parses without executing, and asset bodies pre
   assert.equal(result.diagnostics.filter((d) => d.code === "not-implemented").length, 2);
 });
 
-test("unsupported alias and nested snippet errors keep actual source paths and line numbers", async () => {
+test("missing translations and nested snippet errors keep actual source paths and line numbers", async () => {
   const result = await renderTheme(
     new MemoryThemeFileSystem({
       "templates/index.json": JSON.stringify({
@@ -185,7 +185,7 @@ test("unsupported alias and nested snippet errors keep actual source paths and l
   );
   assert.ok(
     result.diagnostics.some(
-      (d) => d.code === "not-implemented" && d.file === "snippets/error.liquid" && d.line === 3,
+      (d) => d.code === "missing-resource" && d.file === "snippets/error.liquid" && d.line === 3,
     ),
   );
   assert.ok(

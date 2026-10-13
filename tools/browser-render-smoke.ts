@@ -15,11 +15,7 @@ for (const item of manifest) {
   const fs = new NodeThemeFileSystem(item.path);
   const files: Record<string, string> = {};
   for (const file of await fs.listFiles())
-    if (
-      /^(?:layout|templates|sections|blocks|snippets|config|locales)\//.test(file) &&
-      /\.(?:liquid|json)$/.test(file)
-    )
-      files[file] = await fs.readText(file);
+    files[file] = Buffer.from(await fs.readBytes(file)).toString("base64");
   const cases = [];
   for (const page of benchmarkMatrix) {
     const result = await renderTheme(fs, page.path, {
@@ -43,7 +39,7 @@ try {
  const before=performance.getEntriesByType('resource').length;
  const rows=[];
  for(const theme of themes) for(const item of theme.cases) {
-  const result=await renderTheme(new MemoryThemeFileSystem(theme.files),item.path,{snapshot,scenario:item.scenario,inspect:true});
+  const result=await renderTheme(new MemoryThemeFileSystem(Object.fromEntries(Object.entries(theme.files).map(([file,bytes])=>[file,Uint8Array.from(atob(bytes),c=>c.charCodeAt(0))]))),item.path,{snapshot,scenario:item.scenario,inspect:true});
   const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(result))))].map(b=>b.toString(16).padStart(2,'0')).join('');
   if(hash!==item.expected) throw new Error(theme.name+'/'+item.id+' differs from Node');
   rows.push({theme:theme.name,case:item.id,byteParity:true,diagnostics:result.diagnostics.length});

@@ -15,14 +15,8 @@ const browser: typeof import("../packages/check/src/browser.js") = await import(
 const rows = [];
 for (const item of manifest) {
   const theme = new NodeThemeFileSystem(item.path);
-  const content: Record<string, string> = {};
-  for (const file of await theme.listFiles()) {
-    if (
-      /^(?:layout|templates|sections|blocks|snippets|config|locales)\//.test(file) &&
-      /\.(?:json|liquid)$/.test(file)
-    )
-      content[file] = await theme.readText(file);
-  }
+  const content: Record<string, Uint8Array> = {};
+  for (const file of await theme.listFiles()) content[file] = await theme.readBytes(file);
   for (const page of benchmarkMatrix) {
     const options = { snapshot: defaultFixture(), scenario: page.scenario, inspect: true };
     const node = await renderTheme(theme, page.path, options);

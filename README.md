@@ -52,6 +52,9 @@ Initial rendering is incomplete: theme block execution, classic block tracing, s
 settings, search derivation and Shopify filters remain pending. Prices convert exactly to
 hundredths and reject values requiring greater precision. Native LiquidJS behavior still needs
 Shopify oracle verification. The feature registry continues to report zero verified implementations.
+Theme/section translations, regional locales, plural counts and HTML escaping are handled locally.
+Money filters use the snapshot templates; assets and basic image sizing use local files. CDN image
+transformations and preload hints remain diagnosed as pending.
 
 Initial `product`, `customer`, `contact` and `localization` forms render their HTML and initial form
 state. Resource lists (`collection.products`, `blog.articles`, `search.results`, `product.variants`)
@@ -132,9 +135,9 @@ command starts a loopback-only verification page for those same cases. These che
 Shopify render parity and do not waive acceptance gates.
 
 The Docker command prepares dependencies and benchmarks while online, then runs the foundation checks
-in a container with `--network none`. GitHub workflow definitions include unit, network-off, and
-license-guard jobs. Remote M0 CI passed at `744be2a`; the owner authorizes subsequent pushes during North Star delivery. Browser contract tests also exercise the renderer without Node globals; the loopback smoke
-page checks real browser execution. Inspector browser checks cover the initial renderer; theme-block coverage and playground e2e remain pending.
+in a container with `--network none`. GitHub workflow definitions include unit, network-off, license-guard and browser jobs. The browser lane
+checks all 36 playground cases, no-upload behavior, playground interactions and dev-inspector
+regressions against the current renderer. Theme-block coverage and real Shopify parity remain pending.
 
 ## License
 

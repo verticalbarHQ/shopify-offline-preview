@@ -20,6 +20,7 @@ import { registry } from "../../spec/src/index.js";
 import { parseThemeJson, type ThemeFileSystem, themePath } from "../../theme/src/index.js";
 import { registerBasicTags } from "./basic-tags.js";
 import { type RenderNode, type RenderResult, renderSchema } from "./contracts.js";
+import { registerShopifyFilters } from "./filters/index.js";
 import { resolveRoute } from "./routes.js";
 import { registerShopifyTags } from "./shopify-tags.js";
 import {
@@ -89,7 +90,9 @@ export async function renderTheme(
   let location: { file: string | null; line: number | null } = { file: null, line: null };
   let serial = 0;
   const files = new Map<string, string>();
-  for (const file of await theme.listFiles())
+  const allPaths = new Set(await theme.listFiles());
+  const sectionLocales = new Map<string, unknown>();
+  for (const file of allPaths)
     if (
       /^(?:layout|templates|sections|blocks|snippets|config|locales)\//.test(file) &&
       /\.(?:liquid|json)$/.test(file)
@@ -184,6 +187,23 @@ export async function renderTheme(
   registerShopifyTags(engine, {
     path: route.path,
     unsupported: (message) => diagnostic("not-implemented", message),
+  });
+  registerShopifyFilters(engine, {
+    snapshot,
+    files,
+    paths: allPaths,
+    sectionLocales() {
+      return [...stack]
+        .reverse()
+        .map((node) => sectionLocales.get(node.id))
+        .find((value) => value !== undefined);
+    },
+    diagnostic(code, message, file, line) {
+      const previous = location;
+      location = { file: file ?? previous.file, line: line ?? previous.line };
+      diagnostic(code, message);
+      location = previous;
+    },
   });
   const nativeDate = engine.filters.date;
   if (typeof nativeDate === "function")
@@ -402,6 +422,7 @@ export async function renderTheme(
       } catch (error) {
         schemaFailure = liquidError(error, file, 1);
       }
+      sectionLocales.set(entry.id, schema.locales);
       const blocks = (config.block_order ?? Object.keys(config.blocks)).flatMap((blockId) => {
         const configBlock = config.blocks[blockId];
         if (!configBlock || configBlock.disabled) return [];
