@@ -37,7 +37,7 @@ export function registerBasicTags(engine: Liquid, unsupported: (message: string)
       name,
       class extends Tag {
         private readonly body: string;
-        constructor(token: TagToken, tokens: TopLevelToken[], liquid: Liquid, parser: Parser) {
+        constructor(token: TagToken, tokens: TopLevelToken[], liquid: Liquid) {
           super(token, tokens, liquid);
           const body: TopLevelToken[] = [];
           let closed = false;
@@ -51,7 +51,7 @@ export function registerBasicTags(engine: Liquid, unsupported: (message: string)
           }
           if (!closed) throw new Error(`Unclosed ${name} tag`);
           this.body = body.map((token) => token.getText()).join("");
-          if (name === "doc") parser.parseTokens(body); // parse examples, never execute them
+          // Raw documentation is ignored; its example tags must never be parsed or executed.
         }
         render() {
           if (name === "doc") return "";

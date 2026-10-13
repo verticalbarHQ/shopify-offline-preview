@@ -149,7 +149,7 @@ test("snapshot now and timezone determine date output without host clock depende
   assert.ok(result.html.includes(expected));
 });
 
-test("style evaluates Liquid, doc parses without executing, and asset bodies preserve literal Liquid", async () => {
+test("style evaluates Liquid, doc remains inert, and asset bodies preserve literal Liquid", async () => {
   const result = await renderTheme(
     new MemoryThemeFileSystem({
       "templates/index.json": JSON.stringify({

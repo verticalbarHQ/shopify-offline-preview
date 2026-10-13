@@ -1,14 +1,12 @@
 import { NodeTypes, toLiquidAST, walk } from "@shopify/liquid-html-parser";
 import {
   Context,
-  type Emitter,
   Liquid,
   LiquidError,
   Tag,
   TagToken,
   type Template,
   type TopLevelToken,
-  toPromise,
 } from "liquidjs";
 import { z } from "zod";
 import type { Diagnostic } from "../../check/src/contracts.js";
@@ -23,6 +21,8 @@ import { registerContentFor } from "./content-for.js";
 import { type RenderNode, type RenderResult, renderSchema } from "./contracts.js";
 import { registerShopifyFilters } from "./filters/index.js";
 import { registerLoopTrace } from "./loop-trace.js";
+import { parseLiquid } from "./parse-liquid.js";
+import { registerRenderTag } from "./render-tag.js";
 import { resolveRoute } from "./routes.js";
 import { registerShopifyTags } from "./shopify-tags.js";
 import {
@@ -293,30 +293,15 @@ export async function renderTheme(
     const filter = engine.filters[name];
     if (filter) engine.registerFilter(alias, filter);
   }
-  const nativeRender = engine.tags.render;
-  if (nativeRender)
-    engine.registerTag(
-      "render",
-      class extends nativeRender {
-        override async render(context: Context, emitter: Emitter) {
-          const match = /^\s*(['"])([^'"]+)\1(?:\s|,|$)/.exec(this.token.args);
-          if (!match) {
-            diagnostic("not-implemented", "Dynamic snippet references are not implemented.");
-            return "[not implemented: dynamic render]";
-          }
-          const name = match[2] ?? "";
-          const file = themePath(`snippets/${name}.liquid`);
-          return inside(node("snippet", name, file, null), async () => {
-            try {
-              // toPromise is the documented runner for public generator-based tag extensions.
-              return await toPromise(nativeRender.prototype.render.call(this, context, emitter));
-            } catch (error) {
-              emitter.write(liquidError(error, file, this.token.getPosition()[0] ?? 1));
-            }
-          });
-        }
-      },
-    );
+  registerRenderTag(
+    engine,
+    (name, context) => renderFile(themePath(`snippets/${name}.liquid`), context),
+    () => {
+      diagnostic("not-implemented", "Dynamic snippet references are not implemented.");
+      return "[not implemented: dynamic render]";
+    },
+    (name, run) => inside(node("snippet", name, themePath(`snippets/${name}.liquid`), null), run),
+  );
   function liquidError(error: unknown, file: string, line: number): string {
     if (LiquidError.is(error)) {
       file = sourceFile(error.token.file ?? file) ?? file;
@@ -336,8 +321,14 @@ export async function renderTheme(
     if (text === undefined) throw new Error(`Theme file not found: ${file}`);
     return text;
   }
+  const parsedFiles = new Map<string, Template[]>();
   function parse(file: string): Template[] {
-    return engine.parse(source(file), file);
+    let parsed = parsedFiles.get(file);
+    if (!parsed) {
+      parsed = parseLiquid(engine, source(file), file);
+      parsedFiles.set(file, parsed);
+    }
+    return parsed;
   }
   async function renderFile(file: string, context: Context): Promise<string> {
     let parsed: Template[];

@@ -51,8 +51,10 @@ emit visible markers and `not-implemented` diagnostics; unknown filters fail exp
 Dynamic, static and nested theme blocks execute locally with isolated parameters, scoped `closest`
 resources, dynamic setting expressions and per-execution source/read mappings. Classic section block
 loops retain native loop control and own their executed snippets and data reads. Several resource settings and several Shopify filters remain pending. Prices convert exactly to
-hundredths and reject values requiring greater precision. Native LiquidJS behavior still needs
-Shopify oracle verification. The feature registry continues to report zero verified implementations.
+hundredths and reject values requiring greater precision. Liquid behavior still needs
+Shopify oracle verification. Raw schemas, documentation and asset bodies retain their original source
+positions without interpreting embedded Liquid examples. Snippets support isolated named arguments
+and `with`/`for` bindings through the same parser. The feature registry continues to report zero verified implementations.
 Theme/section translations, regional locales, plural counts and HTML escaping are handled locally.
 Money filters use the snapshot templates; assets, image URL parameters and preload hints use local
 files. The server serves the original image bytes and the browser scales them, as specified.
