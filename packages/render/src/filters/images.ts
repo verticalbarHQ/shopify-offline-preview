@@ -1,5 +1,6 @@
 import { toValue } from "liquidjs";
 import type { Snapshot } from "../../../data/src/schema.js";
+export class ImageUrlInputError extends Error {}
 export function namedArgs(args: unknown[]): Record<string, unknown> {
   return Object.fromEntries(
     args.flatMap((arg) =>
@@ -29,7 +30,6 @@ export function imageFilters(snapshot: Snapshot) {
     unsupported: (message: string) => void,
   ): string {
     let value: unknown = toValue(input);
-    if (value === null || value === undefined) return "";
     if (value && typeof value === "object") {
       const keys = new Set(Reflect.ownKeys(value));
       for (const name of ["src", "image", "featured_image", "preview_image"]) {
@@ -42,20 +42,18 @@ export function imageFilters(snapshot: Snapshot) {
         value = Reflect.get(value, "src");
     }
     if (typeof value !== "string" || !value.startsWith("/sop/images/"))
-      throw new Error("Image input is absent from the local snapshot");
+      throw new ImageUrlInputError("invalid url input");
     const url = new URL(value, "https://offline.invalid");
     const file = decodeURIComponent(url.pathname.slice(12));
     const image = images.get(file);
-    if (!image) throw new Error("Image input is absent from the local snapshot");
+    if (!image) throw new ImageUrlInputError("invalid url input");
     const options = namedArgs(args);
     const region = options.crop === "region";
-    if (options.width === undefined && options.height === undefined && !region)
-      throw new Error("image_url requires width or height");
     for (const dimension of ["width", "height"] as const)
       if (options[dimension] !== undefined) {
         const size = Number(options[dimension]);
         if (!Number.isInteger(size) || size < 1 || size > 5760)
-          throw new Error(`Invalid image ${dimension}`);
+          throw new ImageUrlInputError(`Invalid image ${dimension}`);
         url.searchParams.set(dimension, String(Math.min(size, image[dimension])));
       }
     for (const [key, value] of Object.entries(options))
@@ -64,7 +62,7 @@ export function imageFilters(snapshot: Snapshot) {
           key === "crop" &&
           !["top", "center", "bottom", "left", "right", "region"].includes(String(value))
         )
-          throw new Error("Invalid image crop mode");
+          throw new ImageUrlInputError("Invalid image crop mode");
         else if (
           key.startsWith("crop_") &&
           ["crop_left", "crop_top", "crop_width", "crop_height"].includes(key)
@@ -74,16 +72,16 @@ export function imageFilters(snapshot: Snapshot) {
             !Number.isInteger(number) ||
             number < (key === "crop_width" || key === "crop_height" ? 1 : 0)
           )
-            throw new Error(`Invalid image ${key}`);
+            throw new ImageUrlInputError(`Invalid image ${key}`);
         } else if (key === "format" && !["jpg", "pjpg"].includes(String(value)))
-          throw new Error("Invalid image format");
+          throw new ImageUrlInputError("Invalid image format");
         else if (
           key === "quality" &&
           (!Number.isInteger(Number(value)) || Number(value) < 10 || Number(value) > 90)
         )
-          throw new Error("Invalid image quality");
+          throw new ImageUrlInputError("Invalid image quality");
         else if (key === "pad_color" && !/^(?:[a-fA-F0-9]{3}|[a-fA-F0-9]{6})$/.test(String(value)))
-          throw new Error("Invalid image pad color");
+          throw new ImageUrlInputError("Invalid image pad color");
         else if (
           ![
             "crop",
@@ -105,7 +103,7 @@ export function imageFilters(snapshot: Snapshot) {
         (key) => options[key] === undefined,
       )
     )
-      throw new Error("Region crop requires its complete rectangle");
+      throw new ImageUrlInputError("Region crop requires its complete rectangle");
     return url.pathname + url.search;
   }
   function imageTag(input: unknown, args: unknown[]): string {

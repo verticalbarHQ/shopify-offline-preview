@@ -108,13 +108,13 @@ test("image URLs retain crop/quality hints and preload metadata while adapters s
   assert.equal(result.diagnostics.length, 0);
 });
 
-test("variant featured media derives from its assigned image and nil image URLs remain empty", async () => {
+test("variant featured media derives from its assigned image and failed image assignments remain empty", async () => {
   const snapshot = defaultFixture();
   const product = snapshot.products[0];
   assert.ok(product);
   const variant = product.variants.find((v) => v.image !== null);
   assert.ok(variant);
-  const source = `{{product.selected_or_first_available_variant.featured_media.preview_image | image_url: width:32}}|{{nil | image_url: width:32}}`;
+  const source = `{% assign preview=product.selected_or_first_available_variant.featured_media.preview_image | image_url:width:32 %}{{preview}}|{% assign absent=nil | image_url:width:32 %}{{absent}}`;
   const theme = new MemoryThemeFileSystem({ ...files, "sections/main.liquid": source });
   const result = await renderTheme(theme, `/products/${product.handle}?variant=${variant.id}`, {
     snapshot,
@@ -232,4 +232,36 @@ test("preload tags require an asset kind and preserve escaped HTML attributes", 
       (d) => d.code === "liquid-error" && d.message.includes("as attribute"),
     ),
   );
+});
+
+test("image URL output reports invalid input while native-style assignments suppress it and reset old values", async () => {
+  const snapshot = defaultFixture();
+  const theme = new MemoryThemeFileSystem({
+    ...files,
+    "sections/main.liquid":
+      "{% assign value='Old' %}{% assign value=nil | image_url:width:100 %}Value={{value}}|{{nil|image_url:width:100}}|{{product.featured_media|image_url}}",
+  });
+  const result = await renderTheme(theme, `/products/${snapshot.products[0]?.handle}`, {
+    snapshot,
+  });
+  assert.ok(
+    result.html.includes(
+      "Value=|Liquid error (sections/main.liquid line 1): invalid url input|/sop/images/",
+    ),
+  );
+  assert.equal(result.diagnostics.filter((d) => d.code === "liquid-error").length, 1);
+});
+
+test("image assignment compatibility does not suppress errors from other filters", async () => {
+  const snapshot = defaultFixture();
+  const result = await renderTheme(
+    new MemoryThemeFileSystem({
+      ...files,
+      "sections/main.liquid": "{% assign price='not a price' | money %}After",
+    }),
+    `/products/${snapshot.products[0]?.handle}`,
+    { snapshot },
+  );
+  assert.ok(result.diagnostics.some((d) => d.code === "liquid-error"));
+  assert.ok(result.html.includes("After"));
 });

@@ -1,5 +1,6 @@
 import { NodeTypes, toLiquidAST, walk } from "@shopify/liquid-html-parser";
 import {
+  AssignTag,
   Context,
   Liquid,
   LiquidError,
@@ -20,6 +21,7 @@ import { appendAppEmbeds, appIdentity, appMarkup } from "./apps.js";
 import { registerBasicTags } from "./basic-tags.js";
 import { registerContentFor } from "./content-for.js";
 import { type RenderNode, type RenderResult, renderSchema } from "./contracts.js";
+import { ImageUrlInputError } from "./filters/images.js";
 import { registerShopifyFilters } from "./filters/index.js";
 import { registerLoopTrace } from "./loop-trace.js";
 import { parseLiquid } from "./parse-liquid.js";
@@ -210,6 +212,27 @@ export async function renderTheme(
     memoryLimit: 100_000_000,
   });
   engine.registerTag("schema", SchemaTag);
+  engine.registerTag(
+    "assign",
+    class extends AssignTag {
+      override *render(context: Context) {
+        try {
+          return yield* super.render(context);
+        } catch (error) {
+          const detail = LiquidError.is(error) ? (error.originalError ?? error) : error;
+          if (!(detail instanceof ImageUrlInputError)) throw error;
+          const name = [...this.localScope()][0]?.content;
+          if (!name) throw error;
+          Object.defineProperty(context.bottom(), name, {
+            value: null,
+            enumerable: true,
+            configurable: true,
+            writable: true,
+          });
+        }
+      }
+    },
+  );
   registerLoopTrace(engine, async (value, _token, safeRegion, render) => {
     const info = object(value) ? classicBlocks.get(value) : undefined;
     if (!info) return render();
