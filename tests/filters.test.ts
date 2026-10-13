@@ -107,3 +107,24 @@ test("image URLs retain crop/quality hints and preload metadata while adapters s
   assert.ok(result.html.includes("crop=top"));
   assert.equal(result.diagnostics.length, 0);
 });
+
+test("variant featured media derives from its assigned image and nil image URLs remain empty", async () => {
+  const snapshot = defaultFixture();
+  const product = snapshot.products[0];
+  assert.ok(product);
+  const variant = product.variants.find((v) => v.image !== null);
+  assert.ok(variant);
+  const source = `{{product.selected_or_first_available_variant.featured_media.preview_image | image_url: width:32}}|{{nil | image_url: width:32}}`;
+  const theme = new MemoryThemeFileSystem({ ...files, "sections/main.liquid": source });
+  const result = await renderTheme(theme, `/products/${product.handle}?variant=${variant.id}`, {
+    snapshot,
+  });
+  assert.ok(result.html.includes(`/sop/images/${variant.image}?width=32|`));
+  assert.deepEqual(result.diagnostics, []);
+  const absent = await renderTheme(theme, `/products/${product.handle}`, {
+    snapshot,
+    scenario: "no-images",
+  });
+  assert.ok(absent.html.includes(">|</div>"));
+  assert.deepEqual(absent.diagnostics, []);
+});

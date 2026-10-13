@@ -128,6 +128,7 @@ export function liquidObjects(
           url: `/products/${source.handle}?variant=${encodeURIComponent(variant.id)}`,
           image: images.find((i) => i.file === variant.image) ?? null,
           featured_image: images.find((i) => i.file === variant.image) ?? null,
+          featured_media: images.find((i) => i.file === variant.image) ?? null,
         },
         "variant",
         `${path}.variants[${index}]`,

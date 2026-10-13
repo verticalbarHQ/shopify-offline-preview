@@ -87,3 +87,18 @@ test("render with, for, default aliases and named bindings remain isolated and s
   assert.ok(result.dataUsed[children[0]?.id ?? ""]?.includes("products[0].title"));
   assert.ok(result.dataUsed[children[1]?.id ?? ""]?.includes("products[1].title"));
 });
+
+test("render for nil invokes no snippet body", async () => {
+  const result = await renderTheme(
+    new MemoryThemeFileSystem({
+      ...base,
+      "sections/main.liquid": "Before{% render 'row' for nil as item %}After",
+      "snippets/row.liquid": "NEVER",
+    }),
+    "/",
+    { snapshot },
+  );
+  assert.ok(result.html.includes("BeforeAfter"));
+  assert.ok(!result.html.includes("NEVER"));
+  assert.deepEqual(result.diagnostics, []);
+});

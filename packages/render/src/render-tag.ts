@@ -6,6 +6,7 @@ import {
   type TagToken,
   type TopLevelToken,
   toPromise,
+  toValue,
   type ValueToken,
 } from "liquidjs";
 
@@ -72,7 +73,9 @@ export function registerRenderTag(
           let collection: unknown[] | undefined;
           let forAlias: string | undefined;
           for (const binding of this.bindings) {
-            const value = await engine.evalValue(binding.value.getText(), context);
+            const value: unknown = toValue(
+              await engine.evalValue(binding.value.getText(), context),
+            );
             if (binding.kind === "for") {
               collection = Array.isArray(value)
                 ? value

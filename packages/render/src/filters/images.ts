@@ -1,3 +1,4 @@
+import { toValue } from "liquidjs";
 import type { Snapshot } from "../../../data/src/schema.js";
 export function namedArgs(args: unknown[]): Record<string, unknown> {
   return Object.fromEntries(
@@ -27,7 +28,8 @@ export function imageFilters(snapshot: Snapshot) {
     args: unknown[],
     unsupported: (message: string) => void,
   ): string {
-    let value = input;
+    let value: unknown = toValue(input);
+    if (value === null || value === undefined) return "";
     if (value && typeof value === "object") {
       const keys = new Set(Reflect.ownKeys(value));
       for (const name of ["src", "image", "featured_image", "preview_image"]) {
