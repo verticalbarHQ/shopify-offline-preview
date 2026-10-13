@@ -28,6 +28,22 @@ export const blockConfigSchema = z
     disabled: z.boolean().optional(),
   })
   .passthrough();
+export interface NestedBlockConfig {
+  type: string;
+  settings: Record<string, unknown>;
+  blocks: Record<string, NestedBlockConfig>;
+  block_order?: string[] | undefined;
+  disabled?: boolean | undefined;
+  static?: boolean | undefined;
+}
+export const nestedBlockConfigSchema: z.ZodType<NestedBlockConfig> = z.lazy(() =>
+  blockConfigSchema.extend({
+    blocks: z.record(z.string(), nestedBlockConfigSchema).default({}),
+    block_order: z.array(z.string()).optional(),
+    static: z.boolean().optional(),
+  }),
+);
+export const themeBlockSchema = sectionSchema.extend({ tag: z.string().nullable().optional() });
 export const sectionConfigSchema = blockConfigSchema.extend({
   blocks: z.record(z.string(), blockConfigSchema).default({}),
   block_order: z.array(z.string()).optional(),

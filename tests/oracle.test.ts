@@ -136,7 +136,13 @@ test("capture summaries reject absent type maps, empty pages, and broken/duplica
     /Unclosed/,
   );
   assert.throws(
-    () => summarizeHtml(html("Text").replace("b2 button", "b1 button"), { sectionTypes }),
+    () =>
+      summarizeHtml(
+        html("Text")
+          .replace("<!--sop:block b2 button-->", "<!--/sop:block--><!--sop:block b1 button-->")
+          .replace("</button><!--/sop:block--><!--/sop:block-->", "</button><!--/sop:block-->"),
+        { sectionTypes },
+      ),
     /Duplicate/,
   );
 });
@@ -337,4 +343,37 @@ test("release freshness rejects future and stale captures and golden artifacts c
   assert.doesNotThrow(() => assertGoldenFreshness(golden, new Date("2026-10-20T00:00:00Z")));
   assert.throws(() => assertGoldenFreshness(golden, new Date("2026-10-20T00:00:01Z")), /freshness/);
   assert.throws(() => assertGoldenFreshness(golden, new Date("2026-10-12T23:59:59Z")), /freshness/);
+});
+
+test("capture tree preserves repeated static executions and identifiers scoped to immediate parents", () => {
+  const html = `<div id="shopify-section-template--123__main"><!--sop:block card card--><!--sop:block label text--><p>A</p><!--/sop:block--><!--/sop:block--><!--sop:block card card--><!--sop:block label text--><p>B</p><!--/sop:block--><!--/sop:block--></div>`;
+  const result = summarizeHtml(html, { sectionTypes: { "template--N__main": "main" } }).summary;
+  assert.equal(result.markedBlockCount, 4);
+  assert.deepEqual(
+    result.tree[0]?.children.map((node) => node.type),
+    ["card", "card"],
+  );
+  assert.equal(result.tree[0]?.children[1]?.children[0]?.type, "text");
+  assert.throws(
+    () =>
+      summarizeHtml(
+        html.replace(
+          "sop:block card card--><!--sop:block label text--><p>B",
+          "sop:block card different--><!--sop:block label text--><p>B",
+        ),
+        { sectionTypes: { "template--N__main": "main" } },
+      ),
+    /Duplicate/,
+  );
+});
+
+test("unpaired classic block markers remain unique within their immediate parent", () => {
+  assert.throws(
+    () =>
+      summarizeHtml(
+        '<div id="shopify-section-template--1__main"><p data-sop-block-id="same" data-sop-block-type="text">One</p><p data-sop-block-id="same" data-sop-block-type="text">Two</p></div>',
+        { sectionTypes },
+      ),
+    /Duplicate/,
+  );
 });

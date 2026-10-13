@@ -521,5 +521,16 @@ export function liquidObjects(
     globals.blog = blog ?? null;
     globals.article = articles.get(route.blogHandle ?? "")?.get(route.resourceHandle ?? "") ?? null;
   }
+  globals.closest = tracked(
+    {
+      product: globals.product ?? null,
+      collection: globals.collection ?? null,
+      page: globals.page ?? null,
+      blog: globals.blog ?? null,
+      article: globals.article ?? null,
+    },
+    "closest",
+    "closest",
+  );
   return globals;
 }

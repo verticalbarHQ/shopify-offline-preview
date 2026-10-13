@@ -19,11 +19,14 @@ import { type Snapshot, snapshotSchema } from "../../data/src/schema.js";
 import { registry } from "../../spec/src/index.js";
 import { parseThemeJson, type ThemeFileSystem, themePath } from "../../theme/src/index.js";
 import { registerBasicTags } from "./basic-tags.js";
+import { registerContentFor } from "./content-for.js";
 import { type RenderNode, type RenderResult, renderSchema } from "./contracts.js";
 import { registerShopifyFilters } from "./filters/index.js";
 import { resolveRoute } from "./routes.js";
 import { registerShopifyTags } from "./shopify-tags.js";
 import {
+  type NestedBlockConfig,
+  nestedBlockConfigSchema,
   type SectionConfig,
   type SectionSchema,
   sectionConfigSchema,
@@ -31,6 +34,7 @@ import {
   settingSchema,
   settingsDataSchema,
   templateConfig,
+  themeBlockSchema,
 } from "./theme-config.js";
 
 export { type RenderNode, type RenderResult, renderSchema } from "./contracts.js";
@@ -42,7 +46,7 @@ export interface RenderOptions {
 }
 
 class SchemaTag extends Tag {
-  readonly schema: SectionSchema;
+  readonly schema: SectionSchema | z.infer<typeof themeBlockSchema>;
   constructor(token: TagToken, tokens: TopLevelToken[], liquid: Liquid) {
     super(token, tokens, liquid);
     let body = "";
@@ -56,7 +60,9 @@ class SchemaTag extends Tag {
       if (next) body += next.getText();
     }
     if (!closed) throw new Error("Unclosed schema tag");
-    this.schema = sectionSchema.parse(JSON.parse(body));
+    this.schema = (token.file?.startsWith("blocks/") ? themeBlockSchema : sectionSchema).parse(
+      JSON.parse(body),
+    );
   }
   render() {
     return "";
@@ -135,6 +141,16 @@ export async function renderTheme(
       location = previous;
     }
   }
+  interface BlockOwner {
+    config: { blocks: Record<string, unknown>; block_order?: string[] | undefined };
+    pointer: string;
+    section: LiquidRecord;
+    prefix: string;
+  }
+  const blockOwners = new WeakMap<object, BlockOwner>();
+  function object(value: unknown): value is LiquidRecord {
+    return value !== null && typeof value === "object" && !Array.isArray(value);
+  }
   const globals = liquidObjects(
     snapshot,
     {
@@ -207,6 +223,37 @@ export async function renderTheme(
       diagnostic(code, message);
       location = previous;
     },
+  });
+  registerContentFor(engine, async (kind, args, context) => {
+    const currentBlock: unknown = context.getSync(["block"]),
+      currentSection: unknown = context.getSync(["section"]);
+    const owner = object(currentBlock) ? blockOwners.get(currentBlock) : undefined;
+    const parent = owner ?? (object(currentSection) ? blockOwners.get(currentSection) : undefined);
+    if (!parent) throw new Error("content_for is outside a section or theme block");
+    if (kind === "block") {
+      if (typeof args.id !== "string" || !args.id || typeof args.type !== "string" || !args.type)
+        throw new Error("Static content_for requires an id and type");
+      const configured = Object.hasOwn(parent.config.blocks, args.id)
+        ? parent.config.blocks[args.id]
+        : undefined;
+      const config = nestedBlockConfigSchema.parse(configured ?? { type: args.type });
+      if (config.type !== args.type)
+        throw new Error("Static block type differs from its configured type");
+      return themeBlock(args.id, config, parent, context, args, configured !== undefined);
+    }
+    const order = parent.config.block_order ?? Object.keys(parent.config.blocks);
+    if (
+      new Set(order).size !== order.length ||
+      order.some((id) => !Object.hasOwn(parent.config.blocks, id))
+    )
+      throw new Error("Invalid theme block order");
+    let output = "";
+    for (const id of order) {
+      const config = nestedBlockConfigSchema.parse(parent.config.blocks[id]);
+      if (!config.static && !config.disabled)
+        output += await themeBlock(id, config, parent, context, args, true);
+    }
+    return output;
   });
   const nativeDate = engine.filters.date;
   if (typeof nativeDate === "function")
@@ -304,6 +351,7 @@ export async function renderTheme(
   function settings(
     definitions: z.infer<typeof settingSchema>[],
     configured: LiquidRecord,
+    dynamicContext?: () => Context,
   ): LiquidRecord {
     const result: LiquidRecord = { ...configured };
     for (const definition of definitions) {
@@ -311,11 +359,24 @@ export async function renderTheme(
       const key = definition.id;
       const raw = Object.hasOwn(configured, key) ? configured[key] : definition.default;
       if (typeof raw === "string" && raw.includes("{{")) {
-        result[key] = null;
-        diagnostic(
-          "not-implemented",
-          `Dynamic source resolution for setting ${key} is not implemented.`,
-        );
+        if (!dynamicContext || raw.includes("{%")) {
+          result[key] = null;
+          diagnostic(
+            "not-implemented",
+            `Dynamic source resolution for setting ${key} is not implemented in this scope.`,
+          );
+          continue;
+        }
+        Object.defineProperty(result, key, {
+          enumerable: true,
+          configurable: true,
+          get() {
+            const single = /^\s*\{\{([\s\S]*?)\}\}\s*$/.exec(raw);
+            return single
+              ? engine.evalValue(single[1] ?? "", dynamicContext())
+              : engine.parseAndRender(raw, dynamicContext());
+          },
+        });
         continue;
       }
       const resource = {
@@ -428,15 +489,17 @@ export async function renderTheme(
       sectionLocales.set(entry.id, schema.locales);
       const blocks = (config.block_order ?? Object.keys(config.blocks)).flatMap((blockId) => {
         const configBlock = config.blocks[blockId];
-        if (!configBlock || configBlock.disabled) return [];
+        if (!configBlock || configBlock.disabled || configBlock.static === true) return [];
         const schemaBlock = schema.blocks.find((block) => block.type === configBlock.type);
-        if (!schemaBlock)
+        const isThemeBlock = files.has(`blocks/${configBlock.type}.liquid`);
+        if (!schemaBlock && !isThemeBlock)
           diagnostic(
             "not-implemented",
             `Block type ${configBlock.type} has no classic block schema.`,
           );
         // Block tree tracing is deferred until actual block execution is instrumented.
-        diagnostic("not-implemented", "Classic block execution tracing is not implemented.");
+        if (!isThemeBlock)
+          diagnostic("not-implemented", "Classic block execution tracing is not implemented.");
         return [
           {
             id: blockId,
@@ -451,9 +514,10 @@ export async function renderTheme(
         : configFile.startsWith("templates/")
           ? `template--0__${id}`
           : id;
+      let sectionContext: Context;
       const sectionData = {
         id: sectionId,
-        settings: settings(schema.settings, config.settings),
+        settings: settings(schema.settings, config.settings, () => sectionContext),
         blocks,
         index: null,
         location: groupType ?? "template",
@@ -462,6 +526,13 @@ export async function renderTheme(
       Object.defineProperty(sectionGlobals, "section", { value: sectionData, enumerable: true });
       const context = new Context({ section: sectionData }, engine.options, {
         globals: sectionGlobals,
+      });
+      sectionContext = context;
+      blockOwners.set(sectionData, {
+        config,
+        pointer: `${configFile}#/sections/${pointer}`,
+        section: sectionData,
+        prefix: sectionId,
       });
       const body = schemaFailure ?? (await renderFile(file, context));
       const tag = schema.tag ?? "div";
@@ -473,6 +544,94 @@ export async function renderTheme(
         ...(schema.class ? [schema.class] : []),
       ].join(" ");
       return `<${tag} id="shopify-section-${escapeHtml(sectionId)}" class="${escapeHtml(classes)}">${body}</${tag}>`;
+    });
+  }
+  async function themeBlock(
+    id: string,
+    config: NestedBlockConfig,
+    parent: BlockOwner,
+    caller: Context,
+    args: LiquidRecord,
+    configured: boolean,
+  ): Promise<string> {
+    if (config.disabled) return "";
+    if (!/^[A-Za-z0-9_-]+$/.test(config.type)) throw new Error("Invalid theme block type");
+    if (stack.filter((node) => node.kind === "block").length >= 8)
+      throw new Error("Theme blocks cannot be nested beyond eight levels");
+    const file = themePath(`blocks/${config.type}.liquid`);
+    const pointer = id.replaceAll("~", "~0").replaceAll("/", "~1");
+    const entry = node(
+      "block",
+      config.type,
+      file,
+      configured ? `${parent.pointer}/blocks/${pointer}` : null,
+    );
+    return inside(entry, async () => {
+      let schema = themeBlockSchema.parse({});
+      let schemaFailure: string | undefined;
+      try {
+        const values: z.infer<typeof themeBlockSchema>[] = [];
+        walk(toLiquidAST(source(file)), (node, parent) => {
+          if (node.type !== NodeTypes.LiquidRawTag || node.name !== "schema") return;
+          if (parent?.type !== NodeTypes.Document) throw new Error("Schema tag must be top-level");
+          values.push(themeBlockSchema.parse(JSON.parse(node.body.value)));
+        });
+        if (values.length > 1) throw new Error("More than one schema tag");
+        schema = values[0] ?? schema;
+      } catch (error) {
+        schemaFailure = liquidError(error, file, 1);
+      }
+      sectionLocales.set(entry.id, schema.locales);
+      const inherited: unknown = caller.getSync(["closest"]);
+      const closest = object(inherited)
+        ? Object.defineProperties({}, Object.getOwnPropertyDescriptors(inherited))
+        : {};
+      const parameters: LiquidRecord = {};
+      for (const [key, value] of Object.entries(args)) {
+        if (key.startsWith("closest."))
+          Object.defineProperty(closest, key.slice(8), {
+            value,
+            enumerable: true,
+            configurable: true,
+          });
+        else if (!["id", "type"].includes(key))
+          Object.defineProperty(parameters, key, { value, enumerable: true });
+      }
+      let blockContext: Context;
+      const blockData = {
+        id,
+        type: config.type,
+        settings: settings(schema.settings, config.settings, () => blockContext),
+        shopify_attributes: options.designMode
+          ? `data-shopify-editor-block="${escapeHtml(JSON.stringify({ id, type: config.type }))}"`
+          : "",
+      };
+      const scope = Object.defineProperties({}, Object.getOwnPropertyDescriptors(caller.globals));
+      for (const [key, value] of Object.entries({
+        block: blockData,
+        section: parent.section,
+        closest,
+      })) {
+        if (Object.getOwnPropertyDescriptor(scope, key)?.configurable === false) continue;
+        Object.defineProperty(scope, key, { value, enumerable: true, configurable: true });
+      }
+      blockContext = new Context({ ...parameters, block: blockData, closest }, engine.options, {
+        globals: scope,
+      });
+      blockOwners.set(blockData, {
+        config,
+        pointer: entry.settingsPath ?? `${parent.pointer}/blocks/${pointer}`,
+        section: parent.section,
+        prefix: `${parent.prefix}/${id}`,
+      });
+      let output = schemaFailure ?? (await renderFile(file, blockContext));
+      if (schema.tag !== null) {
+        const tag = schema.tag ?? "div";
+        if (!/^[A-Za-z][A-Za-z0-9-]*$/.test(tag))
+          throw new Error("Invalid theme block wrapper tag");
+        output = `<${tag} id="shopify-block-${escapeHtml(`${parent.prefix}/${id}`)}" class="shopify-block${schema.class ? ` ${escapeHtml(schema.class)}` : ""}">${output}</${tag}>`;
+      }
+      return `<!--sop:region ${entry.id}-->${output}<!--/sop:region-->`;
     });
   }
   async function assembly(file: string, groupType?: string): Promise<string> {

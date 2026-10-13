@@ -12,7 +12,7 @@ import { BrowserProtocol } from "./browser/cdp.js";
 const root = await mkdtemp(join(tmpdir(), "sop-inspector-interactions-"));
 const theme = join(root, "theme");
 const data = join(root, "data");
-const source = `<h1>{{shop.name}}</h1><p id="mode">{% if request.design_mode %}Design on{% else %}Design off{% endif %}</p><button id="blocked" onclick="fetch('/cart/add.js',{method:'POST'}).then(response=>this.textContent='Local status '+response.status)">Call unsupported endpoint</button><button id="absolute" onclick="fetch('https://example.test/cart/add.js',{method:'POST'}).then(response=>this.textContent='Absolute status '+response.status)">Call absolute endpoint</button>{% schema %}{"settings":[{"type":"product","id":"featured"}]}{% endschema %}`;
+const source = `<h1>{{shop.name}}</h1>{% content_for 'block', type: 'label', id: 'label', label: shop.name %}<p id="mode">{% if request.design_mode %}Design on{% else %}Design off{% endif %}</p><button id="blocked" onclick="fetch('/cart/add.js',{method:'POST'}).then(response=>this.textContent='Local status '+response.status)">Call unsupported endpoint</button><button id="absolute" onclick="fetch('https://example.test/cart/add.js',{method:'POST'}).then(response=>this.textContent='Absolute status '+response.status)">Call absolute endpoint</button>{% schema %}{"settings":[{"type":"product","id":"featured"}]}{% endschema %}`;
 for (const [file, text] of Object.entries({
   "layout/theme.liquid":
     "<!doctype html><html><head><title>Inspector interaction test</title></head><body>{{content_for_layout}}</body></html>",
@@ -21,6 +21,8 @@ for (const [file, text] of Object.entries({
     order: ["main"],
   }),
   "sections/main.liquid": source,
+  "blocks/label.liquid":
+    '<p id="theme-block">Block: {{label}}</p>{% schema %}{"tag":null}{% endschema %}',
 })) {
   await mkdir(dirname(join(theme, file)), { recursive: true });
   await writeFile(join(theme, file), text);
@@ -146,6 +148,24 @@ try {
     ),
     true,
   );
+  await parent(
+    "document.querySelector('[data-kind=block]').dispatchEvent(new MouseEvent('mouseenter'));true",
+  );
+  assert.equal(
+    await child(
+      `(async()=>{await (${wait})(()=>{const r=document.querySelector('#theme-block').getBoundingClientRect(),o=document.querySelector('#sop-region-highlight').getBoundingClientRect();return document.querySelector('#sop-region-highlight').style.display==='block'&&o.width>0&&Math.abs(o.top-r.top)<2&&o.height<=r.height+2;});return true;})()`,
+    ),
+    true,
+  );
+  await child(
+    "(()=>{const element=document.querySelector('#theme-block'),r=element.getBoundingClientRect();element.dispatchEvent(new MouseEvent('mouseover',{bubbles:true,clientX:r.left+2,clientY:r.top+2}));return true;})()",
+  );
+  assert.equal(
+    await parent(
+      `(async()=>{await (${wait})(()=>document.querySelector('[data-kind=block]').getAttribute('aria-pressed')==='true'&&document.querySelector('#source').textContent.includes('{{label}}'));return true;})()`,
+    ),
+    true,
+  );
   await child(
     "document.querySelector('#blocked').click();document.querySelector('#absolute').click();true",
   );
@@ -206,6 +226,8 @@ try {
     status: "pass",
     mobileWidth: 390,
     sectionHighlight: true,
+    themeBlockRangeHighlight: true,
+    themeBlockHoverAndSource: true,
     pageHoverSelection: true,
     missingResourceBadge: true,
     blockedEndpointBadge: true,

@@ -19,7 +19,9 @@ const files = {
   "templates/index.json":
     '{"sections":{"main":{"type":"main","settings":{"featured":"absent"}}},"order":["main"]}',
   "sections/main.liquid":
-    '<h1>{{shop.name}}</h1><p id="mode">{{request.design_mode}}</p><a id="navigate" href="/pages/about">About</a>{% schema %}{"settings":[{"type":"product","id":"featured"}]}{% endschema %}',
+    '<h1>{{shop.name}}</h1>{% content_for \'block\', type: \'label\', id: \'label\', label: shop.name %}<p id="mode">{{request.design_mode}}</p><a id="navigate" href="/pages/about">About</a>{% schema %}{"settings":[{"type":"product","id":"featured"}]}{% endschema %}',
+  "blocks/label.liquid":
+    '<p id="theme-block">Block: {{label}}</p>{% schema %}{"tag":null}{% endschema %}',
   "templates/page.json": '{"sections":{"main":{"type":"main"}},"order":["main"]}',
   "assets/a.js":
     'import {answer} from "./b.js"; export const marker=17; window.moduleAnswer=answer; import("./b.js").then(m=>window.dynamicAnswer=m.answer);',
@@ -187,6 +189,24 @@ try {
     ),
     true,
   );
+  await parent(
+    "document.querySelector('[data-kind=block]').dispatchEvent(new MouseEvent('mouseenter'));true",
+  );
+  assert.equal(
+    await frame(
+      `(async()=>{await (${wait})(()=>{const r=document.querySelector('#theme-block').getBoundingClientRect(),o=document.querySelector('#sop-region-highlight').getBoundingClientRect();return document.querySelector('#sop-region-highlight').style.display==='block'&&o.width>0&&Math.abs(o.top-r.top)<2&&o.height<=r.height+2;});return true;})()`,
+    ),
+    true,
+  );
+  await frame(
+    "(()=>{const element=document.querySelector('#theme-block'),r=element.getBoundingClientRect();element.dispatchEvent(new MouseEvent('mouseover',{bubbles:true,clientX:r.left+2,clientY:r.top+2}));return true;})()",
+  );
+  assert.equal(
+    await parent(
+      `(async()=>{await (${wait})(()=>document.querySelector('[data-kind=block]').getAttribute('aria-pressed')==='true'&&document.querySelector('#source').textContent.includes('{{label}}'));return true;})()`,
+    ),
+    true,
+  );
   await browser("upload", "#snapshot-zip", dataZip);
   await parent(
     `(async()=>{await (${wait})(()=>window.SOP_INSPECTOR_STATE.result?.html.includes('Private Browser Snapshot Needle')&&document.querySelector('#status').dataset.state==='ready');return true;})()`,
@@ -262,6 +282,8 @@ try {
     cssImports: true,
     sourceViewer: true,
     sectionHighlight: true,
+    themeBlockRangeHighlight: true,
+    themeBlockHoverAndSource: true,
     mobileWidth: 390,
     fetchAndXhr501: true,
     designMode: true,

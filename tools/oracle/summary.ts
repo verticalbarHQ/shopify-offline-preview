@@ -56,18 +56,27 @@ export function summarizeHtml(html: string, options: SummaryOptions): PrivateSum
   const sectionText: Record<string, string> = {};
   const sections: PublicSummary["sections"] = [];
   const markers: { id: string; type: string; node: ComparisonNode; sectionId: string }[] = [];
-  const seenBlocks = new Set<string>();
+  const seenBlocks = new Map<string, string>();
+  const parentIds = new WeakMap<ComparisonNode, number>();
+  let parentSerial = 0;
   let markedBlockCount = 0;
   function block(
     id: string,
     type: string,
     sectionId: string,
     parent: ComparisonNode,
+    paired = false,
   ): ComparisonNode {
-    const key = `${sectionId}:${normalizeId(id)}`;
-    if (seenBlocks.has(key)) throw new Error(`Duplicate block marker: ${normalizeId(id)}`);
+    let parentId = parentIds.get(parent);
+    if (parentId === undefined) {
+      parentId = ++parentSerial;
+      parentIds.set(parent, parentId);
+    }
+    const key = `${sectionId}:${parentId}:${normalizeId(id)}`;
+    if (seenBlocks.has(key) && (!paired || seenBlocks.get(key) !== type))
+      throw new Error(`Duplicate block marker: ${normalizeId(id)}`);
     if (!id || !type) throw new Error("Empty block marker id/type");
-    seenBlocks.add(key);
+    seenBlocks.set(key, type);
     markedBlockCount++;
     const node: ComparisonNode = { kind: "block", type, children: [] };
     parent.children.push(node);
@@ -82,7 +91,7 @@ export function summarizeHtml(html: string, options: SummaryOptions): PrivateSum
         if (!parent || !currentSection || !open[1] || !open[2])
           throw new Error("Block marker outside a section");
         const activeParent = markers.at(-1)?.node ?? parent;
-        const item = block(open[1], open[2], currentSection, activeParent);
+        const item = block(open[1], open[2], currentSection, activeParent, true);
         markers.push({ id: open[1], type: open[2], node: item, sectionId: currentSection });
       } else if (node.data.trim() === "/sop:block") {
         if (!markers.pop()) throw new Error("Unmatched closing block marker");

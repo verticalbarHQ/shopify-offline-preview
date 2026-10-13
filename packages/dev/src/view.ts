@@ -4,12 +4,14 @@ import type { RenderNode, RenderResult } from "../../render/src/index.js";
 
 interface Region {
   nodeId: string;
-  domId: string;
+  domId?: string;
+  markerId?: string;
 }
 export function previewRegions(tree: RenderNode[]): Region[] {
   const result: Region[] = [];
   function walk(nodes: RenderNode[]) {
     for (const node of nodes) {
+      if (node.kind === "block") result.push({ nodeId: node.id, markerId: node.id });
       if (node.kind === "section" && node.settingsPath) {
         const [file, pointer] = node.settingsPath.split("#/sections/");
         const id = pointer?.replaceAll("~1", "/").replaceAll("~0", "~");

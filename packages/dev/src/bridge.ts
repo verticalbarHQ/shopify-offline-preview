@@ -3,7 +3,8 @@ import { isBlockedEndpoint } from "./endpoints.js";
 
 interface Region {
   nodeId: string;
-  domId: string;
+  domId?: string;
+  markerId?: string;
 }
 interface Configuration {
   inspectorOrigin: string;
@@ -46,6 +47,7 @@ const overlay = document.createElement("div");
 overlay.id = "sop-region-highlight";
 Object.assign(overlay.style, {
   position: "fixed",
+  boxSizing: "border-box",
   pointerEvents: "none",
   zIndex: "2147483647",
   border: "2px solid #4168ec",
@@ -176,18 +178,36 @@ XMLHttpRequest.prototype.open = function (
         : url;
   return originalOpen.call(this, method, local, async, username ?? null, password ?? null);
 };
-function regionElement(region: Region): HTMLElement | null {
-  return document.getElementById(region.domId);
+const ranges = new Map<string, Range>();
+function indexBlockRanges() {
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_COMMENT);
+  const stack: { id: string; node: Node }[] = [];
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const text = node.nodeValue?.trim() ?? "";
+    const open = /^sop:region (\S+)$/.exec(text);
+    if (open?.[1]) stack.push({ id: open[1], node });
+    else if (text === "/sop:region") {
+      const start = stack.pop();
+      if (!start) continue;
+      const range = document.createRange();
+      range.setStartAfter(start.node);
+      range.setEndBefore(node);
+      ranges.set(start.id, range);
+    }
+  }
+}
+function regionRect(region: Region): DOMRect | null {
+  if (region.domId) return document.getElementById(region.domId)?.getBoundingClientRect() ?? null;
+  return region.markerId ? (ranges.get(region.markerId)?.getBoundingClientRect() ?? null) : null;
 }
 let selected: Region | undefined;
 function highlight(region: Region | undefined) {
   selected = region;
-  const target = region && regionElement(region);
-  if (!target) {
+  const rect = region && regionRect(region);
+  if (!rect || rect.width === 0 || rect.height === 0) {
     overlay.style.display = "none";
     return;
   }
-  const rect = target.getBoundingClientRect();
   Object.assign(overlay.style, {
     display: "block",
     left: `${rect.left}px`,
@@ -213,13 +233,29 @@ window.addEventListener("message", (event) => {
 window.addEventListener("scroll", () => highlight(selected), { passive: true });
 window.addEventListener("resize", () => highlight(selected));
 function ready() {
+  indexBlockRanges();
   document.body.append(overlay, badges);
   document.addEventListener("mouseover", (event) => {
     const target =
       event.target instanceof Element
         ? event.target.closest('[id^="shopify-section-"], [data-sop-block-node]')
         : null;
-    const region = configuration.regions.find((region) => region.domId === target?.id);
+    const block = [...configuration.regions].reverse().find((region) => {
+      if (!region.markerId || !(event.target instanceof Element)) return false;
+      const range = ranges.get(region.markerId),
+        rect = regionRect(region);
+      return (
+        range?.intersectsNode(event.target) &&
+        rect &&
+        rect.width > 0 &&
+        rect.height > 0 &&
+        event.clientX >= rect.left &&
+        event.clientX <= rect.right &&
+        event.clientY >= rect.top &&
+        event.clientY <= rect.bottom
+      );
+    });
+    const region = block ?? configuration.regions.find((region) => region.domId === target?.id);
     if (region) send("select", region.nodeId);
   });
   document.addEventListener("click", (event) => {
