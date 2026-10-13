@@ -21,6 +21,8 @@ let dataHandle: DirectoryHandle | undefined;
 let started = false;
 let changed = () => {};
 let revision = 0;
+const errors: { theme: string | null; snapshot: string | null } = { theme: null, snapshot: null };
+const selections = { theme: 0, snapshot: 0 };
 const status = document.querySelector<HTMLElement>("#input-status");
 const refresh = document.querySelector<HTMLButtonElement>("#reload-folder");
 const staticRoot = new URL("./", import.meta.url);
@@ -33,6 +35,12 @@ function notify(message: string, error = false) {
     status.textContent = message;
     status.dataset.state = error ? "error" : "ready";
   }
+}
+function fail(kind: "theme" | "snapshot", error: unknown) {
+  errors[kind] = String(error);
+  revision++;
+  notify(String(error), true);
+  if (started) changed();
 }
 function imageNames(value: Snapshot): string[] {
   return [
@@ -59,6 +67,7 @@ async function mount() {
   } else changed();
 }
 async function setTheme(files: BrowserFiles) {
+  errors.theme = null;
   themeFiles = files;
   theme = new MemoryThemeFileSystem(files);
   revision++;
@@ -76,6 +85,7 @@ async function setSnapshot(files: BrowserFiles) {
     if (!bytes) throw new Error(`Snapshot image missing: images/${file}`);
     localImages[file] = bytes;
   }
+  errors.snapshot = null;
   snapshot = value;
   images = localImages;
   revision++;
@@ -87,6 +97,8 @@ const transport: InspectorTransport = {
     return { previewOrigin: "null", scenarios: ["default", ...Object.keys(snapshot.scenarios)] };
   },
   async render(input, signal) {
+    if (errors.theme || errors.snapshot)
+      throw new Error(errors.theme ?? errors.snapshot ?? "Invalid input");
     if (!theme) throw new Error("Open a theme zip or folder first");
     const result = await renderTheme(theme, input.path, {
       snapshot,
@@ -124,23 +136,31 @@ const transport: InspectorTransport = {
   },
 };
 window.SOP_INSPECTOR_TRANSPORT = transport;
+async function loadInput(
+  kind: "theme" | "snapshot",
+  read: () => Promise<BrowserFiles>,
+  handle?: DirectoryHandle,
+) {
+  const sequence = ++selections[kind];
+  if (kind === "theme") themeHandle = handle;
+  else dataHandle = handle;
+  if (refresh) refresh.disabled = !themeHandle && !dataHandle;
+  try {
+    const files = await read();
+    if (sequence !== selections[kind]) return;
+    if (kind === "theme") await setTheme(files);
+    else await setSnapshot(files);
+  } catch (error) {
+    if (sequence === selections[kind]) fail(kind, error);
+  }
+}
 function input(id: string, kind: "theme" | "snapshot") {
   document.querySelector<HTMLInputElement>(id)?.addEventListener("change", (event) => {
     const files = event.target instanceof HTMLInputElement ? event.target.files : null;
-    if (!files?.length) return;
-    void (async () => {
-      const data = await readSelectedFiles(
-        files,
-        kind === "theme" ? "layout/theme.liquid" : "snapshot.json",
+    if (files?.length)
+      void loadInput(kind, () =>
+        readSelectedFiles(files, kind === "theme" ? "layout/theme.liquid" : "snapshot.json"),
       );
-      if (kind === "theme") {
-        themeHandle = undefined;
-        await setTheme(data);
-      } else {
-        dataHandle = undefined;
-        await setSnapshot(data);
-      }
-    })().catch((error) => notify(String(error), true));
   });
 }
 input("#theme-zip", "theme");
@@ -159,21 +179,14 @@ async function picker(kind: "theme" | "snapshot") {
     return;
   }
   try {
-    const handle = await show();
-    const files = await readDirectory(
+    const handle = await show.call(window);
+    await loadInput(
+      kind,
+      () => readDirectory(handle, kind === "theme" ? "layout/theme.liquid" : "snapshot.json"),
       handle,
-      kind === "theme" ? "layout/theme.liquid" : "snapshot.json",
     );
-    if (kind === "theme") {
-      themeHandle = handle;
-      await setTheme(files);
-    } else {
-      dataHandle = handle;
-      await setSnapshot(files);
-    }
   } catch (error) {
-    if (!(error instanceof DOMException && error.name === "AbortError"))
-      notify(String(error), true);
+    if (!(error instanceof DOMException && error.name === "AbortError")) fail(kind, error);
   }
 }
 document.querySelector("#open-theme-folder")?.addEventListener("click", () => void picker("theme"));
@@ -181,12 +194,14 @@ document
   .querySelector("#open-snapshot-folder")
   ?.addEventListener("click", () => void picker("snapshot"));
 refresh?.addEventListener("click", () => {
-  void (async () => {
-    if (themeHandle) await setTheme(await readDirectory(themeHandle, "layout/theme.liquid"));
-    if (dataHandle) await setSnapshot(await readDirectory(dataHandle, "snapshot.json"));
-  })().catch((error) => notify(String(error), true));
+  const theme = themeHandle,
+    data = dataHandle;
+  if (theme) void loadInput("theme", () => readDirectory(theme, "layout/theme.liquid"), theme);
+  if (data) void loadInput("snapshot", () => readDirectory(data, "snapshot.json"), data);
 });
 document.querySelector("#default-snapshot")?.addEventListener("click", () => {
+  selections.snapshot++;
+  errors.snapshot = null;
   snapshot = defaultFixture();
   images = Object.create(null);
   dataHandle = undefined;
@@ -199,8 +214,6 @@ document.addEventListener("drop", (event) => {
   event.preventDefault();
   const files = event.dataTransfer?.files;
   if (!files?.length) return;
-  void readSelectedFiles(files, "layout/theme.liquid")
-    .then(setTheme)
-    .catch((error) => notify(String(error), true));
+  void loadInput("theme", () => readSelectedFiles(files, "layout/theme.liquid"));
 });
 notify("Open a theme zip or folder. Your files stay in this browser.");

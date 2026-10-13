@@ -203,9 +203,44 @@ try {
     ),
     true,
   );
+  const invalidZip = join(temp, "invalid-snapshot.zip");
+  await writeFile(invalidZip, zipSync({ "snapshot.json": strToU8('{"invalid":true}') }));
+  await browser("upload", "#snapshot-zip", invalidZip);
+  await parent(
+    `(async()=>{await (${wait})(()=>document.querySelector('#status').dataset.state==='error'&&window.SOP_INSPECTOR_STATE.result===null);return true;})()`,
+  );
+  assert.equal(await parent("document.querySelector('#preview').getAttribute('srcdoc')"), "");
+  await parent("document.querySelector('#default-snapshot').click();true;");
+  await parent(
+    `(async()=>{await (${wait})(()=>document.querySelector('#status').dataset.state==='ready');return true;})()`,
+  );
+  const slowZip = join(temp, "slow-snapshot.zip");
+  const slow = structuredClone(snapshot);
+  slow.shop.name = "Stale Snapshot Must Not Appear";
+  await writeFile(
+    slowZip,
+    zipSync({ ...dataFiles, "snapshot.json": strToU8(JSON.stringify(slow)) }),
+  );
+  await parent(
+    `(()=>{const original=File.prototype.arrayBuffer;window.__sopOriginalFileRead=original;File.prototype.arrayBuffer=function(){if(this.name==='slow-snapshot.zip'){window.__sopSlowReadStarted=true;return new Promise(resolve=>setTimeout(resolve,400)).then(()=>original.call(this));}return original.call(this);};return true;})()`,
+  );
+  await browser("upload", "#snapshot-zip", slowZip);
+  await parent(
+    `(async()=>{await (${wait})(()=>window.__sopSlowReadStarted);document.querySelector('#default-snapshot').click();await new Promise(r=>setTimeout(r,650));File.prototype.arrayBuffer=window.__sopOriginalFileRead;return true;})()`,
+  );
+  assert.equal(
+    await parent(
+      "window.SOP_INSPECTOR_STATE.result.html.includes('Stale Snapshot Must Not Appear')",
+    ),
+    false,
+  );
+  assert.equal(
+    await parent("window.SOP_INSPECTOR_STATE.result.html.includes('Offline Example Shop')"),
+    true,
+  );
   // Exercise genuine browser directory handles through Origin Private File System; the OS picker dialog is outside this test.
   await parent(
-    `(async()=>{const root=await navigator.storage.getDirectory();const theme=await root.getDirectoryHandle('sop-test-theme',{create:true});for(const [path,text] of Object.entries(${JSON.stringify(files)})){const parts=path.split('/');const name=parts.pop();let dir=theme;for(const part of parts)dir=await dir.getDirectoryHandle(part,{create:true});const file=await dir.getFileHandle(name,{create:true});const writer=await file.createWritable();await writer.write(text);await writer.close();}window.showDirectoryPicker=async()=>theme;document.querySelector('#open-theme-folder').click();await (${wait})(()=>!document.querySelector('#reload-folder').disabled&&document.querySelector('#status').dataset.state==='ready');const sections=await theme.getDirectoryHandle('sections');const file=await sections.getFileHandle('main.liquid');const writer=await file.createWritable();await writer.write('<h1>Folder Reload Needle</h1>');await writer.close();document.querySelector('#reload-folder').click();await (${wait})(()=>window.SOP_INSPECTOR_STATE.result?.html.includes('Folder Reload Needle')&&document.querySelector('#status').dataset.state==='ready');return true;})()`,
+    `(async()=>{const root=await navigator.storage.getDirectory();const theme=await root.getDirectoryHandle('sop-test-theme',{create:true});for(const [path,text] of Object.entries(${JSON.stringify(files)})){const parts=path.split('/');const name=parts.pop();let dir=theme;for(const part of parts)dir=await dir.getDirectoryHandle(part,{create:true});const file=await dir.getFileHandle(name,{create:true});const writer=await file.createWritable();await writer.write(text);await writer.close();}window.showDirectoryPicker=async function(){'use strict';if(this!==window)throw new Error('Folder picker receiver was lost');return theme;};document.querySelector('#open-theme-folder').click();await (${wait})(()=>!document.querySelector('#reload-folder').disabled&&document.querySelector('#status').dataset.state==='ready');const sections=await theme.getDirectoryHandle('sections');const file=await sections.getFileHandle('main.liquid');const writer=await file.createWritable();await writer.write('<h1>Folder Reload Needle</h1>');await writer.close();document.querySelector('#reload-folder').click();await (${wait})(()=>window.SOP_INSPECTOR_STATE.result?.html.includes('Folder Reload Needle')&&document.querySelector('#status').dataset.state==='ready');return true;})()`,
   );
   for (const request of requests.filter((r) => r.sessionId === sessionId)) {
     const url = new URL(request.url);
@@ -231,6 +266,9 @@ try {
     fetchAndXhr501: true,
     designMode: true,
     noUploads: true,
+    invalidSnapshotClearsPreview: true,
+    folderPickerReceiverPreserved: true,
+    latestSnapshotSelectionWins: true,
   };
   await writeFile(
     ".local/results/playground-interactions.json",
