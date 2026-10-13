@@ -1,6 +1,7 @@
 import { type Liquid, toValue } from "liquidjs";
 import type { Snapshot } from "../../../data/src/schema.js";
 import { themePath } from "../../../theme/src/index.js";
+import { registerColorFilters } from "./colors.js";
 import { imageFilters, namedArgs } from "./images.js";
 import { md5 } from "./md5.js";
 import { formatMoney } from "./money.js";
@@ -15,6 +16,7 @@ interface FilterHooks {
   diagnostic(code: string, message: string, file: string | null, line: number | null): void;
 }
 export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void {
+  registerColorFilters(engine);
   const translate = translateFactory(hooks.files, hooks.snapshot.shop.locale, hooks.sectionLocales);
   engine.registerFilter("translate", function (value: unknown, ...args: unknown[]) {
     return translate(value, args, (key) =>
