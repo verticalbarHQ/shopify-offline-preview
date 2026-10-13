@@ -19,6 +19,7 @@ import { registry } from "../../spec/src/index.js";
 import { parseThemeJson, type ThemeFileSystem, themePath } from "../../theme/src/index.js";
 import { appendAppEmbeds, appIdentity, appMarkup } from "./apps.js";
 import { registerBasicTags } from "./basic-tags.js";
+import { ColorScheme, ColorSchemeGroup, colorSetting } from "./color-settings.js";
 import { registerContentFor } from "./content-for.js";
 import { type RenderNode, type RenderResult, renderSchema } from "./contracts.js";
 import { ImageUrlInputError } from "./filters/images.js";
@@ -405,6 +406,7 @@ export async function renderTheme(
     }
     return html;
   }
+  const colorGroups = new Map<string, ColorSchemeGroup>();
   function settings(
     definitions: z.infer<typeof settingSchema>[],
     configured: LiquidRecord,
@@ -434,6 +436,24 @@ export async function renderTheme(
               : engine.parseAndRender(raw, dynamicContext());
           },
         });
+        continue;
+      }
+      if (definition.type === "color") {
+        result[key] = colorSetting(raw, (message) => diagnostic("not-implemented", message));
+        continue;
+      }
+      if (definition.type === "color_scheme_group") {
+        result[key] = colorGroups.get(key) ?? new ColorSchemeGroup([]);
+        continue;
+      }
+      if (definition.type === "color_scheme") {
+        const groups = [...colorGroups.values()];
+        const all = groups.flatMap((g) => g.valueOf());
+        result[key] =
+          all.find((s) => s.id === raw) ??
+          all.find((s) => s.id === definition.default) ??
+          all[0] ??
+          null;
         continue;
       }
       const resource = {
@@ -467,8 +487,6 @@ export async function renderTheme(
           "collection_list",
           "metaobject",
           "metaobject_list",
-          "color_scheme",
-          "color_scheme_group",
         ].includes(definition.type)
       ) {
         result[key] = null;
@@ -497,6 +515,24 @@ export async function renderTheme(
         .parse(parseThemeJson(source("config/settings_schema.json"), "config/settings_schema.json"))
         .flatMap((group) => group.settings)
     : [];
+  for (const definition of definitions) {
+    if (definition.type !== "color_scheme_group" || !definition.id) continue;
+    const fields = z.array(settingSchema).parse(definition.definition ?? []);
+    const entries = z
+      .record(
+        z.string(),
+        z.object({ settings: z.record(z.string(), z.unknown()).default({}) }).passthrough(),
+      )
+      .parse(settingsConfig[definition.id] ?? {});
+    colorGroups.set(
+      definition.id,
+      new ColorSchemeGroup(
+        Object.entries(entries).map(
+          ([id, value]) => new ColorScheme(id, settings(fields, value.settings)),
+        ),
+      ),
+    );
+  }
   globals.settings = settings(definitions, settingsConfig);
   Object.defineProperty(globals, "content_for_header", {
     get() {
