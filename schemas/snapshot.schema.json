@@ -510,6 +510,25 @@
       "items": {
         "type": "object",
         "properties": {
+          "sortOptions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "value",
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          },
           "seo": {
             "type": "object",
             "properties": {
@@ -682,6 +701,9 @@
       "items": {
         "type": "object",
         "properties": {
+          "commentsEnabled": {
+            "type": "boolean"
+          },
           "seo": {
             "type": "object",
             "properties": {
@@ -716,6 +738,11 @@
             "items": {
               "type": "object",
               "properties": {
+                "commentsCount": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
                 "seo": {
                   "type": "object",
                   "properties": {

@@ -3058,6 +3058,7 @@
   ],
   "blogs": [
     {
+      "commentsEnabled": false,
       "seo": {
         "title": null,
         "description": "Original example journal."
@@ -3067,6 +3068,7 @@
       "title": "Example Journal",
       "articles": [
         {
+          "commentsCount": 0,
           "seo": {
             "title": null,
             "description": "Original example article 1."
@@ -3091,6 +3093,7 @@
           "metafields": {}
         },
         {
+          "commentsCount": 0,
           "seo": {
             "title": null,
             "description": "Original example article 2."
@@ -3110,6 +3113,7 @@
           "metafields": {}
         },
         {
+          "commentsCount": 0,
           "seo": {
             "title": null,
             "description": "Original example article 3."
@@ -14873,6 +14877,7 @@
     "with-image": {
       "blogs": [
         {
+          "commentsEnabled": false,
           "seo": {
             "title": null,
             "description": "Original example journal."
@@ -14884,6 +14889,7 @@
           "metafields": {},
           "articles": [
             {
+              "commentsCount": 0,
               "seo": {
                 "title": null,
                 "description": "Original example article 1."
@@ -14908,6 +14914,7 @@
               "metafields": {}
             },
             {
+              "commentsCount": 0,
               "seo": {
                 "title": null,
                 "description": "Original example article 2."
@@ -14927,6 +14934,7 @@
               "metafields": {}
             },
             {
+              "commentsCount": 0,
               "seo": {
                 "title": null,
                 "description": "Original example article 3."
@@ -14957,6 +14965,7 @@
     "without-image": {
       "blogs": [
         {
+          "commentsEnabled": false,
           "seo": {
             "title": null,
             "description": "Original example journal."
@@ -14968,6 +14977,7 @@
           "metafields": {},
           "articles": [
             {
+              "commentsCount": 0,
               "seo": {
                 "title": null,
                 "description": "Original example article 1."
@@ -14987,6 +14997,7 @@
               "metafields": {}
             },
             {
+              "commentsCount": 0,
               "seo": {
                 "title": null,
                 "description": "Original example article 2."
@@ -15006,6 +15017,7 @@
               "metafields": {}
             },
             {
+              "commentsCount": 0,
               "seo": {
                 "title": null,
                 "description": "Original example article 3."

@@ -140,6 +140,25 @@ export function liquidObjects(
   }
   const products = new Map<string, LiquidRecord>();
   const collections = new Map<string, LiquidRecord>();
+  const sortOptions = [
+    ["manual", "Featured"],
+    ["most-relevant", "Most relevant"],
+    ["best-selling", "Best selling"],
+    ["title-ascending", "Alphabetically, A-Z"],
+    ["title-descending", "Alphabetically, Z-A"],
+    ["price-ascending", "Price, low to high"],
+    ["price-descending", "Price, high to low"],
+    ["created-ascending", "Date, old to new"],
+    ["created-descending", "Date, new to old"],
+  ].map(([value, name]) => ({ value, name }));
+  function collectionSortOptions(supplied?: Snapshot["collections"][number]["sortOptions"]) {
+    if (supplied) return supplied;
+    if (snapshot.shop.locale.split("-")[0] !== "en")
+      hooks.unsupportedOperation?.(
+        "Localized collection sort labels are missing; English is used.",
+      );
+    return sortOptions;
+  }
   for (const [productIndex, source] of snapshot.products.entries()) {
     const path = `products[${productIndex}]`;
     const images = source.images.map(image);
@@ -288,6 +307,13 @@ export function liquidObjects(
           image: source.image ? image(source.image, 0) : null,
           template_suffix: source.templateSuffix,
           default_sort_by: source.sortOrder,
+          get sort_options() {
+            return collectionSortOptions(source.sortOptions);
+          },
+          results_count: null,
+          terms: null,
+          current_vendor: null,
+          current_type: null,
           sort_by: route.sortBy,
           filters: snapshot.filters,
         },
@@ -335,6 +361,13 @@ export function liquidObjects(
           image: null,
           template_suffix: null,
           default_sort_by: "title-ascending",
+          get sort_options() {
+            return collectionSortOptions();
+          },
+          results_count: null,
+          terms: null,
+          current_vendor: null,
+          current_type: null,
           sort_by: route.sortBy,
           filters: snapshot.filters,
         },
@@ -391,6 +424,7 @@ export function liquidObjects(
           articles: source.articles.map((article, index) => {
             const dto = tracked(
               {
+                ...availableFields({ comments_count: article.commentsCount }),
                 ...availableFields({ id: article.id === undefined ? undefined : id(article.id) }),
                 handle: article.handle,
                 title: article.title,
@@ -416,6 +450,7 @@ export function liquidObjects(
             return dto;
           }),
           articles_count: source.articles.length,
+          ...availableFields({ "comments_enabled?": source.commentsEnabled }),
         },
         "blog",
         `blogs[${blogIndex}]`,
@@ -621,6 +656,8 @@ export function liquidObjects(
   }
   const search = tracked(
     {
+      id: null,
+      url: null,
       terms: route.q,
       performed: new URL(route.path, "https://offline.invalid").searchParams.has("q"),
       get results() {
@@ -715,6 +752,33 @@ export function liquidObjects(
       all_products_collection_url: "/collections/all",
     },
   };
+  if (snapshot.shop.policies !== undefined) {
+    const shop = globals.shop;
+    if (
+      shop !== null &&
+      typeof shop === "object" &&
+      "policies" in shop &&
+      Array.isArray(shop.policies)
+    ) {
+      const policies = shop.policies;
+      for (const key of [
+        "shipping_policy",
+        "privacy_policy",
+        "refund_policy",
+        "terms_of_service",
+        "subscription_policy",
+      ])
+        Object.defineProperty(shop, key, {
+          enumerable: true,
+          get() {
+            return (
+              policies.find((policy) => policy.url === `/policies/${key.replaceAll("_", "-")}`) ??
+              null
+            );
+          },
+        });
+    }
+  }
   if (route.pageType === "product")
     globals.product = products.get(route.resourceHandle ?? "") ?? null;
   if (route.pageType === "collection")

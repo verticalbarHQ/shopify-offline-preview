@@ -81,6 +81,7 @@ const page = z.strictObject({
   metafields,
 });
 const article = z.strictObject({
+  commentsCount: z.number().int().nonnegative().optional(),
   seo: seo.optional(),
   id: z.string().min(1).optional(),
   handle,
@@ -148,6 +149,7 @@ export const snapshotSchema = z.strictObject({
   products: z.array(product),
   collections: z.array(
     z.strictObject({
+      sortOptions: z.array(z.strictObject({ value: z.string(), name: z.string() })).optional(),
       seo: seo.optional(),
       id: z.string().min(1).optional(),
       handle,
@@ -162,6 +164,7 @@ export const snapshotSchema = z.strictObject({
   pages: z.array(page),
   blogs: z.array(
     z.strictObject({
+      commentsEnabled: z.boolean().optional(),
       seo: seo.optional(),
       id: z.string().min(1).optional(),
       handle,

@@ -144,6 +144,7 @@ export function defaultFixture(): Snapshot {
     ],
     blogs: [
       {
+        commentsEnabled: false,
         seo: { title: null, description: "Original example journal." },
         id: "400001",
         handle: "news",
@@ -151,6 +152,7 @@ export function defaultFixture(): Snapshot {
         templateSuffix: null,
         metafields: {},
         articles: Array.from({ length: 3 }, (_, i) => ({
+          commentsCount: 0,
           seo: { title: null, description: `Original example article ${i + 1}.` },
           id: String(500001 + i),
           handle: `story-${i + 1}`,

@@ -142,6 +142,12 @@ Date and `time_tag` named formats read `date_formats` from the selected theme lo
 patterns are provided; missing formats or other unsupplied locale patterns stay diagnosed. Display
 dates use the shop timezone, `<time>` datetime values use UTC, and `now` uses the snapshot timestamp.
 
+Collections expose English sort labels or supplied `sortOptions`; labels describe the available
+Shopify choices and do not invent sales rankings. `commentsEnabled` and article `commentsCount`
+come from the snapshot. Shop policy aliases resolve supplied policy URLs and remain unavailable
+when the policy list itself is absent. Shared collection/search lookups that Shopify returns as nil
+retain nil values.
+
 Source prices are decimal strings in the shop currency, not floating-point numbers or Liquid's
 derived minor-unit prices. Variants have string ids; cart lines refer to a product handle and
 variant id. Images use paths relative to `images/`. Schema validation checks source shape; reference
