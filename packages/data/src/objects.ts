@@ -171,6 +171,18 @@ export function liquidObjects(
         {
           id: id(variant.id),
           title: options.join(" / "),
+          name:
+            source.options.length === 1 &&
+            source.options[0]?.name === "Title" &&
+            source.options[0]?.values[0] === "Default Title"
+              ? source.title
+              : `${source.title} - ${options.join(" / ")}`,
+          public_title:
+            source.options.length === 1 &&
+            source.options[0]?.name === "Title" &&
+            source.options[0]?.values[0] === "Default Title"
+              ? null
+              : options.join(" / "),
           options,
           option1: options[0] ?? null,
           option2: options[1] ?? null,
@@ -211,6 +223,15 @@ export function liquidObjects(
               "unit_price_measurement",
               `${path}.variants[${index}].unit_price_measurement`,
             ),
+            requires_shipping: variant.requiresShipping,
+            taxable: variant.taxable,
+            weight: variant.weight,
+            requires_selling_plan: variant.requiresSellingPlan,
+            selling_plan_allocations: trackedJson(
+              variant.sellingPlanAllocations,
+              "selling_plan_allocation",
+              `${path}.variants[${index}].selling_plan_allocations`,
+            ),
             inventory_management: variant.inventoryManagement,
             inventory_policy: variant.inventoryPolicy,
             inventory_quantity: variant.inventoryQuantity,
@@ -233,6 +254,9 @@ export function liquidObjects(
     );
     const dto: LiquidRecord = {
       ...availableFields({
+        created_at: source.createdAt,
+        published_at: source.publishedAt,
+        category: trackedJson(source.category, "taxonomy_category", `${path}.category`),
         id: source.id === undefined ? undefined : id(source.id),
         "gift_card?": source.giftCard,
         requires_selling_plan: source.requiresSellingPlan,
@@ -285,7 +309,9 @@ export function liquidObjects(
       featured_media: images[0] ?? null,
       metafields: source.metafields,
     };
-    products.set(source.handle, tracked(dto, "product", path));
+    const product = tracked(dto, "product", path);
+    products.set(source.handle, product);
+    for (const variant of variants) Object.defineProperty(variant, "product", { value: product });
   }
   for (const [collectionIndex, source] of snapshot.collections.entries()) {
     const members = source.products.flatMap((handle) => {
@@ -424,7 +450,11 @@ export function liquidObjects(
           articles: source.articles.map((article, index) => {
             const dto = tracked(
               {
-                ...availableFields({ comments_count: article.commentsCount }),
+                ...availableFields({
+                  comments_count: article.commentsCount,
+                  created_at: article.createdAt,
+                  updated_at: article.updatedAt,
+                }),
                 ...availableFields({ id: article.id === undefined ? undefined : id(article.id) }),
                 handle: article.handle,
                 title: article.title,

@@ -9,8 +9,10 @@ import { registerDateFilters } from "./dates.js";
 import { registerEventFilters } from "./events.js";
 import { handleize } from "./handle.js";
 import { imageFilters, namedArgs } from "./images.js";
+import { registerJsonFilter } from "./json.js";
 import { md5 } from "./md5.js";
 import { formatMoney, moneyAmount } from "./money.js";
+import { registerStructuredDataFilter } from "./structured-data.js";
 import { translateFactory } from "./translations.js";
 
 interface FilterHooks {
@@ -23,6 +25,8 @@ interface FilterHooks {
 }
 export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void {
   registerColorFilters(engine);
+  registerJsonFilter(engine);
+  registerStructuredDataFilter(engine, hooks.snapshot.shop, hooks.diagnostic);
   registerDateFilters(engine, hooks.snapshot, hooks.files, hooks.diagnostic);
   registerEventFilters(engine, hooks.snapshot.shop.currency, hooks.diagnostic);
   registerFontFilters(engine, hooks.diagnostic);

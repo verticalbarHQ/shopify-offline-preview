@@ -26,6 +26,11 @@ const variant = z.strictObject({
   sku: z.string(),
   barcode: z.string(),
   image: z.string().nullable(),
+  requiresShipping: z.boolean().optional(),
+  taxable: z.boolean().optional(),
+  weight: z.number().nonnegative().optional(),
+  requiresSellingPlan: z.boolean().optional(),
+  sellingPlanAllocations: z.array(z.record(z.string(), z.json())).optional(),
   quantityRule: z
     .strictObject({
       min: z.number().int().positive(),
@@ -53,6 +58,9 @@ const variant = z.strictObject({
   storeAvailabilities: z.array(z.record(z.string(), z.json())).optional(),
 });
 const product = z.strictObject({
+  createdAt: z.iso.datetime({ offset: true }).optional(),
+  publishedAt: z.iso.datetime({ offset: true }).nullable().optional(),
+  category: z.strictObject({ name: z.string(), id: z.string().optional() }).nullable().optional(),
   seo: seo.optional(),
   id: z.string().min(1).optional(),
   handle,
@@ -81,6 +89,8 @@ const page = z.strictObject({
   metafields,
 });
 const article = z.strictObject({
+  createdAt: z.iso.datetime({ offset: true }).optional(),
+  updatedAt: z.iso.datetime({ offset: true }).optional(),
   commentsCount: z.number().int().nonnegative().optional(),
   seo: seo.optional(),
   id: z.string().min(1).optional(),

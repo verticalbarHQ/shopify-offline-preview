@@ -17,6 +17,11 @@ function image(index: number) {
 }
 function variantMetadata() {
   return {
+    requiresShipping: true,
+    taxable: true,
+    weight: 0,
+    requiresSellingPlan: false,
+    sellingPlanAllocations: [],
     quantityRule: { min: 1, max: null, increment: 1 },
     quantityPriceBreaks: [],
     unitPrice: null,
@@ -31,6 +36,9 @@ function variantMetadata() {
 /** Original synthetic content only; no benchmark code or customer content. */
 export function defaultFixture(): Snapshot {
   const products: Snapshot["products"] = Array.from({ length: 40 }, (_, i) => ({
+    createdAt: fixtureNow,
+    publishedAt: fixtureNow,
+    category: null,
     seo: {
       title: null,
       description: `Original synthetic product ${i + 1} for offline theme verification.`,
@@ -160,6 +168,8 @@ export function defaultFixture(): Snapshot {
           bodyHtml: `<p>Original example article ${i + 1}.</p>`,
           excerptHtml: `<p>Story ${i + 1} excerpt.</p>`,
           author: "Example Author",
+          createdAt: fixtureNow,
+          updatedAt: fixtureNow,
           publishedAt: fixtureNow,
           image: i === 1 ? null : image(i),
           tags: ["example"],

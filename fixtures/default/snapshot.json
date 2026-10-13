@@ -26,6 +26,9 @@
   },
   "products": [
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 1 for offline theme verification."
@@ -87,6 +90,11 @@
           "sku": "SOP-MAIN-1",
           "barcode": "",
           "image": "pattern-01.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -122,6 +130,11 @@
           "sku": "SOP-MAIN-2",
           "barcode": "",
           "image": "pattern-01.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -157,6 +170,11 @@
           "sku": "SOP-MAIN-3",
           "barcode": "",
           "image": "pattern-01.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -192,6 +210,11 @@
           "sku": "SOP-MAIN-4",
           "barcode": "",
           "image": "pattern-01.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -227,6 +250,11 @@
           "sku": "SOP-MAIN-5",
           "barcode": "",
           "image": "pattern-02.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -262,6 +290,11 @@
           "sku": "SOP-MAIN-6",
           "barcode": "",
           "image": "pattern-02.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -297,6 +330,11 @@
           "sku": "SOP-MAIN-7",
           "barcode": "",
           "image": "pattern-02.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -332,6 +370,11 @@
           "sku": "SOP-MAIN-8",
           "barcode": "",
           "image": "pattern-02.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -367,6 +410,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 2 for offline theme verification."
@@ -405,6 +451,11 @@
           "sku": "SOP-2",
           "barcode": "",
           "image": "pattern-02.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -434,6 +485,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 3 for offline theme verification."
@@ -472,6 +526,11 @@
           "sku": "SOP-3",
           "barcode": "",
           "image": "pattern-03.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -501,6 +560,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 4 for offline theme verification."
@@ -539,6 +601,11 @@
           "sku": "SOP-4",
           "barcode": "",
           "image": "pattern-04.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -568,6 +635,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 5 for offline theme verification."
@@ -606,6 +676,11 @@
           "sku": "SOP-5",
           "barcode": "",
           "image": "pattern-05.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -635,6 +710,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 6 for offline theme verification."
@@ -673,6 +751,11 @@
           "sku": "SOP-6",
           "barcode": "",
           "image": "pattern-06.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -702,6 +785,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 7 for offline theme verification."
@@ -740,6 +826,11 @@
           "sku": "SOP-7",
           "barcode": "",
           "image": "pattern-07.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -769,6 +860,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 8 for offline theme verification."
@@ -807,6 +901,11 @@
           "sku": "SOP-8",
           "barcode": "",
           "image": "pattern-08.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -836,6 +935,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 9 for offline theme verification."
@@ -874,6 +976,11 @@
           "sku": "SOP-9",
           "barcode": "",
           "image": "pattern-09.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -903,6 +1010,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 10 for offline theme verification."
@@ -941,6 +1051,11 @@
           "sku": "SOP-10",
           "barcode": "",
           "image": "pattern-10.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -970,6 +1085,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 11 for offline theme verification."
@@ -1008,6 +1126,11 @@
           "sku": "SOP-11",
           "barcode": "",
           "image": "pattern-11.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -1037,6 +1160,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 12 for offline theme verification."
@@ -1075,6 +1201,11 @@
           "sku": "SOP-12",
           "barcode": "",
           "image": "pattern-12.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -1104,6 +1235,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 13 for offline theme verification."
@@ -1142,6 +1276,11 @@
           "sku": "SOP-13",
           "barcode": "",
           "image": "pattern-13.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -1171,6 +1310,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 14 for offline theme verification."
@@ -1209,6 +1351,11 @@
           "sku": "SOP-14",
           "barcode": "",
           "image": "pattern-14.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -1238,6 +1385,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 15 for offline theme verification."
@@ -1276,6 +1426,11 @@
           "sku": "SOP-15",
           "barcode": "",
           "image": "pattern-15.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -1305,6 +1460,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 16 for offline theme verification."
@@ -1343,6 +1501,11 @@
           "sku": "SOP-16",
           "barcode": "",
           "image": "pattern-16.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -1372,6 +1535,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 17 for offline theme verification."
@@ -1410,6 +1576,11 @@
           "sku": "SOP-17",
           "barcode": "",
           "image": "pattern-01.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -1439,6 +1610,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 18 for offline theme verification."
@@ -1477,6 +1651,11 @@
           "sku": "SOP-18",
           "barcode": "",
           "image": "pattern-02.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -1506,6 +1685,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 19 for offline theme verification."
@@ -1544,6 +1726,11 @@
           "sku": "SOP-19",
           "barcode": "",
           "image": "pattern-03.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -1573,6 +1760,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 20 for offline theme verification."
@@ -1611,6 +1801,11 @@
           "sku": "SOP-20",
           "barcode": "",
           "image": "pattern-04.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -1640,6 +1835,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 21 for offline theme verification."
@@ -1678,6 +1876,11 @@
           "sku": "SOP-21",
           "barcode": "",
           "image": "pattern-05.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -1707,6 +1910,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 22 for offline theme verification."
@@ -1745,6 +1951,11 @@
           "sku": "SOP-22",
           "barcode": "",
           "image": "pattern-06.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -1774,6 +1985,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 23 for offline theme verification."
@@ -1812,6 +2026,11 @@
           "sku": "SOP-23",
           "barcode": "",
           "image": "pattern-07.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -1841,6 +2060,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 24 for offline theme verification."
@@ -1879,6 +2101,11 @@
           "sku": "SOP-24",
           "barcode": "",
           "image": "pattern-08.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -1908,6 +2135,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 25 for offline theme verification."
@@ -1946,6 +2176,11 @@
           "sku": "SOP-25",
           "barcode": "",
           "image": "pattern-09.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -1975,6 +2210,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 26 for offline theme verification."
@@ -2013,6 +2251,11 @@
           "sku": "SOP-26",
           "barcode": "",
           "image": "pattern-10.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -2042,6 +2285,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 27 for offline theme verification."
@@ -2080,6 +2326,11 @@
           "sku": "SOP-27",
           "barcode": "",
           "image": "pattern-11.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -2109,6 +2360,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 28 for offline theme verification."
@@ -2147,6 +2401,11 @@
           "sku": "SOP-28",
           "barcode": "",
           "image": "pattern-12.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -2176,6 +2435,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 29 for offline theme verification."
@@ -2214,6 +2476,11 @@
           "sku": "SOP-29",
           "barcode": "",
           "image": "pattern-13.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -2243,6 +2510,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 30 for offline theme verification."
@@ -2281,6 +2551,11 @@
           "sku": "SOP-30",
           "barcode": "",
           "image": "pattern-14.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -2310,6 +2585,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 31 for offline theme verification."
@@ -2348,6 +2626,11 @@
           "sku": "SOP-31",
           "barcode": "",
           "image": "pattern-15.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -2377,6 +2660,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 32 for offline theme verification."
@@ -2415,6 +2701,11 @@
           "sku": "SOP-32",
           "barcode": "",
           "image": "pattern-16.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -2444,6 +2735,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 33 for offline theme verification."
@@ -2482,6 +2776,11 @@
           "sku": "SOP-33",
           "barcode": "",
           "image": "pattern-01.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -2511,6 +2810,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 34 for offline theme verification."
@@ -2549,6 +2851,11 @@
           "sku": "SOP-34",
           "barcode": "",
           "image": "pattern-02.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -2578,6 +2885,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 35 for offline theme verification."
@@ -2616,6 +2926,11 @@
           "sku": "SOP-35",
           "barcode": "",
           "image": "pattern-03.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -2645,6 +2960,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 36 for offline theme verification."
@@ -2683,6 +3001,11 @@
           "sku": "SOP-36",
           "barcode": "",
           "image": "pattern-04.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -2712,6 +3035,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 37 for offline theme verification."
@@ -2750,6 +3076,11 @@
           "sku": "SOP-37",
           "barcode": "",
           "image": "pattern-05.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -2779,6 +3110,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 38 for offline theme verification."
@@ -2817,6 +3151,11 @@
           "sku": "SOP-38",
           "barcode": "",
           "image": "pattern-06.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -2846,6 +3185,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 39 for offline theme verification."
@@ -2884,6 +3226,11 @@
           "sku": "SOP-39",
           "barcode": "",
           "image": "pattern-07.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -2913,6 +3260,9 @@
       "quantityPriceBreaksConfigured": false
     },
     {
+      "createdAt": "2026-10-13T00:00:00Z",
+      "publishedAt": "2026-10-13T00:00:00Z",
+      "category": null,
       "seo": {
         "title": null,
         "description": "Original synthetic product 40 for offline theme verification."
@@ -2951,6 +3301,11 @@
           "sku": "SOP-40",
           "barcode": "",
           "image": "pattern-08.png",
+          "requiresShipping": true,
+          "taxable": true,
+          "weight": 0,
+          "requiresSellingPlan": false,
+          "sellingPlanAllocations": [],
           "quantityRule": {
             "min": 1,
             "max": null,
@@ -3068,6 +3423,8 @@
       "title": "Example Journal",
       "articles": [
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "updatedAt": "2026-10-13T00:00:00Z",
           "commentsCount": 0,
           "seo": {
             "title": null,
@@ -3093,6 +3450,8 @@
           "metafields": {}
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "updatedAt": "2026-10-13T00:00:00Z",
           "commentsCount": 0,
           "seo": {
             "title": null,
@@ -3113,6 +3472,8 @@
           "metafields": {}
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "updatedAt": "2026-10-13T00:00:00Z",
           "commentsCount": 0,
           "seo": {
             "title": null,
@@ -3188,6 +3549,9 @@
     "sold-out": {
       "products": [
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 1 for offline theme verification."
@@ -3228,6 +3592,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -3263,6 +3632,11 @@
               "image": "pattern-01.png"
             },
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -3298,6 +3672,11 @@
               "image": "pattern-01.png"
             },
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -3333,6 +3712,11 @@
               "image": "pattern-01.png"
             },
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -3368,6 +3752,11 @@
               "image": "pattern-01.png"
             },
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -3403,6 +3792,11 @@
               "image": "pattern-02.png"
             },
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -3438,6 +3832,11 @@
               "image": "pattern-02.png"
             },
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -3473,6 +3872,11 @@
               "image": "pattern-02.png"
             },
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -3529,6 +3933,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 2 for offline theme verification."
@@ -3554,6 +3961,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -3596,6 +4008,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 3 for offline theme verification."
@@ -3621,6 +4036,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -3663,6 +4083,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 4 for offline theme verification."
@@ -3688,6 +4111,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -3730,6 +4158,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 5 for offline theme verification."
@@ -3755,6 +4186,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -3797,6 +4233,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 6 for offline theme verification."
@@ -3822,6 +4261,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -3864,6 +4308,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 7 for offline theme verification."
@@ -3889,6 +4336,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -3931,6 +4383,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 8 for offline theme verification."
@@ -3956,6 +4411,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -3998,6 +4458,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 9 for offline theme verification."
@@ -4023,6 +4486,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -4065,6 +4533,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 10 for offline theme verification."
@@ -4090,6 +4561,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -4132,6 +4608,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 11 for offline theme verification."
@@ -4157,6 +4636,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -4199,6 +4683,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 12 for offline theme verification."
@@ -4224,6 +4711,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -4266,6 +4758,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 13 for offline theme verification."
@@ -4291,6 +4786,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -4333,6 +4833,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 14 for offline theme verification."
@@ -4358,6 +4861,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -4400,6 +4908,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 15 for offline theme verification."
@@ -4425,6 +4936,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -4467,6 +4983,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 16 for offline theme verification."
@@ -4492,6 +5011,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -4534,6 +5058,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 17 for offline theme verification."
@@ -4559,6 +5086,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -4601,6 +5133,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 18 for offline theme verification."
@@ -4626,6 +5161,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -4668,6 +5208,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 19 for offline theme verification."
@@ -4693,6 +5236,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -4735,6 +5283,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 20 for offline theme verification."
@@ -4760,6 +5311,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -4802,6 +5358,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 21 for offline theme verification."
@@ -4827,6 +5386,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -4869,6 +5433,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 22 for offline theme verification."
@@ -4894,6 +5461,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -4936,6 +5508,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 23 for offline theme verification."
@@ -4961,6 +5536,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -5003,6 +5583,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 24 for offline theme verification."
@@ -5028,6 +5611,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -5070,6 +5658,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 25 for offline theme verification."
@@ -5095,6 +5686,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -5137,6 +5733,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 26 for offline theme verification."
@@ -5162,6 +5761,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -5204,6 +5808,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 27 for offline theme verification."
@@ -5229,6 +5836,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -5271,6 +5883,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 28 for offline theme verification."
@@ -5296,6 +5911,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -5338,6 +5958,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 29 for offline theme verification."
@@ -5363,6 +5986,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -5405,6 +6033,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 30 for offline theme verification."
@@ -5430,6 +6061,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -5472,6 +6108,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 31 for offline theme verification."
@@ -5497,6 +6136,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -5539,6 +6183,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 32 for offline theme verification."
@@ -5564,6 +6211,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -5606,6 +6258,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 33 for offline theme verification."
@@ -5631,6 +6286,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -5673,6 +6333,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 34 for offline theme verification."
@@ -5698,6 +6361,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -5740,6 +6408,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 35 for offline theme verification."
@@ -5765,6 +6436,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -5807,6 +6483,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 36 for offline theme verification."
@@ -5832,6 +6511,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -5874,6 +6558,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 37 for offline theme verification."
@@ -5899,6 +6586,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -5941,6 +6633,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 38 for offline theme verification."
@@ -5966,6 +6661,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -6008,6 +6708,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 39 for offline theme verification."
@@ -6033,6 +6736,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -6075,6 +6783,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 40 for offline theme verification."
@@ -6100,6 +6811,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -6146,6 +6862,9 @@
     "single-variant": {
       "products": [
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 1 for offline theme verification."
@@ -6171,6 +6890,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -6219,6 +6943,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 2 for offline theme verification."
@@ -6244,6 +6971,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -6286,6 +7018,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 3 for offline theme verification."
@@ -6311,6 +7046,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -6353,6 +7093,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 4 for offline theme verification."
@@ -6378,6 +7121,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -6420,6 +7168,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 5 for offline theme verification."
@@ -6445,6 +7196,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -6487,6 +7243,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 6 for offline theme verification."
@@ -6512,6 +7271,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -6554,6 +7318,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 7 for offline theme verification."
@@ -6579,6 +7346,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -6621,6 +7393,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 8 for offline theme verification."
@@ -6646,6 +7421,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -6688,6 +7468,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 9 for offline theme verification."
@@ -6713,6 +7496,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -6755,6 +7543,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 10 for offline theme verification."
@@ -6780,6 +7571,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -6822,6 +7618,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 11 for offline theme verification."
@@ -6847,6 +7646,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -6889,6 +7693,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 12 for offline theme verification."
@@ -6914,6 +7721,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -6956,6 +7768,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 13 for offline theme verification."
@@ -6981,6 +7796,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -7023,6 +7843,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 14 for offline theme verification."
@@ -7048,6 +7871,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -7090,6 +7918,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 15 for offline theme verification."
@@ -7115,6 +7946,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -7157,6 +7993,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 16 for offline theme verification."
@@ -7182,6 +8021,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -7224,6 +8068,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 17 for offline theme verification."
@@ -7249,6 +8096,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -7291,6 +8143,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 18 for offline theme verification."
@@ -7316,6 +8171,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -7358,6 +8218,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 19 for offline theme verification."
@@ -7383,6 +8246,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -7425,6 +8293,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 20 for offline theme verification."
@@ -7450,6 +8321,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -7492,6 +8368,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 21 for offline theme verification."
@@ -7517,6 +8396,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -7559,6 +8443,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 22 for offline theme verification."
@@ -7584,6 +8471,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -7626,6 +8518,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 23 for offline theme verification."
@@ -7651,6 +8546,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -7693,6 +8593,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 24 for offline theme verification."
@@ -7718,6 +8621,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -7760,6 +8668,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 25 for offline theme verification."
@@ -7785,6 +8696,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -7827,6 +8743,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 26 for offline theme verification."
@@ -7852,6 +8771,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -7894,6 +8818,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 27 for offline theme verification."
@@ -7919,6 +8846,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -7961,6 +8893,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 28 for offline theme verification."
@@ -7986,6 +8921,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -8028,6 +8968,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 29 for offline theme verification."
@@ -8053,6 +8996,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -8095,6 +9043,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 30 for offline theme verification."
@@ -8120,6 +9071,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -8162,6 +9118,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 31 for offline theme verification."
@@ -8187,6 +9146,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -8229,6 +9193,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 32 for offline theme verification."
@@ -8254,6 +9221,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -8296,6 +9268,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 33 for offline theme verification."
@@ -8321,6 +9296,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -8363,6 +9343,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 34 for offline theme verification."
@@ -8388,6 +9371,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -8430,6 +9418,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 35 for offline theme verification."
@@ -8455,6 +9446,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -8497,6 +9493,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 36 for offline theme verification."
@@ -8522,6 +9521,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -8564,6 +9568,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 37 for offline theme verification."
@@ -8589,6 +9596,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -8631,6 +9643,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 38 for offline theme verification."
@@ -8656,6 +9671,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -8698,6 +9718,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 39 for offline theme verification."
@@ -8723,6 +9746,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -8765,6 +9793,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 40 for offline theme verification."
@@ -8790,6 +9821,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -8836,6 +9872,9 @@
     "no-images": {
       "products": [
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 1 for offline theme verification."
@@ -8876,6 +9915,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -8911,6 +9955,11 @@
               "image": null
             },
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -8946,6 +9995,11 @@
               "image": null
             },
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -8981,6 +10035,11 @@
               "image": null
             },
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -9016,6 +10075,11 @@
               "image": null
             },
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -9051,6 +10115,11 @@
               "image": null
             },
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -9086,6 +10155,11 @@
               "image": null
             },
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -9121,6 +10195,11 @@
               "image": null
             },
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -9164,6 +10243,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 2 for offline theme verification."
@@ -9189,6 +10271,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -9231,6 +10318,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 3 for offline theme verification."
@@ -9256,6 +10346,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -9298,6 +10393,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 4 for offline theme verification."
@@ -9323,6 +10421,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -9365,6 +10468,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 5 for offline theme verification."
@@ -9390,6 +10496,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -9432,6 +10543,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 6 for offline theme verification."
@@ -9457,6 +10571,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -9499,6 +10618,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 7 for offline theme verification."
@@ -9524,6 +10646,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -9566,6 +10693,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 8 for offline theme verification."
@@ -9591,6 +10721,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -9633,6 +10768,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 9 for offline theme verification."
@@ -9658,6 +10796,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -9700,6 +10843,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 10 for offline theme verification."
@@ -9725,6 +10871,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -9767,6 +10918,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 11 for offline theme verification."
@@ -9792,6 +10946,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -9834,6 +10993,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 12 for offline theme verification."
@@ -9859,6 +11021,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -9901,6 +11068,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 13 for offline theme verification."
@@ -9926,6 +11096,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -9968,6 +11143,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 14 for offline theme verification."
@@ -9993,6 +11171,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -10035,6 +11218,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 15 for offline theme verification."
@@ -10060,6 +11246,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -10102,6 +11293,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 16 for offline theme verification."
@@ -10127,6 +11321,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -10169,6 +11368,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 17 for offline theme verification."
@@ -10194,6 +11396,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -10236,6 +11443,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 18 for offline theme verification."
@@ -10261,6 +11471,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -10303,6 +11518,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 19 for offline theme verification."
@@ -10328,6 +11546,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -10370,6 +11593,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 20 for offline theme verification."
@@ -10395,6 +11621,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -10437,6 +11668,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 21 for offline theme verification."
@@ -10462,6 +11696,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -10504,6 +11743,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 22 for offline theme verification."
@@ -10529,6 +11771,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -10571,6 +11818,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 23 for offline theme verification."
@@ -10596,6 +11846,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -10638,6 +11893,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 24 for offline theme verification."
@@ -10663,6 +11921,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -10705,6 +11968,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 25 for offline theme verification."
@@ -10730,6 +11996,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -10772,6 +12043,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 26 for offline theme verification."
@@ -10797,6 +12071,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -10839,6 +12118,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 27 for offline theme verification."
@@ -10864,6 +12146,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -10906,6 +12193,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 28 for offline theme verification."
@@ -10931,6 +12221,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -10973,6 +12268,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 29 for offline theme verification."
@@ -10998,6 +12296,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -11040,6 +12343,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 30 for offline theme verification."
@@ -11065,6 +12371,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -11107,6 +12418,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 31 for offline theme verification."
@@ -11132,6 +12446,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -11174,6 +12493,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 32 for offline theme verification."
@@ -11199,6 +12521,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -11241,6 +12568,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 33 for offline theme verification."
@@ -11266,6 +12596,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -11308,6 +12643,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 34 for offline theme verification."
@@ -11333,6 +12671,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -11375,6 +12718,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 35 for offline theme verification."
@@ -11400,6 +12746,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -11442,6 +12793,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 36 for offline theme verification."
@@ -11467,6 +12821,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -11509,6 +12868,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 37 for offline theme verification."
@@ -11534,6 +12896,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -11576,6 +12943,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 38 for offline theme verification."
@@ -11601,6 +12971,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -11643,6 +13018,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 39 for offline theme verification."
@@ -11668,6 +13046,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -11710,6 +13093,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 40 for offline theme verification."
@@ -11735,6 +13121,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -11781,6 +13172,9 @@
     "long-content": {
       "products": [
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 1 for offline theme verification."
@@ -11821,6 +13215,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -11856,6 +13255,11 @@
               "image": "pattern-01.png"
             },
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -11891,6 +13295,11 @@
               "image": "pattern-01.png"
             },
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -11926,6 +13335,11 @@
               "image": "pattern-01.png"
             },
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -11961,6 +13375,11 @@
               "image": "pattern-01.png"
             },
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -11996,6 +13415,11 @@
               "image": "pattern-02.png"
             },
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -12031,6 +13455,11 @@
               "image": "pattern-02.png"
             },
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -12066,6 +13495,11 @@
               "image": "pattern-02.png"
             },
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -12206,6 +13640,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 2 for offline theme verification."
@@ -12231,6 +13668,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -12273,6 +13715,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 3 for offline theme verification."
@@ -12298,6 +13743,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -12340,6 +13790,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 4 for offline theme verification."
@@ -12365,6 +13818,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -12407,6 +13865,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 5 for offline theme verification."
@@ -12432,6 +13893,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -12474,6 +13940,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 6 for offline theme verification."
@@ -12499,6 +13968,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -12541,6 +14015,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 7 for offline theme verification."
@@ -12566,6 +14043,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -12608,6 +14090,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 8 for offline theme verification."
@@ -12633,6 +14118,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -12675,6 +14165,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 9 for offline theme verification."
@@ -12700,6 +14193,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -12742,6 +14240,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 10 for offline theme verification."
@@ -12767,6 +14268,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -12809,6 +14315,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 11 for offline theme verification."
@@ -12834,6 +14343,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -12876,6 +14390,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 12 for offline theme verification."
@@ -12901,6 +14418,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -12943,6 +14465,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 13 for offline theme verification."
@@ -12968,6 +14493,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -13010,6 +14540,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 14 for offline theme verification."
@@ -13035,6 +14568,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -13077,6 +14615,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 15 for offline theme verification."
@@ -13102,6 +14643,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -13144,6 +14690,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 16 for offline theme verification."
@@ -13169,6 +14718,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -13211,6 +14765,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 17 for offline theme verification."
@@ -13236,6 +14793,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -13278,6 +14840,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 18 for offline theme verification."
@@ -13303,6 +14868,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -13345,6 +14915,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 19 for offline theme verification."
@@ -13370,6 +14943,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -13412,6 +14990,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 20 for offline theme verification."
@@ -13437,6 +15018,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -13479,6 +15065,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 21 for offline theme verification."
@@ -13504,6 +15093,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -13546,6 +15140,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 22 for offline theme verification."
@@ -13571,6 +15168,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -13613,6 +15215,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 23 for offline theme verification."
@@ -13638,6 +15243,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -13680,6 +15290,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 24 for offline theme verification."
@@ -13705,6 +15318,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -13747,6 +15365,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 25 for offline theme verification."
@@ -13772,6 +15393,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -13814,6 +15440,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 26 for offline theme verification."
@@ -13839,6 +15468,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -13881,6 +15515,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 27 for offline theme verification."
@@ -13906,6 +15543,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -13948,6 +15590,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 28 for offline theme verification."
@@ -13973,6 +15618,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -14015,6 +15665,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 29 for offline theme verification."
@@ -14040,6 +15693,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -14082,6 +15740,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 30 for offline theme verification."
@@ -14107,6 +15768,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -14149,6 +15815,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 31 for offline theme verification."
@@ -14174,6 +15843,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -14216,6 +15890,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 32 for offline theme verification."
@@ -14241,6 +15918,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -14283,6 +15965,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 33 for offline theme verification."
@@ -14308,6 +15993,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -14350,6 +16040,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 34 for offline theme verification."
@@ -14375,6 +16068,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -14417,6 +16115,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 35 for offline theme verification."
@@ -14442,6 +16143,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -14484,6 +16190,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 36 for offline theme verification."
@@ -14509,6 +16218,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -14551,6 +16265,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 37 for offline theme verification."
@@ -14576,6 +16293,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -14618,6 +16340,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 38 for offline theme verification."
@@ -14643,6 +16368,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -14685,6 +16415,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 39 for offline theme verification."
@@ -14710,6 +16443,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -14752,6 +16490,9 @@
           "quantityPriceBreaksConfigured": false
         },
         {
+          "createdAt": "2026-10-13T00:00:00Z",
+          "publishedAt": "2026-10-13T00:00:00Z",
+          "category": null,
           "seo": {
             "title": null,
             "description": "Original synthetic product 40 for offline theme verification."
@@ -14777,6 +16518,11 @@
           ],
           "variants": [
             {
+              "requiresShipping": true,
+              "taxable": true,
+              "weight": 0,
+              "requiresSellingPlan": false,
+              "sellingPlanAllocations": [],
               "quantityRule": {
                 "min": 1,
                 "max": null,
@@ -14900,6 +16646,8 @@
               "bodyHtml": "<p>Original example article 1.</p>",
               "excerptHtml": "<p>Story 1 excerpt.</p>",
               "author": "Example Author",
+              "createdAt": "2026-10-13T00:00:00Z",
+              "updatedAt": "2026-10-13T00:00:00Z",
               "publishedAt": "2026-10-13T00:00:00Z",
               "image": {
                 "file": "pattern-01.png",
@@ -14925,6 +16673,8 @@
               "bodyHtml": "<p>Original example article 2.</p>",
               "excerptHtml": "<p>Story 2 excerpt.</p>",
               "author": "Example Author",
+              "createdAt": "2026-10-13T00:00:00Z",
+              "updatedAt": "2026-10-13T00:00:00Z",
               "publishedAt": "2026-10-13T00:00:00Z",
               "image": null,
               "tags": [
@@ -14945,6 +16695,8 @@
               "bodyHtml": "<p>Original example article 3.</p>",
               "excerptHtml": "<p>Story 3 excerpt.</p>",
               "author": "Example Author",
+              "createdAt": "2026-10-13T00:00:00Z",
+              "updatedAt": "2026-10-13T00:00:00Z",
               "publishedAt": "2026-10-13T00:00:00Z",
               "image": {
                 "file": "pattern-03.png",
@@ -14988,6 +16740,8 @@
               "bodyHtml": "<p>Original example article 1.</p>",
               "excerptHtml": "<p>Story 1 excerpt.</p>",
               "author": "Example Author",
+              "createdAt": "2026-10-13T00:00:00Z",
+              "updatedAt": "2026-10-13T00:00:00Z",
               "publishedAt": "2026-10-13T00:00:00Z",
               "image": null,
               "tags": [
@@ -15008,6 +16762,8 @@
               "bodyHtml": "<p>Original example article 2.</p>",
               "excerptHtml": "<p>Story 2 excerpt.</p>",
               "author": "Example Author",
+              "createdAt": "2026-10-13T00:00:00Z",
+              "updatedAt": "2026-10-13T00:00:00Z",
               "publishedAt": "2026-10-13T00:00:00Z",
               "image": null,
               "tags": [
@@ -15028,6 +16784,8 @@
               "bodyHtml": "<p>Original example article 3.</p>",
               "excerptHtml": "<p>Story 3 excerpt.</p>",
               "author": "Example Author",
+              "createdAt": "2026-10-13T00:00:00Z",
+              "updatedAt": "2026-10-13T00:00:00Z",
               "publishedAt": "2026-10-13T00:00:00Z",
               "image": {
                 "file": "pattern-03.png",

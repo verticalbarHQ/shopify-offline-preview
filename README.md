@@ -230,3 +230,12 @@ regressions against the current renderer. Synthetic classic/theme block executio
 ## License
 
 MIT. Shopify benchmark theme files remain subject to their own licenses and are not redistributed.
+
+`structured_data` emits product groups, single default-variant products, variants and articles from
+snapshot data. Optional product `category` supplies its taxonomy name (`null` uses `productType`);
+article `createdAt` supplies the creation timestamp used by Shopify's structured output. Missing
+required metadata remains diagnosed. Product `createdAt`/`publishedAt` and article `updatedAt` also
+expose their Liquid properties. Variant shipping, tax, weight and selling-plan fields are optional
+source metadata. Product JSON projects storefront fields, excludes inventory quantities/policies,
+and avoids circular collection membership. JSON strings are escaped for use inside script elements.
+These implementations still require the designated store's oracle verification.
