@@ -93,8 +93,7 @@ Shopify render parity and do not waive acceptance gates.
 
 The Docker command prepares dependencies and benchmarks while online, then runs the foundation checks
 in a container with `--network none`. GitHub workflow definitions include unit, network-off, and
-license-guard jobs. Remote M0 CI passed at `744be2a`; subsequent local changes require separate push
-approval. Browser contract tests also exercise the renderer without Node globals; the loopback smoke
+license-guard jobs. Remote M0 CI passed at `744be2a`; the owner authorizes subsequent pushes during North Star delivery. Browser contract tests also exercise the renderer without Node globals; the loopback smoke
 page checks real browser execution. Inspector and playground e2e remain later milestones.
 
 ## License

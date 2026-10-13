@@ -570,7 +570,7 @@ pinned Dawn and Horizon, benchmark-file license guard, and the same foundation c
 container with networking disabled all pass. An offline tarball install, TypeScript consumer,
 runtime subpath imports, and installed CLI also pass. Owner-approved repository publication and the
 CI cache repair are complete: all three jobs passed in run `38401111761` at commit `744be2a`.
-Every subsequent push remains an action-time approval gate. Static analysis is
+The owner has authorized subsequent pushes during North Star delivery (2026-10-13). Static analysis is
 conservative: unresolved argument/resource types and dynamic references remain diagnostics with
 `complete: false` for both benchmarks. No renderer parity, real browser e2e, or Shopify-verified
 implementation is claimed by M0.
