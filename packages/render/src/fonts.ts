@@ -15,6 +15,13 @@ const urls = (weights: number[], path: string) =>
 // Best-effort Latin font substitutes, observed from Google's public CSS2 API on 2026-10-14.
 // These are URL metadata only; rendering never fetches fonts or a remote stylesheet.
 const families: Record<string, Family> = {
+  inter: {
+    name: "Inter",
+    fallback: "sans-serif",
+    weights: range(100, 900),
+    normal: urls(range(100, 900), "inter/v20/UcC73FwrK3iLTeHuS_nVMrMxCp50SjIa1ZL7.woff2"),
+    italic: urls(range(100, 900), "inter/v20/UcC53FwrK3iLTcvneQg7Ca725JhhKnNqk6L5UUM.woff2"),
+  },
   assistant: {
     name: "Assistant",
     fallback: "sans-serif",

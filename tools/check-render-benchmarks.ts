@@ -20,6 +20,11 @@ for (const item of manifest) {
   for (const page of benchmarkMatrix) {
     const options = { snapshot: defaultFixture(), scenario: page.scenario, inspect: true };
     const node = await renderTheme(theme, page.path, options);
+    assert.deepEqual(
+      node.diagnostics.filter((diagnostic) => diagnostic.code === "liquid-error"),
+      [],
+      `${item.name}/${page.id}: Liquid errors are regressions`,
+    );
     const web = await browser.renderTheme(
       new browser.MemoryThemeFileSystem(content),
       page.path,

@@ -93,3 +93,22 @@ test("unmapped fonts, missing metadata and unsafe CSS options stay visible", asy
   assert.ok(result.diagnostics.some((d) => d.code === "liquid-error"));
   assert.ok(!result.html.includes("font-display: swap;}"));
 });
+
+test("configured Inter overrides support font URL preloads without introducing Liquid errors", async () => {
+  const result = await renderTheme(
+    new MemoryThemeFileSystem({
+      "layout/theme.liquid": "{{content_for_layout}}",
+      "templates/index.json": '{"sections":{"main":{"type":"main"}},"order":["main"]}',
+      "config/settings_schema.json": JSON.stringify([
+        { settings: [{ type: "font_picker", id: "body", default: "work_sans_n4" }] },
+      ]),
+      "config/settings_data.json": '{"current":{"body":"inter_n7"}}',
+      "sections/main.liquid":
+        "{% unless settings.body.system? %}{{settings.body | font_url | preload_tag: as: 'font', type: 'font/woff2'}}{% endunless %}|{{settings.body.family}}:{{settings.body.weight}}",
+    }),
+    "/",
+  );
+  assert.match(result.html, /href="https:\/\/fonts\.gstatic\.com\/s\/inter\/.*\.woff2"/);
+  assert.ok(result.html.includes("Inter:700"));
+  assert.ok(result.diagnostics.every((d) => d.code === "shopify-server-only"));
+});
