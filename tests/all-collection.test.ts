@@ -34,6 +34,54 @@ test("automatic catalog is globally accessible, alphabetic and excluded from per
   assert.deepEqual(missing, []);
 });
 
+test("nested setting collections paginate locally while restoring the original object and source reads", async () => {
+  const theme = new MemoryThemeFileSystem({
+    "layout/theme.liquid": "{{content_for_layout}}",
+    "templates/index.json":
+      '{"sections":{"main":{"type":"main","settings":{"collection":"all"}}},"order":["main"]}',
+    "sections/main.liquid":
+      'Before={{section.settings.collection.products.size}}|{% paginate section.settings.collection.products by 4 %}Inside={{section.settings.collection.products.size}}/{{paginate.current_page}}|{% for product in section.settings.collection.products %}{{product.title}};{% endfor %}{{section.settings.collection|standard_event_data:\'view\'}}{% endpaginate %}|After={{section.settings.collection.products.size}}{% schema %}{"settings":[{"type":"collection","id":"collection"}]}{% endschema %}',
+  });
+  const result = await renderTheme(theme, "/?page=2", { inspect: true });
+  assert.ok(
+    result.html.includes(
+      "Before=40|Inside=4/2|SOP Product 05;SOP Product 06;SOP Product 07;SOP Product 08;",
+    ),
+  );
+  assert.ok(result.html.includes("After=40"));
+  assert.ok(result.html.includes('"productsCount":40'));
+  assert.deepEqual(result.diagnostics, []);
+  assert.ok(Object.values(result.dataUsed).flat().includes("products[4].title"));
+  assert.equal(
+    await theme.readText("templates/index.json"),
+    '{"sections":{"main":{"type":"main","settings":{"collection":"all"}}},"order":["main"]}',
+  );
+});
+
+test("theme blocks retain their section owner and paginated setting inside a nested pagination scope", async () => {
+  const result = await renderTheme(
+    new MemoryThemeFileSystem({
+      "layout/theme.liquid": "{{content_for_layout}}",
+      "templates/index.json":
+        '{"sections":{"main":{"type":"main","settings":{"collection":"all"}}},"order":["main"]}',
+      "sections/main.liquid":
+        "{% paginate section.settings.collection.products by 4 %}{% for product in section.settings.collection.products %}{% content_for 'block',type:'own',id:'static-card',closest.product:product %}{% endfor %}{% endpaginate %}{% content_for 'block',type:'own',id:'after' %}{% schema %}{\"settings\":[{\"type\":\"collection\",\"id\":\"collection\"}]}{% endschema %}",
+      "blocks/own.liquid":
+        '<p>{{closest.product.title}}/{{section.settings.collection.products.size}}</p>{% schema %}{"tag":null}{% endschema %}',
+    }),
+    "/?page=2",
+    { inspect: true },
+  );
+  assert.deepEqual(result.diagnostics, []);
+  assert.ok(result.html.includes("SOP Product 05/4"));
+  assert.ok(result.html.includes("SOP Product 08/4"));
+  assert.ok(result.html.includes("<p>/40</p>"));
+  assert.equal(
+    result.tree[0]?.children[0]?.children.filter((node) => node.kind === "block").length,
+    5,
+  );
+});
+
 test("a supplied all collection controls membership, order, template and SEO metadata", async () => {
   const snapshot = defaultFixture(),
     original = snapshot.collections[0];

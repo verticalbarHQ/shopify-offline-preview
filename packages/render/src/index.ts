@@ -246,6 +246,18 @@ export async function renderTheme(
   registerShopifyTags(engine, {
     path: route.path,
     unsupported: (message) => diagnostic("not-implemented", message),
+    paginationOverlay(original, overlay) {
+      const owner = blockOwners.get(original);
+      if (owner)
+        blockOwners.set(overlay, {
+          ...owner,
+          section: owner.section === original ? overlay : owner.section,
+        });
+      const classic = classicBlocks.get(original);
+      if (classic) classicBlocks.set(overlay, classic);
+      const app = appBlocks.get(original);
+      if (app) appBlocks.set(overlay, app);
+    },
   });
   const assetBytes = new Map<string, Promise<Uint8Array>>();
   registerShopifyFilters(engine, {

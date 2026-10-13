@@ -10,7 +10,7 @@ import {
   toPromise,
   type ValueToken,
 } from "liquidjs";
-import { preserveLiquidObjectKind } from "../../data/src/objects.js";
+import { liquidObjectKind, preserveLiquidObjectKind } from "../../data/src/objects.js";
 
 function escapeHtml(value: unknown): string {
   return String(value ?? "").replace(
@@ -38,6 +38,7 @@ function record(value: unknown): value is Record<string, unknown> {
 interface TagHooks {
   path: string;
   unsupported(message: string): void;
+  paginationOverlay?(original: Record<string, unknown>, overlay: Record<string, unknown>): void;
 }
 export function registerShopifyTags(engine: Liquid, hooks: TagHooks): void {
   engine.registerTag(
@@ -166,8 +167,22 @@ export function registerShopifyTags(engine: Liquid, hooks: TagHooks): void {
           hooks.unsupported(`Pagination source ${path} is not an available array.`);
           return `[not implemented: paginate ${escapeHtml(path)}]`;
         }
+        const keys = path.split(".");
+        const property = keys.at(-1);
+        const root = keys[0];
+        const parent = await engine.evalValue(keys.slice(0, -1).join("."), context);
+        const expectedKind = {
+          products: "collection",
+          articles: "blog",
+          results: "search",
+          variants: "product",
+        }[property ?? ""];
         if (
-          !/^(collection\.products|blog\.articles|search\.results|product\.variants)$/.test(path)
+          !/^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+$/.test(path) ||
+          (!/^(collection\.products|blog\.articles|search\.results|product\.variants)$/.test(
+            path,
+          ) &&
+            (!expectedKind || liquidObjectKind(parent) !== expectedKind))
         ) {
           hooks.unsupported(`Independent pagination for ${path} is not implemented.`);
           return `[not implemented: paginate ${escapeHtml(path)}]`;
@@ -219,25 +234,32 @@ export function registerShopifyTags(engine: Liquid, hooks: TagHooks): void {
           previous: page > 1 ? { title: "Previous", is_link: true, url: link(page - 1) } : null,
           next: page < pages ? { title: "Next", is_link: true, url: link(page + 1) } : null,
         };
-        const [root, property] = path.split(".");
         if (!root || !property) throw new Error("Invalid pagination path");
-        const original: unknown = context.getSync([root]);
-        if (!record(original)) throw new Error("Pagination parent is missing");
         const slice = array.slice(offset, offset + size);
-        // A transparent overlay keeps the original object's tracking getters and source identity.
-        const local = new Proxy(original, {
-          getOwnPropertyDescriptor(target, key) {
-            const descriptor = Reflect.getOwnPropertyDescriptor(target, key);
-            return key === property
-              ? { configurable: true, enumerable: true, writable: false, value: slice }
-              : descriptor;
-          },
-          get(target, key, receiver) {
-            const value = Reflect.get(target, key, receiver);
-            return key === property ? slice : value;
-          },
-        });
-        preserveLiquidObjectKind(original, local);
+        let local: unknown = slice;
+        for (let index = keys.length - 2; index >= 0; index--) {
+          const original: unknown = await engine.evalValue(
+            keys.slice(0, index + 1).join("."),
+            context,
+          );
+          const key = keys[index + 1];
+          if (!record(original) || !key) throw new Error("Pagination parent is missing");
+          const replacement = local;
+          const overlay = new Proxy(original, {
+            getOwnPropertyDescriptor(target, property) {
+              return property === key
+                ? { configurable: true, enumerable: true, writable: false, value: replacement }
+                : Reflect.getOwnPropertyDescriptor(target, property);
+            },
+            get(target, property, receiver) {
+              const value = Reflect.get(target, property, receiver);
+              return property === key ? replacement : value;
+            },
+          });
+          preserveLiquidObjectKind(original, overlay);
+          hooks.paginationOverlay?.(original, overlay);
+          local = overlay;
+        }
         context.push({ paginate, [root]: local });
         try {
           return await engine.render(this.templates, context);
