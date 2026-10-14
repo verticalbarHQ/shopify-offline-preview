@@ -135,6 +135,7 @@ test("uploaded file audit runs after guards and on both sides of the HTML captur
         events.push("identity");
         return identity;
       },
+      verifyShopSettings: async () => {},
       readTheme: async () => {
         events.push("theme");
         return theme;
@@ -169,6 +170,7 @@ test("changed or missing uploaded files and post-capture edits cannot produce a 
         metadata,
         {
           readIdentity: async () => identity,
+          verifyShopSettings: async () => {},
           readTheme: async () => theme,
           readThemeFiles: async () => {
             reads++;
@@ -197,6 +199,7 @@ test("changed or missing uploaded files and post-capture edits cannot produce a 
       metadata,
       {
         readIdentity: async () => ({ ...identity, metafield: null }),
+        verifyShopSettings: async () => {},
         readTheme: async () => theme,
         readThemeFiles: async () => {
           audits++;

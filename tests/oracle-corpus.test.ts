@@ -127,6 +127,7 @@ test("guarded read-only corpus capture requires stable native payloads and publi
     metadata,
     {
       readIdentity: async () => identity,
+      verifyShopSettings: async () => {},
       readTheme: async () => preview,
       readThemeFiles: async () => fixture().files,
       fetcher,
@@ -145,6 +146,7 @@ test("guarded read-only corpus capture requires stable native payloads and publi
       metadata,
       {
         readIdentity: async () => identity,
+        verifyShopSettings: async () => {},
         readTheme: async () => preview,
         readThemeFiles: async () => fixture().files,
         fetcher: async () =>
@@ -162,6 +164,7 @@ test("guarded read-only corpus capture requires stable native payloads and publi
       metadata,
       {
         readIdentity: async () => ({ ...identity, metafield: null }),
+        verifyShopSettings: async () => {},
         readTheme: async () => preview,
         readThemeFiles: async () => fixture().files,
         fetcher,
@@ -203,6 +206,7 @@ test("changed prepared requests or source hashes cannot acquire capture provenan
         metadata,
         {
           readIdentity: async () => identity,
+          verifyShopSettings: async () => {},
           readTheme: async () => preview,
           readThemeFiles: async () => fixture().files,
           fetcher,
@@ -222,6 +226,7 @@ test("private corpus files retain readable outputs with owner-only permissions w
     metadata,
     {
       readIdentity: async () => identity,
+      verifyShopSettings: async () => {},
       readTheme: async () => preview,
       readThemeFiles: async () => fixture().files,
       fetcher: async () =>

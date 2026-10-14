@@ -17,6 +17,8 @@ export interface CaptureInput {
 export interface CaptureDependencies {
   readIdentity(): Promise<OracleIdentity>;
   readTheme(id: string): Promise<OracleTheme>;
+  /** Mandatory trusted adapter verifies all prepared shop settings, including the Native request context. */
+  verifyShopSettings(): Promise<void>;
   fetcher?: typeof fetch;
   verifyThemeFiles?(theme: OracleTheme): Promise<void>;
 }
@@ -53,6 +55,16 @@ export async function captureOracleHtmlPair(
   if (url.hostname !== input.config.domain)
     throw new Error("Capture path changed the pinned domain");
   url.searchParams.set("preview_theme_id", input.previewThemeId);
+  if (typeof dependencies.verifyShopSettings !== "function")
+    throw new Error("Complete oracle shop settings verification required");
+  async function verifySettings() {
+    try {
+      await dependencies.verifyShopSettings();
+    } catch {
+      throw new Error("Oracle shop settings verification failed; capture refused");
+    }
+  }
+  await verifySettings();
   await dependencies.verifyThemeFiles?.(theme);
   const fetcher = dependencies.fetcher ?? fetch;
   async function capture(): Promise<string> {
@@ -73,6 +85,7 @@ export async function captureOracleHtmlPair(
   const first = await capture();
   const second = await capture();
   await dependencies.verifyThemeFiles?.(theme);
+  await verifySettings();
   return { capturedAt: new Date().toISOString(), privateRawHtml: [first, second] };
 }
 

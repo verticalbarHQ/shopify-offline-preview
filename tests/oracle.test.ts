@@ -209,6 +209,7 @@ test("capture guards run before GETs, require preview ids, and publish only stab
   await assert.rejects(
     captureOraclePage(input, {
       readTheme,
+      verifyShopSettings: async () => {},
       readIdentity: async () => ({ ...testIdentity, plan: { partnerDevelopment: false } }),
       fetcher,
     }),
@@ -218,7 +219,12 @@ test("capture guards run before GETs, require preview ids, and publish only stab
   await assert.rejects(
     captureOraclePage(
       { ...input, previewThemeId: "" },
-      { readTheme, readIdentity: async () => testIdentity, fetcher },
+      {
+        readTheme,
+        readIdentity: async () => testIdentity,
+        verifyShopSettings: async () => {},
+        fetcher,
+      },
     ),
     /preview theme id/,
   );
@@ -232,6 +238,7 @@ test("capture guards run before GETs, require preview ids, and publish only stab
     await assert.rejects(
       captureOraclePage(input, {
         readIdentity: async () => testIdentity,
+        verifyShopSettings: async () => {},
         readTheme: async () => ({ ...(await readTheme()), ...override }),
         fetcher,
       }),
@@ -241,6 +248,7 @@ test("capture guards run before GETs, require preview ids, and publish only stab
   }
   const captured = await captureOraclePage(input, {
     readTheme,
+    verifyShopSettings: async () => {},
     readIdentity: async () => testIdentity,
     fetcher,
   });
@@ -253,6 +261,7 @@ test("capture guards run before GETs, require preview ids, and publish only stab
   await assert.rejects(
     captureOraclePage(input, {
       readTheme,
+      verifyShopSettings: async () => {},
       readIdentity: async () => testIdentity,
       fetcher: unstable,
     }),
@@ -263,6 +272,7 @@ test("capture guards run before GETs, require preview ids, and publish only stab
   await assert.rejects(
     captureOraclePage(input, {
       readTheme,
+      verifyShopSettings: async () => {},
       readIdentity: async () => testIdentity,
       fetcher: redirect,
     }),
@@ -271,7 +281,12 @@ test("capture guards run before GETs, require preview ids, and publish only stab
   await assert.rejects(
     captureOraclePage(
       { ...input, path: "//example.test" },
-      { readTheme, readIdentity: async () => testIdentity, fetcher },
+      {
+        readTheme,
+        readIdentity: async () => testIdentity,
+        verifyShopSettings: async () => {},
+        fetcher,
+      },
     ),
     /relative/,
   );
