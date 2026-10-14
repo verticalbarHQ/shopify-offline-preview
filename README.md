@@ -325,6 +325,15 @@ write. Errors expose fixed codes, without API messages or credential values. Thi
 no approvals or credentials and has no live CLI. Backup/restoration, owner-confirmed first wipe,
 staged upload handling and the actual verification integration remain prerequisites.
 
+`tools/oracle/seed-identities.ts` reads exact resource-ID batches with a fresh development-store
+identity check and verifies expected handles, variant parents/options, collection source/app and
+complete membership/order, article parents, active locations and publication catalog/app relations.
+Processed images require expected URL/dimensions and an original-byte SHA-256 check using a
+credential-free Shopify asset download. The expectations must come from prior verified seeding or
+read-back provenance; matching a handle or tag alone does not create ownership or mutation approval.
+This reader performs no writes and is separate from the offline SDK. Full source-field calibration
+and the trusted seeding callback integration still remain to be completed.
+
 The corpus capture helper uses the same pinned-development-store and unpublished-theme guards as
 page capture, extracts one exact JSON string payload, and requires two identical outputs. Public
 observations contain hashes and provenance, with raw HTML and readable outputs kept private.
