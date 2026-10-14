@@ -28,6 +28,7 @@ import { registerCycleTag } from "./cycle-tag.js";
 import { ImageUrlInputError } from "./filters/images.js";
 import { registerShopifyFilters } from "./filters/index.js";
 import { fontSetting } from "./fonts.js";
+import { registerIncludeTag } from "./include-tag.js";
 import { registerLoopTrace } from "./loop-trace.js";
 import { evalNumericValue } from "./numbers.js";
 import { registerPageMetadata } from "./page-metadata.js";
@@ -368,6 +369,11 @@ export async function renderTheme(
       return appBlock(info.type, info.file, info.pointer);
     },
   );
+  registerIncludeTag(
+    engine,
+    (name, context) => renderFile(themePath(`snippets/${name}.liquid`), context),
+    (name, run) => inside(node("snippet", name, themePath(`snippets/${name}.liquid`), null), run),
+  );
   function placeholder(type: string): string {
     const names = appIdentity(type);
     diagnostic(
@@ -431,6 +437,7 @@ export async function renderTheme(
       } finally {
         location = previous;
       }
+      if (context.breakCalled || context.continueCalled) break;
     }
     return html;
   }

@@ -370,6 +370,12 @@ The standalone `reversed` keyword is recognized immediately after the collection
 and consumes break/continue within the table loop. Empty arrays emit an empty row; nil/false
 collections emit nothing. Cell rendering preserves snippet markup and inspector block ownership.
 
+Includes support dynamic filenames, `with` / `for` bindings and aliases. Named parameters are
+evaluated in order, so later parameters can use earlier ones. Included snippets share caller
+variables and counters, and propagate break/continue to a calling loop. Array bindings repeat
+in the shared scope without creating a new `forloop`; temporary bindings restore afterwards.
+Snippet loading uses the same source parser, asset collection and inspector as render calls.
+
 `pnpm language:check --suite-dir <clean-liquid-spec-checkout>` audits the pinned
 `Shopify/liquid-spec@84bf25e0edbca5f7e530574788b0f875ab331f50` basics inputs through the real SDK
 renderer with isolated snippet bindings. It requires Git and Ruby's standard YAML loader for this
