@@ -266,3 +266,19 @@ expose their Liquid properties. Variant shipping, tax, weight and selling-plan f
 source metadata. Product JSON projects storefront fields, excludes inventory quantities/policies,
 and avoids circular collection membership. JSON strings are escaped for use inside script elements.
 These implementations still require the designated store's oracle verification.
+
+
+`pnpm oracle:corpus-prepare --path-map <fixture-path-map.json>` prepares a temporary owned theme
+for the 235 nonempty pinned filter examples. The map explicitly pairs each original context path
+with a fixture-equivalent path of the same page kind. Inputs and decoded source hashes, request
+paths and alternate template identities are retained in an ignored local manifest; the ten empty
+upstream examples are reported without fabricating code. The command makes no Shopify requests or
+uploads. Fixture resource literals and IDs still require explicit calibration against the seeded
+store before collection; preparation does not establish conformance.
+
+The corpus capture helper uses the same pinned-development-store and unpublished-theme guards as
+page capture, extracts one exact JSON string payload, and requires two identical outputs. Public
+observations contain hashes and provenance, with raw HTML and readable outputs kept private.
+Observations are not automatically converted into registered implementation evidence. Native
+server output that changes between captures requires evidenced normalization or an explicit
+server-only disposition before it can qualify; unstable output is never silently accepted.

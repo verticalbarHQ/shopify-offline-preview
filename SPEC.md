@@ -493,8 +493,10 @@ Categories:
 
 ### 9.10 Filter conformance corpus and "implemented"
 
-- theme-liquid-docs has 245 filter examples. Each has a `raw_liquid` input and a `path` context,
-  but **no expected output**.
+- The pinned theme-liquid-docs data has 245 filter example entries: 235 have nonempty `raw_liquid`
+  inputs and 10 have no executable input. Expected outputs are absent. Empty entries are reported
+  explicitly and never treated as successful conformance cases; authored supplemental cases retain
+  their own provenance.
 - The oracle runs these inputs on the oracle store and captures Shopify's outputs. The inputs are
   rendered from generated snippet files in a dedicated alternate template, with paths mapped to
   fixture equivalents.

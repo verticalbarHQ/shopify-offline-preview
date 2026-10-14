@@ -26,11 +26,11 @@ export interface CapturedPage {
   privateSectionText: PrivateSummary["sectionText"];
 }
 
-/** Captures an already-seeded, already-uploaded unpublished theme. Performs no setup mutations. */
-export async function captureOraclePage(
-  input: CaptureInput,
+/** Shared read-only transport. Identity and unpublished theme guards precede every GET pair. */
+export async function captureOracleHtmlPair(
+  input: Omit<CaptureInput, "summaryOptions">,
   dependencies: CaptureDependencies,
-): Promise<CapturedPage> {
+): Promise<{ capturedAt: string; privateRawHtml: readonly [string, string] }> {
   assertOracleStore(input.config, await dependencies.readIdentity());
   if (!input.path.startsWith("/") || input.path.startsWith("//") || input.path.includes("#"))
     throw new Error("Capture path must be relative to the pinned store");
@@ -70,13 +70,23 @@ export async function captureOraclePage(
   }
   const first = await capture();
   const second = await capture();
+  return { capturedAt: new Date().toISOString(), privateRawHtml: [first, second] };
+}
+
+/** Captures an already-seeded, already-uploaded unpublished theme. Performs no setup mutations. */
+export async function captureOraclePage(
+  input: CaptureInput,
+  dependencies: CaptureDependencies,
+): Promise<CapturedPage> {
+  const pair = await captureOracleHtmlPair(input, dependencies);
+  const [first, second] = pair.privateRawHtml;
   const a = summarizeHtml(first, input.summaryOptions);
   const b = summarizeHtml(second, input.summaryOptions);
   assertStableCapture(a.summary, b.summary);
   return {
     publicSummary: a.summary,
-    capturedAt: new Date().toISOString(),
-    privateRawHtml: [first, second],
+    capturedAt: pair.capturedAt,
+    privateRawHtml: pair.privateRawHtml,
     privateSectionText: a.sectionText,
   };
 }
