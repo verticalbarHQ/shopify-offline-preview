@@ -229,7 +229,10 @@ resource properties in their branches, including short-circuit conditions. Reass
 shadowing discard stale refinements. Literal discriminator predicates in `where` and `find` also
 retain native element constraints through `first`, `map` and loops; merchant product types and
 untyped caller values are not treated as menu links. This inference does not mark any feature
-oracle-verified. The initial rendering check compares repeat runs and Node/browser builds
+oracle-verified. Statically named `render` calls pass named, `with` and `for` argument types into
+isolated snippet analysis. Calls with different bindings are analyzed independently; cycles reuse
+existing contexts and excessive context growth is reported as incomplete. Caller-local variables
+are not inherited. The initial rendering check compares repeat runs and Node/browser builds
 across all 36 cases while reporting remaining errors and unsupported features. The browser smoke
 command starts a loopback-only verification page for those same cases. These checks do **not** assert
 Shopify render parity and do not waive acceptance gates. `oracle:offline-check` instruments temporary

@@ -45,12 +45,13 @@ function isCondition(value: unknown): value is LiquidConditionalExpression {
 export function variableEnvironments(
   ast: LiquidHtmlNode,
   hooks: TypeHooks,
+  initial: Symbols = new Map(),
 ): WeakMap<LiquidHtmlNode, Symbols> {
   const environments = new WeakMap<LiquidHtmlNode, Symbols>();
   function stamp(node: LiquidHtmlNode, symbols: Symbols) {
     // Descendant statements overwrite these entries with their more specific environments.
     walk(node, (child) => {
-      if (child.type === NodeTypes.VariableLookup) environments.set(child, symbols);
+      environments.set(child, symbols);
     });
   }
   function stampCondition(condition: LiquidConditionalExpression, symbols: Symbols): void {
@@ -211,6 +212,6 @@ export function variableEnvironments(
     }
     return symbols;
   }
-  sequence([ast], new Map());
+  sequence([ast], initial);
   return environments;
 }

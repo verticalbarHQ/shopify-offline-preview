@@ -500,3 +500,156 @@ test("copying a guarded menu link retains its related resource type without refi
   assert.ok(occurrences.some((o) => o.line === 2));
   assert.ok(features.some((feature) => feature.name === "collection.products"));
 });
+
+test("static render parameters with and for bindings resolve callee object properties", async () => {
+  const files = theme();
+  files["sections/header.liquid"] =
+    "{% render 'named', item: product %}{% render 'single' with collection %}{% render 'many' for product.variants as selected %}";
+  files["snippets/named.liquid"] = "{{item.title}}";
+  files["snippets/single.liquid"] = "{{single.products_count}}";
+  files["snippets/many.liquid"] = "{{selected.price}}{{forloop.index}}";
+  const result = await checkTheme(new MemoryThemeFileSystem(files));
+  for (const [name, file] of [
+    ["product.title", "snippets/named.liquid"],
+    ["collection.products_count", "snippets/single.liquid"],
+    ["variant.price", "snippets/many.liquid"],
+    ["forloop.index", "snippets/many.liquid"],
+  ])
+    assert.ok(
+      result.pages[0]?.features.some(
+        (feature) => feature.name === name && feature.occurrences.some((o) => o.file === file),
+      ),
+      name,
+    );
+  assert.ok(!result.diagnostics.some((diagnostic) => diagnostic.code === "unresolved-object"));
+});
+
+test("the same snippet is analyzed independently for every supplied type and public occurrences stay unique", async () => {
+  const files = theme();
+  files["sections/header.liquid"] =
+    "{% render 'shared', item: product %}{% render 'shared', item: collection %}{% render 'shared', item: product %}";
+  files["snippets/shared.liquid"] = "{{item.title}}";
+  const result = await checkTheme(new MemoryThemeFileSystem(files));
+  for (const name of ["product.title", "collection.title"]) {
+    const occurrences =
+      result.pages[0]?.features
+        .find((feature) => feature.name === name)
+        ?.occurrences.filter((o) => o.file === "snippets/shared.liquid") ?? [];
+    assert.equal(occurrences.length, 1);
+  }
+  assert.equal(
+    result.pages[0]?.files.filter((file) => file === "snippets/shared.liquid").length,
+    1,
+  );
+});
+
+test("render scopes exclude caller locals and callee assignments do not change caller bindings", async () => {
+  const files = theme();
+  files["sections/header.liquid"] =
+    "{% assign hidden=product %}{% assign outside=collection %}{% render 'isolated', item: outside %}{{outside.products}}";
+  files["snippets/isolated.liquid"] =
+    "{{hidden.title}}{{item.products}}{% assign outside=product %}";
+  const result = await checkTheme(new MemoryThemeFileSystem(files));
+  assert.ok(
+    result.diagnostics.some(
+      (d) =>
+        d.file === "snippets/isolated.liquid" &&
+        d.code === "unresolved-object" &&
+        d.message.includes("hidden"),
+    ),
+  );
+  assert.ok(result.pages[0]?.features.some((feature) => feature.name === "collection.products"));
+  assert.ok(!result.pages[0]?.features.some((feature) => feature.name === "product.products"));
+  assert.equal(result.summary.complete, false);
+});
+
+test("nested render calls retain filtered resource constraints and unknown caller values remain unresolved", async () => {
+  const files = theme();
+  files["sections/header.liquid"] =
+    "{% assign selected=linklists.main.links | where: 'type', 'collection_link' | first %}{% render 'outer', entry: selected %}{% render 'uncertain', item: unknown_value %}";
+  files["snippets/outer.liquid"] = "{% render 'inner', item: entry.object %}";
+  files["snippets/inner.liquid"] = "{{item.products}}";
+  files["snippets/uncertain.liquid"] = "{{item.title}}";
+  const result = await checkTheme(new MemoryThemeFileSystem(files));
+  assert.ok(
+    result.pages[0]?.features.some(
+      (feature) =>
+        feature.name === "collection.products" &&
+        feature.occurrences.some((o) => o.file === "snippets/inner.liquid"),
+    ),
+  );
+  assert.ok(!result.pages[0]?.features.some((feature) => feature.name === "article.products"));
+  assert.ok(
+    result.diagnostics.some(
+      (d) => d.file === "snippets/uncertain.liquid" && d.code === "unresolved-object",
+    ),
+  );
+});
+
+test("recursive snippet calls terminate after observing every distinct argument type", async () => {
+  const files = theme();
+  files["sections/header.liquid"] = "{% render 'a', left: product, right: collection %}";
+  files["snippets/a.liquid"] = "{{left.title}}{% render 'b', left: right, right: left %}";
+  files["snippets/b.liquid"] = "{{left.title}}{% render 'a', left: left, right: right %}";
+  const fs = new MemoryThemeFileSystem(files);
+  const result = await checkTheme(fs);
+  assert.ok(
+    result.pages[0]?.features.some(
+      (feature) =>
+        feature.name === "product.title" &&
+        feature.occurrences.some((o) => o.file === "snippets/a.liquid"),
+    ),
+  );
+  assert.ok(
+    result.pages[0]?.features.some(
+      (feature) =>
+        feature.name === "collection.title" &&
+        feature.occurrences.some((o) => o.file === "snippets/a.liquid"),
+    ),
+  );
+  assert.ok(!result.diagnostics.some((d) => d.code === "context-limit"));
+  assert.equal(JSON.stringify(await checkTheme(fs)), JSON.stringify(result));
+});
+
+test("parameterized snippet graphs and isolated scopes have identical Node and browser output", async () => {
+  const files = theme();
+  files["sections/header.liquid"] =
+    "{% assign local_only=product %}{% render 'outer', item: collection %}{% render 'outer', item: product %}";
+  files["snippets/outer.liquid"] = "{{item.title}}{% render 'inner' with item as selected %}";
+  files["snippets/inner.liquid"] = "{{selected.title}}{{local_only.title}}";
+  const browser: typeof import("../packages/check/src/browser.js") = await import(
+    new URL("../dist/browser.js", import.meta.url).href
+  );
+  assert.equal(
+    JSON.stringify(await browser.checkTheme(new browser.MemoryThemeFileSystem(files))),
+    JSON.stringify(await checkTheme(new MemoryThemeFileSystem(files))),
+  );
+});
+
+test("excessive snippet context growth is reported as incomplete rather than silently omitted", async () => {
+  const files = theme();
+  const resources = ["product", "collection", "page", "article", "blog", "shop", "cart"];
+  files["sections/header.liquid"] = resources
+    .flatMap((one) =>
+      resources.flatMap((two) =>
+        resources.map(
+          (three) => `{% render 'many-contexts', one: ${one}, two: ${two}, three: ${three} %}`,
+        ),
+      ),
+    )
+    .join("\n");
+  files["snippets/many-contexts.liquid"] = "{{one.title}}";
+  const result = await checkTheme(new MemoryThemeFileSystem(files));
+  assert.equal(result.summary.complete, false);
+  assert.ok(
+    result.diagnostics.some(
+      (d) => d.code === "context-limit" && d.file === "snippets/many-contexts.liquid",
+    ),
+  );
+  assert.ok(result.pages[0]?.files.includes("snippets/many-contexts.liquid"));
+  assert.ok(
+    result.diagnostics.some(
+      (d) => d.code === "unresolved-object" && d.file === "snippets/many-contexts.liquid",
+    ),
+  );
+});

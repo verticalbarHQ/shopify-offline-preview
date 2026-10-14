@@ -15,7 +15,7 @@ import {
 import { parseThemeJson, type ThemeFileSystem, themePath } from "../../theme/src/index.js";
 import type { CheckResult, Diagnostic, Feature } from "./contracts.js";
 import { variableEnvironments } from "./type-environments.js";
-import { baseType, linkObjectType, lookupKey } from "./type-facts.js";
+import { baseType, linkObjectType, lookupKey, type Symbols } from "./type-facts.js";
 
 export { type CheckResult, checkSchema } from "./contracts.js";
 
@@ -76,6 +76,7 @@ const templateSchema = z.looseObject({
 interface Scan {
   features: Feature[];
   refs: string[];
+  calls: { file: string; bindings: Symbols }[];
   diagnostics: Diagnostic[];
   complete: boolean;
   layout?: string | false | null;
@@ -136,8 +137,8 @@ function lookupTypes(expression: LiquidExpression, symbols: Map<string, Set<stri
   return types;
 }
 
-function scanLiquid(text: string, file: string): Scan {
-  const result: Scan = { features: [], refs: [], diagnostics: [], complete: true };
+function scanLiquid(text: string, file: string, bindings: Symbols): Scan {
+  const result: Scan = { features: [], refs: [], calls: [], diagnostics: [], complete: true };
   const featureMap = new Map<string, Feature>();
   function add(kind: FeatureKind, name: string, known: boolean, node: LiquidHtmlNode): void {
     const key = `${kind}:${name}`;
@@ -157,12 +158,20 @@ function scanLiquid(text: string, file: string): Scan {
   try {
     const ast = toLiquidAST(text, { allowUnclosedDocumentNode: false, mode: "tolerant" });
     const nodes: LiquidHtmlNode[] = [];
-    walk(ast, (node) => nodes.push(node));
-    const environments = variableEnvironments(ast, {
-      lookup: lookupTypes,
-      root: (name) => new Set(objectNames.has(name) ? [name] : ["?"]),
-      property: propertyReturns,
+    const parents = new WeakMap<LiquidHtmlNode, LiquidHtmlNode>();
+    walk(ast, (node, parent) => {
+      nodes.push(node);
+      if (parent) parents.set(node, parent);
     });
+    const environments = variableEnvironments(
+      ast,
+      {
+        lookup: lookupTypes,
+        root: (name) => new Set(objectNames.has(name) ? [name] : ["?"]),
+        property: propertyReturns,
+      },
+      bindings,
+    );
     let schema: Record<string, unknown> | undefined;
     let rendersBlocks = false;
     for (const node of nodes) {
@@ -289,9 +298,34 @@ function scanLiquid(text: string, file: string): Scan {
         );
       }
       if (node.type === NodeTypes.RenderMarkup) {
-        if (node.snippet.type === NodeTypes.String)
-          result.refs.push(reference("snippets", node.snippet.value, ".liquid"));
-        else {
+        if (node.snippet.type === NodeTypes.String) {
+          const target = reference("snippets", node.snippet.value, ".liquid");
+          const parent = parents.get(node);
+          if (parent?.type !== NodeTypes.LiquidTag || parent.name !== "render")
+            result.refs.push(target);
+          else {
+            const caller = environments.get(node) ?? new Map();
+            const args: Symbols = new Map();
+            for (const argument of node.args) {
+              const types = lookupTypes(argument.value, caller);
+              args.set(argument.name, types.size ? types : new Set(["?"]));
+            }
+            if (node.variable) {
+              let types = lookupTypes(node.variable.name, caller);
+              if (node.variable.kind === "for") {
+                types = new Set(
+                  [...types].map((type) => (type.endsWith("[]") ? type.slice(0, -2) : type)),
+                );
+                args.set("forloop", new Set(["forloop"]));
+              }
+              args.set(
+                node.alias?.value ?? node.snippet.value,
+                types.size ? types : new Set(["?"]),
+              );
+            }
+            result.calls.push({ file: target, bindings: args });
+          }
+        } else {
           result.complete = false;
           result.diagnostics.push(
             diagnostic(
@@ -410,13 +444,22 @@ export async function checkTheme(
       diagnostic("unsupported-theme", null, "No supported Online Store 2.0 JSON templates found."),
     );
 
-  async function scan(file: string): Promise<Scan> {
-    let cached = scans.get(file);
+  function contextKey(file: string, bindings: Symbols): string {
+    return JSON.stringify([
+      file,
+      [...bindings]
+        .map(([name, types]) => [name, [...types].sort()])
+        .sort(([a], [b]) => String(a).localeCompare(String(b), "en")),
+    ]);
+  }
+  async function scan(file: string, bindings: Symbols = new Map()): Promise<Scan> {
+    const key = contextKey(file, bindings);
+    let cached = scans.get(key);
     if (!cached) {
       cached = (async () => {
-        if (file.endsWith(".liquid")) return scanLiquid(await fs.readText(file), file);
+        if (file.endsWith(".liquid")) return scanLiquid(await fs.readText(file), file, bindings);
         const document = templateSchema.parse(parseThemeJson(await fs.readText(file), file));
-        const result: Scan = { features: [], refs: [], diagnostics: [], complete: true };
+        const result: Scan = { features: [], refs: [], calls: [], diagnostics: [], complete: true };
         if (document.layout !== undefined) result.layout = document.layout;
         function blocks(config: SectionConfig): void {
           for (const id of config.block_order ?? Object.keys(config.blocks ?? {})) {
@@ -447,7 +490,7 @@ export async function checkTheme(
         }
         return result;
       })();
-      scans.set(file, cached);
+      scans.set(key, cached);
     }
     return cached;
   }
@@ -462,9 +505,26 @@ export async function checkTheme(
     };
     const visited = new Set<string>();
     const features = new Map<string, Feature>();
-    async function visit(file: string): Promise<void> {
-      if (visited.has(file)) return;
-      visited.add(file);
+    const contexts = new Map<string, Set<string>>();
+    async function visit(file: string, bindings: Symbols = new Map()): Promise<void> {
+      let key = contextKey(file, bindings);
+      const fileContexts = contexts.get(file) ?? new Set<string>();
+      if (!fileContexts.has(key) && fileContexts.size >= 256) {
+        page.complete = false;
+        diagnostics.push(
+          diagnostic(
+            "context-limit",
+            file,
+            "Static snippet context limit reached; runtime coverage is required.",
+          ),
+        );
+        bindings = new Map([...bindings].map(([name]) => [name, new Set(["?"])]));
+        key = contextKey(file, bindings);
+      }
+      if (visited.has(key)) return;
+      visited.add(key);
+      fileContexts.add(key);
+      contexts.set(file, fileContexts);
       if (!available.has(file)) {
         page.complete = false;
         diagnostics.push(
@@ -472,16 +532,23 @@ export async function checkTheme(
         );
         return;
       }
-      page.files.push(file);
-      const item = await scan(file);
+      if (!page.files.includes(file)) page.files.push(file);
+      const item = await scan(file, bindings);
       page.complete &&= item.complete;
       diagnostics.push(...item.diagnostics);
       for (const feature of item.features) {
         const key = `${feature.kind}:${feature.name}`;
         const entry = features.get(key) ?? { ...feature, occurrences: [] };
-        entry.occurrences.push(...feature.occurrences);
+        for (const occurrence of feature.occurrences)
+          if (
+            !entry.occurrences.some(
+              (existing) => existing.file === occurrence.file && existing.line === occurrence.line,
+            )
+          )
+            entry.occurrences.push(occurrence);
         features.set(key, entry);
       }
+      for (const call of item.calls) await visit(call.file, call.bindings);
       for (const ref of [...new Set(item.refs)].sort()) {
         if (ref === "blocks/*") {
           for (const block of files.filter((f) => /^blocks\/[^/]+\.liquid$/.test(f)))
