@@ -5,7 +5,8 @@ import { z } from "zod";
 import { themePath } from "../../packages/theme/src/index.js";
 import { type OracleConfig, oracleConfigSchema } from "./store-guard.js";
 
-const digest = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
+export const backupDigest = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
+const digest = backupDigest;
 const sha = z.string().regex(/^[a-f0-9]{64}$/);
 const catalogSchema = z.object({
   domain: z.string(),
@@ -61,14 +62,14 @@ const pageSchema = z.object({
   }),
 });
 
-async function directory(path: string): Promise<string> {
+export async function backupDirectory(path: string): Promise<string> {
   const full = resolve(path),
     stat = await lstat(full);
   if (!stat.isDirectory() || stat.isSymbolicLink() || (await realpath(full)) !== full)
     throw new Error("Backup directory must be a canonical local directory");
   return full;
 }
-async function localFile(root: string, path: string): Promise<Uint8Array> {
+export async function backupFile(root: string, path: string): Promise<Uint8Array> {
   themePath(path);
   const full = join(root, path),
     stat = await lstat(full);
@@ -77,6 +78,8 @@ async function localFile(root: string, path: string): Promise<Uint8Array> {
   if (stat.size > 32 * 1024 * 1024) throw new Error("Backup file exceeds audit limits");
   return readFile(full);
 }
+const directory = backupDirectory;
+const localFile = backupFile;
 function json(bytes: Uint8Array): unknown {
   return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
 }

@@ -290,6 +290,12 @@ payloads. Exit 2 means integrity or scope findings, and exit 3 means invalid/ina
 Even exit 0 does not establish complete store coverage, successful restoration, fresh store
 identity or action-time owner approval. This utility makes no Shopify requests or mutations.
 
+`pnpm oracle:supplemental-backup-audit --kind collections|product-media --archive <archive-dir>`
+checks supplemental collection membership exports or original product-image archives. It verifies
+hashes, counts, duplicate references, nested pagination and image-file inventory. Reports contain
+counts and hashes; exit codes follow `oracle:backup-audit`. Remote capture stability and restoration
+remain separate evidence, even when the local archive passes.
+
 The corpus capture helper uses the same pinned-development-store and unpublished-theme guards as
 page capture, extracts one exact JSON string payload, and requires two identical outputs. Public
 observations contain hashes and provenance, with raw HTML and readable outputs kept private.
