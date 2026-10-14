@@ -103,3 +103,141 @@ test("dictionary indexing and union-valued arrays resolve object properties with
   assert.equal(features.find((f) => f.name === "product.constructor")?.known, false);
   assert.ok(!result.diagnostics.some((d) => d.code === "liquid-parse-error"));
 });
+
+test("assignment order and loop scopes avoid invented resource properties", async () => {
+  const files = theme();
+  files["sections/header.liquid"] = `{% assign resource=product %}{{resource.title}}
+{% assign resource=collection %}{{resource.products}}
+{% for resource in product.variants %}{{resource.price}}{% endfor %}{{resource.products}}`;
+  const result = await checkTheme(new MemoryThemeFileSystem(files));
+  const features = result.pages[0]?.features ?? [];
+  for (const name of ["product.title", "collection.products", "variant.price"])
+    assert.ok(features.some((feature) => feature.name === name));
+  for (const name of ["product.products", "collection.price", "variant.products"])
+    assert.ok(!features.some((feature) => feature.name === name));
+  assert.ok(!result.diagnostics.some((d) => d.file === "sections/header.liquid"));
+});
+
+test("branch assignments merge possible types and preserve paths that do not reassign", async () => {
+  const files = theme();
+  files["sections/header.liquid"] = `{% assign resource=product %}
+{% if request.design_mode %}{% assign resource=collection %}{{resource.products}}{% else %}{{resource.price}}{% endif %}
+{{resource.title}}`;
+  const result = await checkTheme(new MemoryThemeFileSystem(files));
+  const features = result.pages[0]?.features ?? [];
+  assert.ok(features.some((feature) => feature.name === "collection.products"));
+  assert.ok(features.some((feature) => feature.name === "product.price"));
+  assert.ok(features.some((feature) => feature.name === "collection.title"));
+  assert.ok(features.some((feature) => feature.name === "product.title"));
+  assert.ok(
+    !features.some((feature) => ["product.products", "collection.price"].includes(feature.name)),
+  );
+  files["sections/header.liquid"] =
+    "{% if request.design_mode %}{% assign product=collection %}{% endif %}{{product.title}}";
+  const untouched = (await checkTheme(new MemoryThemeFileSystem(files))).pages[0]?.features ?? [];
+  assert.ok(untouched.some((feature) => feature.name === "collection.title"));
+  assert.ok(untouched.some((feature) => feature.name === "product.title"));
+});
+
+test("default and array filters retain source types but unknown filter results stay incomplete", async () => {
+  const files = theme();
+  files["sections/header.liquid"] =
+    `{% assign selected=product.selected_variant | default: product.variants.first %}{{selected.price}}
+{% assign variants=product.variants | where: 'available', true | reverse %}{% for item in variants %}{{item.sku}}{% endfor %}
+{% assign names=product.variants | map: 'title' %}{% for label in names %}{{label.size}}{% endfor %}
+{% assign product=product | unknown_filter %}{{product.title}}`;
+  const result = await checkTheme(new MemoryThemeFileSystem(files));
+  const features = result.pages[0]?.features ?? [];
+  assert.ok(features.some((feature) => feature.name === "variant.price"));
+  assert.ok(features.some((feature) => feature.name === "variant.sku"));
+  assert.ok(!features.some((feature) => feature.name === "variant.size"));
+  assert.ok(
+    !features
+      .find((feature) => feature.name === "product.title")
+      ?.occurrences.some((occurrence) => occurrence.file === "sections/header.liquid"),
+  );
+  assert.equal(result.summary.complete, false);
+  assert.ok(
+    result.diagnostics.some(
+      (diagnostic) =>
+        diagnostic.code === "unresolved-object" && diagnostic.message.includes("product"),
+    ),
+  );
+});
+
+test("liquid statement groups preserve source order and capture overwrites object aliases", async () => {
+  const files = theme();
+  files["sections/header.liquid"] = `{% liquid
+assign value = product
+echo value.title
+assign value = collection
+echo value.products
+%}{% capture value %}Plain text{% endcapture %}{{value.size}}`;
+  const result = await checkTheme(new MemoryThemeFileSystem(files));
+  const features = result.pages[0]?.features ?? [];
+  assert.ok(features.some((feature) => feature.name === "product.title"));
+  assert.ok(features.some((feature) => feature.name === "collection.products"));
+  assert.ok(
+    !features.some((feature) =>
+      ["product.products", "product.size", "collection.size"].includes(feature.name),
+    ),
+  );
+});
+
+test("default retains uncertainty from untyped caller input and browser analysis matches Node", async () => {
+  const files = theme();
+  files["sections/header.liquid"] =
+    "{% assign resource = caller_input | default: product %}{{resource.title}}";
+  const result = await checkTheme(new MemoryThemeFileSystem(files));
+  assert.equal(result.summary.complete, false);
+  assert.ok(result.pages[0]?.features.some((feature) => feature.name === "product.title"));
+  assert.ok(
+    result.diagnostics.some(
+      (diagnostic) =>
+        diagnostic.code === "unresolved-object" && diagnostic.message.includes("resource"),
+    ),
+  );
+  const browser: typeof import("../packages/check/src/browser.js") = await import(
+    new URL("../dist/browser.js", import.meta.url).href
+  );
+  assert.deepEqual(await browser.checkTheme(new browser.MemoryThemeFileSystem(files)), result);
+});
+
+test("loop-carried assignments cover first and subsequent iterations without leaking the loop variable", async () => {
+  const files = theme();
+  files["sections/header.liquid"] = `{% assign carried=product %}{% assign item=collection %}
+{% for item in product.variants %}{{carried.title}}{% assign carried=collection %}{{item.price}}{% endfor %}{{item.products}}`;
+  const result = await checkTheme(new MemoryThemeFileSystem(files));
+  const features = result.pages[0]?.features ?? [];
+  for (const name of ["product.title", "collection.title", "variant.price", "collection.products"])
+    assert.ok(
+      features.some(
+        (feature) =>
+          feature.name === name &&
+          feature.occurrences.some((occurrence) => occurrence.file === "sections/header.liquid"),
+      ),
+      name,
+    );
+  assert.ok(
+    !features.some((feature) => ["collection.price", "variant.products"].includes(feature.name)),
+  );
+});
+
+test("loop else assignments do not pollute the body or preserve overwritten entry bindings", async () => {
+  const files = theme();
+  files["sections/header.liquid"] = `{% assign value=product %}{% assign item=collection %}
+{% for item in product.variants %}{{item.price}}{% assign value=collection %}
+{% else %}{{item.products}}{% assign value=article %}{% endfor %}{{value.title}}`;
+  const result = await checkTheme(new MemoryThemeFileSystem(files));
+  const features = result.pages[0]?.features ?? [];
+  for (const name of ["variant.price", "collection.products", "collection.title", "article.title"])
+    assert.ok(features.some((feature) => feature.name === name));
+  assert.ok(
+    !features
+      .find((feature) => feature.name === "product.title")
+      ?.occurrences.some((occurrence) => occurrence.file === "sections/header.liquid"),
+  );
+  assert.ok(
+    !features.some((feature) => ["variant.products", "collection.price"].includes(feature.name)),
+  );
+});

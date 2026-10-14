@@ -14,6 +14,7 @@ import {
 } from "../../spec/src/index.js";
 import { parseThemeJson, type ThemeFileSystem, themePath } from "../../theme/src/index.js";
 import type { CheckResult, Diagnostic, Feature } from "./contracts.js";
+import { variableEnvironments } from "./type-environments.js";
 
 export { type CheckResult, checkSchema } from "./contracts.js";
 
@@ -99,14 +100,20 @@ function reference(directory: string, name: string, extension: string): string {
 }
 
 function lookupTypes(expression: LiquidExpression, symbols: Map<string, Set<string>>): Set<string> {
-  if (expression.type !== NodeTypes.VariableLookup || !expression.name) return new Set();
+  if (expression.type === NodeTypes.String) return new Set(["string"]);
+  if (expression.type === NodeTypes.Number) return new Set(["number"]);
+  if (expression.type === NodeTypes.Range) return new Set(["number[]"]);
+  if (expression.type === NodeTypes.LiquidLiteral)
+    return new Set([typeof expression.value === "boolean" ? "boolean" : "nil"]);
+  if (expression.type !== NodeTypes.VariableLookup || !expression.name) return new Set(["?"]);
   let types =
     symbols.get(expression.name) ??
-    (objectNames.has(expression.name) ? new Set([expression.name]) : new Set<string>());
+    (objectNames.has(expression.name) ? new Set([expression.name]) : new Set(["?"]));
   for (const lookup of expression.lookups) {
     const next = new Set<string>();
     for (const type of types) {
-      if (type.endsWith("[]")) {
+      if (type === "?") next.add("?");
+      else if (type.endsWith("[]")) {
         if (
           lookup.type === NodeTypes.Number ||
           lookup.type === NodeTypes.VariableLookup ||
@@ -146,38 +153,11 @@ function scanLiquid(text: string, file: string): Scan {
     const ast = toLiquidAST(text, { allowUnclosedDocumentNode: false, mode: "tolerant" });
     const nodes: LiquidHtmlNode[] = [];
     walk(ast, (node) => nodes.push(node));
-    // Conservative, flow-insensitive alias inference. Unresolved aliases are explicitly reported.
-    const symbols = new Map<string, Set<string>>();
-    for (let pass = 0; pass < nodes.length; pass++) {
-      let changed = false;
-      for (const node of nodes) {
-        let name: string | undefined;
-        let types = new Set<string>();
-        if (node.type === NodeTypes.AssignMarkup) {
-          name = node.name;
-          if (node.value.expression.type !== NodeTypes.BooleanExpression)
-            types = lookupTypes(node.value.expression, symbols);
-          // Filters can change types; do not assert their result type before dialect conformance.
-          if (node.value.filters.length) types = new Set();
-        } else if (node.type === NodeTypes.ForMarkup) {
-          name = node.variableName;
-          types = new Set(
-            [...lookupTypes(node.collection, symbols)]
-              .filter((t) => t.endsWith("[]"))
-              .map((t) => t.slice(0, -2)),
-          );
-        }
-        if (!name || !types.size) continue;
-        const existing = symbols.get(name) ?? new Set<string>();
-        for (const type of types)
-          if (!existing.has(type)) {
-            existing.add(type);
-            changed = true;
-          }
-        symbols.set(name, existing);
-      }
-      if (!changed) break;
-    }
+    const environments = variableEnvironments(ast, {
+      lookup: lookupTypes,
+      root: (name) => new Set(objectNames.has(name) ? [name] : ["?"]),
+      property: propertyReturns,
+    });
     let schema: Record<string, unknown> | undefined;
     let rendersBlocks = false;
     for (const node of nodes) {
@@ -192,10 +172,10 @@ function scanLiquid(text: string, file: string): Scan {
       }
       if (node.type === NodeTypes.VariableLookup && node.name) {
         const initial =
-          symbols.get(node.name) ??
+          environments.get(node)?.get(node.name) ??
           (objectNames.has(node.name) ? new Set([node.name]) : new Set<string>());
         for (const type of initial) if (objectNames.has(type)) add("object", type, true, node);
-        if (!initial.size && node.lookups.length) {
+        if ((!initial.size || initial.has("?")) && node.lookups.length) {
           result.complete = false;
           result.diagnostics.push(
             diagnostic(
@@ -210,6 +190,10 @@ function scanLiquid(text: string, file: string): Scan {
         for (const lookup of node.lookups) {
           const next = new Set<string>();
           for (const type of types) {
+            if (type === "?") {
+              next.add("?");
+              continue;
+            }
             if (Object.hasOwn(dictionaries, type) && dictionaries[type]) {
               next.add(dictionaries[type]);
               add("object", dictionaries[type], true, node);

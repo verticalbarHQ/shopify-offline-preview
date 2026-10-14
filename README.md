@@ -221,7 +221,10 @@ The agent contract check copies Dawn into a temporary directory, edits a real se
 the CLI HTML/tree, then checks that an unknown filter is listed with strict exit 5. Usage, input and
 fatal failures also validate against the published schemas with no TTY. The pinned input is preserved.
 The static benchmark check verifies deterministic coverage output, valid result contracts, and no parse
-or missing-reference errors. The initial rendering check compares repeat runs and Node/browser builds
+or missing-reference errors. Static object inference follows assignment order, restores loop bindings,
+and includes types carried between iterations and across branches. Documented `default` and array
+filters retain their source types; unknown filter results and untyped caller inputs keep coverage
+incomplete. This inference does not mark any feature oracle-verified. The initial rendering check compares repeat runs and Node/browser builds
 across all 36 cases while reporting remaining errors and unsupported features. The browser smoke
 command starts a loopback-only verification page for those same cases. These checks do **not** assert
 Shopify render parity and do not waive acceptance gates. `oracle:offline-check` instruments temporary
