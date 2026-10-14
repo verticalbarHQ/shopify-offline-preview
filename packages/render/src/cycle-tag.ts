@@ -10,6 +10,7 @@ import {
   toPromise,
   type ValueToken,
 } from "liquidjs";
+import { prepareRangeToken } from "./range-values.js";
 
 interface Counters {
   named: Map<unknown, number>;
@@ -73,6 +74,7 @@ export function registerCycleTag(engine: Liquid): void {
         let index: number;
         let advance: (value: number) => void;
         if (this.group) {
+          await prepareRangeToken(this.group, context);
           const value = await toPromise(evalTokenValue(this.group, context));
           const key = value instanceof Number ? Number(value) : value;
           index = counters.named.get(key) ?? 0;
@@ -87,12 +89,8 @@ export function registerCycleTag(engine: Liquid): void {
         }
         // The shared count keeps increasing even when another tag changes list length.
         const candidate = this.candidates[index % this.candidates.length];
-        let value: unknown;
-        if (candidate && TypeGuards.isRangeToken(candidate)) {
-          const left = await toPromise(evalTokenValue(candidate.lhs, context));
-          const right = await toPromise(evalTokenValue(candidate.rhs, context));
-          value = `${Math.trunc(Number(left))}..${Math.trunc(Number(right))}`;
-        } else value = await toPromise(evalTokenValue(candidate, context));
+        if (candidate) await prepareRangeToken(candidate, context);
+        const value: unknown = await toPromise(evalTokenValue(candidate, context));
         advance(index + 1);
         return cycleText(value);
       }

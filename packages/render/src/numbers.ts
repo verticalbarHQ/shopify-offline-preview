@@ -10,6 +10,7 @@ import {
   Value,
 } from "liquidjs";
 import { LiteralTokenizer } from "./literal-tokenizer.js";
+import { prepareRangeValue } from "./range-values.js";
 
 /** Float identity survives assign/filter chains even when its numeric value is integral. */
 export class LiquidFloat extends Number implements Comparable {
@@ -184,5 +185,7 @@ export async function evalNumericValue(
   );
   const value = new Value(tokenizer.readFilteredValue(), engine);
   decorateNumericValue(value);
-  return toPromise(value.value(context ?? new Context({}, engine.options, {}, { liquid: engine })));
+  const scope = context ?? new Context({}, engine.options, {}, { liquid: engine });
+  await prepareRangeValue(value, scope);
+  return toPromise(value.value(scope));
 }

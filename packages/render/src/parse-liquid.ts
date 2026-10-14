@@ -1,7 +1,8 @@
 import { NodeTypes, toLiquidAST, walk } from "@shopify/liquid-html-parser";
-import { type Liquid, Parser, Token, TokenKind, type TopLevelToken } from "liquidjs";
+import { type Liquid, Token, TokenKind, type TopLevelToken } from "liquidjs";
 import { LiteralTokenizer, preserveQuotedOutputs } from "./literal-tokenizer.js";
 import { preserveNumericLiterals } from "./numbers.js";
+import { RangeParser } from "./range-parser.js";
 
 /** Structural HTML token made from the public Token base; retains original file/line offsets. */
 class RawBodyToken extends Token {
@@ -14,7 +15,14 @@ class RawBodyToken extends Token {
     return this.input.slice(this.begin + this.trimLeft, this.end - this.trimRight);
   }
 }
-export function parseLiquid(engine: Liquid, text: string, file: string) {
+export function parseLiquid(
+  engine: Liquid,
+  text: string,
+  file: string,
+  onError: (error: unknown, token: Token) => void = (error) => {
+    throw error;
+  },
+) {
   if (text.length > engine.options.parseLimit) throw new Error("Liquid parse size limit exceeded");
   const bodies = new Map<number, number>();
   walk(toLiquidAST(text, { mode: "tolerant", allowUnclosedDocumentNode: false }), (node) => {
@@ -39,7 +47,7 @@ export function parseLiquid(engine: Liquid, text: string, file: string) {
   const tokens = new RawTokenizer(text, engine.options.operators, file).readTopLevelTokens(
     engine.options,
   );
-  const parsed = new Parser(engine).parseTokens(tokens);
+  const parsed = new RangeParser(engine, onError).parseTokens(tokens);
   preserveQuotedOutputs(engine, parsed);
   preserveNumericLiterals(parsed);
   return parsed;

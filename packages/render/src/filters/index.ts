@@ -5,6 +5,7 @@ import type { Snapshot } from "../../../data/src/schema.js";
 import { themePath } from "../../../theme/src/index.js";
 import { registerFontFilters } from "../fonts.js";
 import { registerNumericFilters } from "../numbers.js";
+import { registerRangeFilters } from "../range-values.js";
 import { formKind } from "../shopify-tags.js";
 import { renderAnchor } from "./anchors.js";
 import { registerCollectionLinkFilters } from "./collection-links.js";
@@ -55,6 +56,7 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
   registerDateFilters(engine, hooks.snapshot, hooks.files, hooks.diagnostic);
   registerEventFilters(engine, hooks.snapshot.shop.currency, hooks.diagnostic);
   registerFontFilters(engine, hooks.diagnostic);
+  registerRangeFilters(engine);
   engine.registerFilter("money_amount", (value) => moneyAmount(toValue(value)));
   engine.registerFilter("handleize", handleize);
   for (const name of ["payment_button", "payment_terms"])

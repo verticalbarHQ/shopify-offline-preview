@@ -354,6 +354,13 @@ styles, and keep unnamed variable cycles independent per parsed tag. Render call
 includes share their caller's counters. Direct range arguments display their bounds, while array
 arguments concatenate their values. Core language conformance remains under audit.
 
+Ranges preserve their `start..end` display through assignments and expose numeric iteration,
+`join` and JSON arrays. An inverted range keeps its endpoints and survives `default` while
+iterating zero times. String filters use the bounds text; array filters enumerate the numbers,
+and `concat` still requires an array as its second argument. Dynamic bounds are evaluated in
+their actual scope and reject float values. Failed range assignments retain the prior value
+and produce a source diagnostic. Endpoint precision and preview resource limits remain enforced.
+
 Quoted Liquid literals retain backslashes without decoding escape sequences. The first matching
 quote ends the literal value; use the opposite quote style to include quotation marks. Public
 tokenizer adapters preserve the original source text and positions for outputs, assignments,

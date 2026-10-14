@@ -414,7 +414,9 @@ export async function renderTheme(
   function parse(file: string): Template[] {
     let parsed = parsedFiles.get(file);
     if (!parsed) {
-      parsed = parseLiquid(engine, source(file), file);
+      parsed = parseLiquid(engine, source(file), file, (error, token) => {
+        liquidError(error, token.file ?? file, token.getPosition()[0] ?? 1);
+      });
       parsedFiles.set(file, parsed);
     }
     return parsed;
@@ -500,7 +502,16 @@ export async function renderTheme(
             const single = /^\s*\{\{([\s\S]*?)\}\}\s*$/.exec(raw);
             const resolved = single
               ? evalNumericValue(engine, single[1] ?? "", dynamicContext())
-              : engine.render(parseLiquid(engine, raw, `settings.${key}`), dynamicContext());
+              : engine.render(
+                  parseLiquid(engine, raw, `settings.${key}`, (error, token) => {
+                    liquidError(
+                      error,
+                      token.file ?? `settings.${key}`,
+                      token.getPosition()[0] ?? 1,
+                    );
+                  }),
+                  dynamicContext(),
+                );
             return resolved
               .then((value) =>
                 definition.type === "color"

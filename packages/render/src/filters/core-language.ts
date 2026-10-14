@@ -1,4 +1,5 @@
 import { type Liquid, Tokenizer, toValue } from "liquidjs";
+import { LiquidRange } from "../range-values.js";
 
 function textValue(input: unknown): string {
   const value: unknown = toValue(input);
@@ -71,6 +72,7 @@ function quoted(text: string): string {
 function inspect(input: unknown, seen = new WeakSet<object>()): string {
   const value: unknown = toValue(input);
   if (value === null || value === undefined) return "nil";
+  if (value instanceof LiquidRange) return String(value);
   if (typeof value === "string") return quoted(value);
   if (typeof value !== "object" || value instanceof Number) return String(value);
   const array = Array.isArray(value);

@@ -11,6 +11,7 @@ import {
   Value,
   type ValueToken,
 } from "liquidjs";
+import { PreparedRangeToken } from "./range-values.js";
 
 /** Shopify takes quoted content literally; backslashes do not escape or decode characters. */
 class LiteralQuotedToken extends Token implements QuotedToken {
@@ -31,6 +32,10 @@ class KeywordLookupKey extends Token {
 
 /** Replaces public tag tokenizers before tag constructors, including the liquid statement group. */
 export class LiteralTokenizer extends Tokenizer {
+  override readGroupOrRange() {
+    const token = super.readGroupOrRange();
+    return token && TypeGuards.isRangeToken(token) ? new PreparedRangeToken(token) : token;
+  }
   override readValue(): ValueToken | undefined {
     const token = super.readValue();
     if (

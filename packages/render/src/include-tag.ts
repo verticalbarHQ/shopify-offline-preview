@@ -9,6 +9,7 @@ import {
   type ValueToken,
 } from "liquidjs";
 import { evalNumericValue } from "./numbers.js";
+import { LiquidRange } from "./range-values.js";
 
 /** Includes keep the caller's context and registers; all parser state belongs to this tag. */
 export function registerIncludeTag(
@@ -73,7 +74,12 @@ export function registerIncludeTag(
           try {
             for (const [key, token] of Object.entries(this.#args.hash))
               scope[key] = token ? await evalNumericValue(engine, token.getText(), context) : true;
-            const items = Array.isArray(value) ? value : [value];
+            const items =
+              value instanceof LiquidRange
+                ? Array.from(value)
+                : Array.isArray(value)
+                  ? value
+                  : [value];
             context.memoryLimit.use(items.length);
             let html = "";
             for (const item of items) {

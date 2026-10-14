@@ -5,11 +5,11 @@ import {
   Tag,
   type TagToken,
   type TopLevelToken,
-  toPromise,
   toValue,
   type ValueToken,
 } from "liquidjs";
 import { evalNumericValue } from "./numbers.js";
+import { LiquidRange } from "./range-values.js";
 
 interface Binding {
   kind: "with" | "for";
@@ -82,10 +82,9 @@ export function registerRenderTag(
         }
         const name = this.snippetName;
         return trace(name, async () => {
-          const args: Record<string, unknown> = Object.assign(
-            Object.create(null),
-            await toPromise(this.args.render(context)),
-          );
+          const args: Record<string, unknown> = Object.create(null);
+          for (const [key, token] of Object.entries(this.args.hash))
+            args[key] = token ? await evalNumericValue(engine, token.getText(), context) : true;
           let collection: unknown[] | undefined;
           let forAlias: string | undefined;
           for (const binding of this.bindings) {
@@ -93,11 +92,14 @@ export function registerRenderTag(
               await evalNumericValue(engine, binding.value.getText(), context),
             );
             if (binding.kind === "for") {
-              collection = Array.isArray(value)
-                ? value
-                : value === null || value === undefined
-                  ? []
-                  : [value];
+              collection =
+                value instanceof LiquidRange
+                  ? Array.from(value)
+                  : Array.isArray(value)
+                    ? value
+                    : value === null || value === undefined
+                      ? []
+                      : [value];
               forAlias = binding.alias;
             } else args[binding.alias] = value;
           }
