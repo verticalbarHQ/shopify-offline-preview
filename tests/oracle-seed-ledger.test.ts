@@ -18,6 +18,7 @@ import {
 } from "../tools/oracle/seed-identities.js";
 import { buildOracleSeedPlan } from "../tools/oracle/seed-plan.js";
 import { seedBindingKey } from "../tools/oracle/seed-requests.js";
+import { seedAdminSchema } from "../tools/oracle/seed-schema.js";
 
 const config = { domain: "authored-demo.myshopify.com", apiVersion: "2026-10" as const },
   shopId = "gid://shopify/Shop/1";
@@ -112,6 +113,255 @@ function setup(wrongHandle = false) {
 }
 const code = (expected: string) => (error: unknown) =>
   error instanceof SeedLedgerError && error.code === expected;
+
+test("collection job receipt updates ledger order only after fresh complete membership matches", async () => {
+  const fixture = defaultFixture();
+  for (const product of fixture.products) {
+    product.images = [];
+    for (const variant of product.variants) variant.image = null;
+  }
+  const first = fixture.products[0],
+    second = fixture.products[1],
+    desired = fixture.collections[0];
+  assert.ok(first && second && desired);
+  desired.products = [first.handle, second.handle];
+  desired.image = null;
+  desired.sortOrder = "manual";
+  const prepared = buildOracleSeedPlan(config, fixture),
+    initial = prepared.states[0];
+  assert.ok(initial);
+  const collectionTask = initial.tasks.find((t) => t.resource === "collection");
+  assert.ok(collectionTask);
+  const contract = seedAdminSchema.parse(schema),
+    named = (name: string, kind = "SCALAR") => ({ name, kind }),
+    nonnull = (type: { name: string; kind: string }) => ({
+      kind: "NON_NULL",
+      name: null,
+      ofType: type,
+    }),
+    list = (name: string) => ({
+      kind: "LIST",
+      name: null,
+      ofType: nonnull(named(name, "INPUT_OBJECT")),
+    }),
+    object = (name: string, inputFields: { name: string; type: object }[]) => ({
+      name,
+      kind: "INPUT_OBJECT",
+      inputFields,
+      enumValues: null,
+    }),
+    extra: unknown = {
+      apiVersion: "2026-10",
+      operations: [
+        ...contract.operations,
+        {
+          name: "collectionCreate",
+          args: [
+            { name: "collection", type: nonnull(named("CollectionCreateInput", "INPUT_OBJECT")) },
+          ],
+        },
+        {
+          name: "collectionReorderProducts",
+          args: [
+            { name: "id", type: nonnull(named("ID")) },
+            { name: "moves", type: { kind: "NON_NULL", name: null, ofType: list("MoveInput") } },
+          ],
+        },
+      ],
+      types: [
+        ...contract.types,
+        object("CollectionCreateInput", [
+          ...["handle", "title", "descriptionHtml", "templateSuffix", "sortOrder", "image"].map(
+            (name) => ({ name, type: named("String") }),
+          ),
+          { name: "seo", type: named("SEOInput", "INPUT_OBJECT") },
+          { name: "sources", type: list("SourceCreateMock") },
+        ]),
+        object("SourceCreateMock", [{ name: "source", type: named("SourceMock", "INPUT_OBJECT") }]),
+        object("SourceMock", [
+          ...["title", "targetType"].map((name) => ({ name, type: named("String") })),
+          { name: "position", type: named("Int") },
+          { name: "inclusion", type: named("SelectionMock", "INPUT_OBJECT") },
+        ]),
+        object("SelectionMock", [{ name: "selections", type: list("ProductSelectionMock") }]),
+        object("ProductSelectionMock", [{ name: "productId", type: named("ID") }]),
+        object("MoveInput", [
+          { name: "id", type: named("ID") },
+          { name: "newPosition", type: named("String") },
+        ]),
+      ],
+    };
+  // Additional input shapes are authored mocks, not retained live API contracts.
+  const locationId = "gid://shopify/Location/1",
+    collectionId = "gid://shopify/Collection/1",
+    sourceId = "gid://shopify/CollectionConditionsSource/1",
+    jobId = "gid://shopify/Job/af3cb206-d472-4a54-902b-f34df6af4eb5",
+    members = [
+      { id: "gid://shopify/Product/1", handle: first.handle },
+      { id: "gid://shopify/Product/2", handle: second.handle },
+    ];
+  let order = [...members].reverse(),
+    jobs = 0,
+    writes = 0,
+    mismatch = false;
+  const fetcher: typeof fetch = async (_url, init) => {
+    const body = JSON.parse(String(init?.body)),
+      query = String(body.query);
+    if (query.includes("OfflinePreviewSeedGuard"))
+      return reply({
+        shop: {
+          ...shop,
+          name: "Authored shop",
+          currencyCode: "USD",
+          ianaTimezone: "UTC",
+          metafield: { value: "true" },
+        },
+        currentAppInstallation: {
+          accessScopes: ["write_products", "write_inventory", "read_locations"].map((handle) => ({
+            handle,
+          })),
+        },
+      });
+    if (query.includes("OfflinePreviewSeedAbsence"))
+      return reply({
+        shop,
+        products: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
+        collections: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
+      });
+    if (query.includes("OfflinePreviewSeedJob")) {
+      jobs++;
+      if (jobs > 1 && !mismatch) order = [...members];
+      return reply({ shop, job: { id: jobId, done: jobs > 1 } });
+    }
+    if (query.includes("OfflinePreviewSeedIdentities"))
+      return reply({
+        shop,
+        nodes: body.variables.ids.map((id: string) => {
+          if (id === locationId) return { __typename: "Location", id, isActive: true };
+          if (id === collectionId)
+            return {
+              __typename: "Collection",
+              id,
+              handle: desired.handle,
+              sortOrder: "MANUAL",
+              products: { nodes: order, pageInfo: { hasNextPage: false } },
+              sources: [
+                {
+                  __typename: "CollectionConditionsSource",
+                  id: sourceId,
+                  title: "SOP fixture membership",
+                  shareable: false,
+                  targetType: "PRODUCTS",
+                  app: { id: "gid://shopify/App/1" },
+                  inclusion: {
+                    conditions: [],
+                    selections: {
+                      nodes: members.map((product) => ({ product, variantIds: [] })),
+                      pageInfo: { hasNextPage: false },
+                    },
+                  },
+                  exclusion: null,
+                },
+              ],
+            };
+          const member = members.find((m) => m.id === id);
+          assert.ok(member);
+          return { __typename: "Product", ...member, tags: ["sop-fixture"] };
+        }),
+      });
+    if (query.includes("OfflinePreviewSeedVariants")) {
+      const product = body.variables.id === "gid://shopify/Product/1" ? first : second;
+      return reply({
+        shop,
+        product: {
+          id: body.variables.id,
+          handle: product.handle,
+          tags: ["sop-fixture"],
+          variants: {
+            nodes: product.variants.map((v, i) => ({
+              __typename: "ProductVariant",
+              id: `gid://shopify/ProductVariant/${i + 1}`,
+              selectedOptions: v.optionValues.map((o) => ({ name: o.name, value: o.value })),
+            })),
+            pageInfo: { hasNextPage: false },
+          },
+        },
+      });
+    }
+    writes++;
+    if (query.includes("productSet"))
+      return reply({
+        productSet: {
+          product: {
+            id: body.variables.input.handle === first.handle ? members[0]?.id : members[1]?.id,
+          },
+          userErrors: [],
+        },
+      });
+    if (query.includes("collectionCreate"))
+      return reply({ collectionCreate: { collection: { id: collectionId }, userErrors: [] } });
+    return reply({ collectionReorderProducts: { job: { id: jobId }, userErrors: [] } });
+  };
+  const ledger = createOracleSeedBindingLedger(config, fixture, shopId, "authored", [], fetcher),
+    executor = createOracleSeedExecutor(config, fixture, shopId, "authored", extra, {
+      authorize: ok,
+      verifyResult: ok,
+      verifyBindings: ledger.verifyBindings,
+      fetcher,
+    });
+  await ledger.registerEnvironment({ kind: "Location", id: locationId });
+  for (const product of [first, second]) {
+    const task = initial.tasks.find(
+      (t) => t.resource === "product" && t.identity[0] === product.handle,
+    );
+    assert.ok(task);
+    await ledger.record(
+      await executor.executeVerified({
+        stateHash: initial.hash,
+        taskKey: task.key,
+        kind: "task",
+        options: { mode: "create" },
+        bindings: { [seedBindingKey("inventory-location")]: locationId },
+      }),
+    );
+  }
+  const bindings = Object.fromEntries(
+    members.map((m) => [seedBindingKey("product-id", m.handle), m.id]),
+  );
+  await ledger.record(
+    await executor.executeVerified({
+      stateHash: initial.hash,
+      taskKey: collectionTask.key,
+      kind: "task",
+      options: { mode: "create" },
+      bindings,
+    }),
+  );
+  const ordered = await executor.executeVerified({
+    stateHash: initial.hash,
+    taskKey: collectionTask.key,
+    kind: "collection-order",
+    options: { mode: "update" },
+    observedOrder: order.map((m) => m.handle),
+    bindings: { ...bindings, [seedBindingKey("collection-id", desired.handle)]: collectionId },
+  });
+  mismatch = true;
+  await assert.rejects(ledger.record(ordered), code("read-back-failed"));
+  mismatch = false;
+  await ledger.record(ordered);
+  assert.equal(writes, 4);
+  assert.equal(ledger.get(seedBindingKey("collection-id", desired.handle)), collectionId);
+  await assert.rejects(ledger.record(ordered), code("unverified-execution"));
+  order = [...members].reverse();
+  // The committed order proof now rejects changed order even in a later dependency check.
+  const context = inspectVerifiedSeedExecution(ordered).context;
+  await assert.rejects(
+    ledger.verifyBindings(context, {
+      ...bindings,
+      [seedBindingKey("collection-id", desired.handle)]: collectionId,
+    }),
+  );
+});
 
 test("JSON flags and hand-built proof objects cannot create ledger ownership", async () => {
   const { ledger } = setup();

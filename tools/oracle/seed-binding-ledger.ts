@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { type Snapshot, snapshotSchema } from "../../packages/data/src/schema.js";
+import { waitOracleSeedCollectionOrder, waitOracleSeedImage } from "./seed-completion.js";
 import {
   inspectVerifiedSeedExecution,
   type SeedExecutionContext,
@@ -167,6 +168,40 @@ export function createOracleSeedBindingLedger(
         const task = scope(record.context),
           additions = new Map<string, Entry>(),
           deletions: string[] = [];
+        if (record.context.kind === "collection-order" && task.resource === "collection") {
+          const source = snapshotSchema.shape.collections.element.parse(task.source),
+            key = seedBindingKey("collection-id", source.handle),
+            before = current(key);
+          if (
+            before.expected.kind !== "Collection" ||
+            !before.proof ||
+            record.context.template.operation !== "collectionReorderProducts" ||
+            record.variables.id !== before.value
+          )
+            throw new SeedLedgerError("binding-mismatch");
+          const expected = structuredClone(before.expected),
+            byHandle = new Map(expected.members.map((m) => [m.handle, m]));
+          if (source.sortOrder !== "manual" || source.products.length !== expected.members.length)
+            throw new SeedLedgerError("binding-mismatch");
+          expected.members = source.products.map((handle) => {
+            const member = byHandle.get(handle);
+            if (!member) throw new SeedLedgerError("binding-mismatch");
+            return member;
+          });
+          expected.ordered = true;
+          const job = z.object({ id: z.string() }).safeParse(record.payload.job);
+          if (!job.success) throw new SeedLedgerError("binding-mismatch");
+          try {
+            await waitOracleSeedCollectionOrder(pinned, token, shopId, job.data.id, expected, {
+              fetcher,
+            });
+          } catch {
+            throw new SeedLedgerError("read-back-failed");
+          }
+          entries.set(key, { ...before, expected, proof: receipt });
+          used.add(receipt);
+          return;
+        }
         if (record.context.kind !== "task") throw new SeedLedgerError("unsupported-step");
         async function add(
           key: string,
@@ -281,11 +316,21 @@ export function createOracleSeedBindingLedger(
                 .length(1)
                 .parse(record.payload.files),
               id = identityId(files[0], "MediaImage");
-            const node = (
-              await readOracleSeedIdentities(pinned, token, shopId, "MediaImage", [id], fetcher)
-            )[0];
-            if (node?.__typename !== "MediaImage" || !node.image || !asset)
-              throw new SeedLedgerError("binding-mismatch");
+            if (!asset) throw new SeedLedgerError("binding-mismatch");
+            const node = await waitOracleSeedImage(
+              pinned,
+              token,
+              shopId,
+              id,
+              {
+                width: source.width,
+                height: source.height,
+                bytes: asset.bytes,
+                sha256: asset.sha256,
+              },
+              { fetcher },
+            );
+            if (!node.image) throw new SeedLedgerError("binding-mismatch");
             const expected: ExpectedSeedIdentity = {
                 kind: "MediaImage",
                 id,
@@ -414,7 +459,11 @@ export function createOracleSeedBindingLedger(
           checked.add(entry);
         }
       }
-      if (context.options.mode === "update" && task.resource === "collection") {
+      if (
+        context.kind === "task" &&
+        context.options.mode === "update" &&
+        task.resource === "collection"
+      ) {
         const expected = current(seedBindingKey("collection-id", task.identity[0] ?? "")).expected;
         if (
           expected.kind !== "Collection" ||

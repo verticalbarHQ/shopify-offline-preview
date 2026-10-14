@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { test } from "node:test";
 import { defaultFixture } from "../packages/data/src/fixture.js";
+import { snapshotSchema } from "../packages/data/src/schema.js";
 import {
   createOracleSeedBindingLedger,
   SeedLedgerError,
@@ -28,6 +29,7 @@ const config = { domain: "authored-demo.myshopify.com", apiVersion: "2026-10" as
 assert.ok(state);
 const image = state.tasks.find((t) => t.resource === "image");
 assert.ok(image);
+const imageSource = snapshotSchema.shape.products.element.shape.images.element.parse(image.source);
 const file = image.identity[0];
 assert.ok(file);
 const bytes = new Uint8Array([1, 2, 3]),
@@ -90,8 +92,43 @@ const bytes = new Uint8Array([1, 2, 3]),
 function setup(customTarget = target()) {
   let fileWrites = 0;
   const fetcher: typeof fetch = async (_url, init) => {
+    if (init?.method === "GET") {
+      assert.equal(init.headers, undefined);
+      return new Response(bytes);
+    }
     const body = JSON.parse(String(init?.body)),
       query = String(body.query);
+    if (query.includes("OfflinePreviewSeedIdentities")) {
+      const source = imageSource;
+      return Response.json(
+        {
+          data: {
+            shop: {
+              id: shopId,
+              myshopifyDomain: config.domain,
+              plan: { partnerDevelopment: true },
+            },
+            nodes: [
+              {
+                __typename: "MediaImage",
+                id: "gid://shopify/MediaImage/1",
+                fileStatus: "READY",
+                image: {
+                  url: "https://cdn.shopify.com/image.png",
+                  width: source.width,
+                  height: source.height,
+                },
+                originalSource: {
+                  url: "https://cdn.shopify.com/original.png",
+                  fileSize: bytes.length,
+                },
+              },
+            ],
+          },
+        },
+        { headers: { "x-shopify-api-version": "2026-10" } },
+      );
+    }
     const data = query.includes("OfflinePreviewSeedGuard")
       ? {
           shop: {
@@ -334,10 +371,12 @@ test("ledger accepts a scoped upload receipt for fileCreate but never treats it 
     }),
   );
   assert.equal(fileWrites(), 0);
-  await executor.executeVerified({
+  const created = await executor.executeVerified({
     ...step,
     requestIndex: 1,
     bindings: { [key]: ledger.get(key) },
   });
+  await ledger.record(created);
+  assert.equal(ledger.get(seedBindingKey("image-id", file)), "gid://shopify/MediaImage/1");
   assert.equal(fileWrites(), 1);
 });
