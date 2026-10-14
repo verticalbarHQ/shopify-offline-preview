@@ -129,6 +129,69 @@
       ],
       "additionalProperties": false
     },
+    "images": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "file": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!\\/)(?!.*[\\\\\\u0000])(?!.*(?:^|\\/)\\.{1,2}(?:\\/|$))(?!.*\\/\\/)(?!.*\\/$).+$"
+          },
+          "alt": {
+            "type": "string"
+          },
+          "width": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "height": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "filename": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!\\.{1,2}$)[^/\\\\\\u0000\\r\\n]+$"
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "focalPoint": {
+            "type": "object",
+            "properties": {
+              "x": {
+                "type": "string",
+                "maxLength": 30,
+                "pattern": "^(?:0(?:\\.\\d+)?|1(?:\\.0+)?)$"
+              },
+              "y": {
+                "type": "string",
+                "maxLength": 30,
+                "pattern": "^(?:0(?:\\.\\d+)?|1(?:\\.0+)?)$"
+              }
+            },
+            "required": [
+              "x",
+              "y"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "file",
+          "alt",
+          "width",
+          "height",
+          "filename"
+        ],
+        "additionalProperties": false
+      }
+    },
     "products": {
       "type": "array",
       "items": {

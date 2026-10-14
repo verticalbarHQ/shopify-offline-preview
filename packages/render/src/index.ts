@@ -12,6 +12,7 @@ import {
 import { z } from "zod";
 import type { Diagnostic } from "../../check/src/contracts.js";
 import { defaultFixture } from "../../data/src/fixture.js";
+import { ImageDirectory, NamedImageDrop } from "../../data/src/images.js";
 import { type LiquidRecord, liquidObjects } from "../../data/src/objects.js";
 import { applyScenario, validateSnapshotReferences } from "../../data/src/scenarios.js";
 import { type Snapshot, snapshotSchema } from "../../data/src/schema.js";
@@ -262,6 +263,7 @@ export async function renderTheme(
   const assetBytes = new Map<string, Promise<Uint8Array>>();
   registerShopifyFilters(engine, {
     snapshot,
+    readData: readSnapshot,
     files,
     paths: allPaths,
     readAsset(path) {
@@ -424,6 +426,28 @@ export async function renderTheme(
     }
     return html;
   }
+  function imageSetting(value: unknown, key: string): unknown {
+    if (value === null || value === undefined || value === "") return null;
+    if (
+      value instanceof NamedImageDrop ||
+      (object(value) && typeof value.src === "string" && value.src.startsWith("/sop/images/"))
+    )
+      return value;
+    let filename = typeof value === "string" ? value : "";
+    if (filename.startsWith("shopify://shop_images/")) {
+      try {
+        filename = decodeURIComponent(filename.slice("shopify://shop_images/".length));
+      } catch {
+        filename = "";
+      }
+    }
+    const directory = globals.images;
+    const image =
+      directory instanceof ImageDirectory ? directory.liquidMethodMissing(filename) : null;
+    if (image instanceof NamedImageDrop) return image;
+    diagnostic("missing-resource", `Setting ${key} references an image absent from the snapshot.`);
+    return null;
+  }
   let globalSettingsContext: Context;
   const colorGroups = new Map<string, ColorSchemeGroup>();
   function settings(
@@ -467,7 +491,9 @@ export async function renderTheme(
                   ? colorSetting(value, (message) => diagnostic("not-implemented", message))
                   : definition.type === "font_picker"
                     ? fontSetting(value, (message) => diagnostic("not-implemented", message))
-                    : value,
+                    : definition.type === "image_picker"
+                      ? imageSetting(value, key)
+                      : value,
               )
               .finally(() => {
                 resolving = false;
@@ -511,6 +537,10 @@ export async function renderTheme(
           null;
         continue;
       }
+      if (definition.type === "image_picker") {
+        result[key] = imageSetting(raw, key);
+        continue;
+      }
       const resource = {
         product: "all_products",
         collection: "collections",
@@ -534,7 +564,6 @@ export async function renderTheme(
           );
       } else if (
         [
-          "image_picker",
           "video",
           "video_url",
           "product_list",

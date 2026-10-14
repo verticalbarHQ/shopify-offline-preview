@@ -1,3 +1,4 @@
+import { focalPointPercent, snapshotImages } from "./images.js";
 import { type Snapshot, snapshotSchema } from "./schema.js";
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -67,6 +68,27 @@ export function validateSnapshotReferences(snapshot: Snapshot): void {
     snapshot.products.flatMap((p) => p.variants.map((v) => v.id)),
     "variant id",
   );
+  unique(
+    (snapshot.images ?? []).map((image) => image.filename),
+    "uploaded image filename",
+  );
+  const imageMetadata = new Map<string, Set<string>>();
+  for (const source of snapshotImages(snapshot)) {
+    const values = imageMetadata.get(source.file) ?? new Set<string>();
+    values.add(
+      JSON.stringify([
+        source.alt,
+        source.width,
+        source.height,
+        source.focalPoint ? focalPointPercent(source.focalPoint.x) : null,
+        source.focalPoint ? focalPointPercent(source.focalPoint.y) : null,
+      ]),
+    );
+    imageMetadata.set(source.file, values);
+  }
+  for (const source of snapshot.images ?? [])
+    if ((imageMetadata.get(source.file)?.size ?? 0) > 1)
+      throw new Error("Conflicting image metadata for the same local file");
   const products = new Map(snapshot.products.map((p) => [p.handle, p]));
   for (const product of snapshot.products) {
     const files = new Set(product.images.map((i) => i.file));

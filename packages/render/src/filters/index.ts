@@ -1,4 +1,5 @@
 import { type Liquid, toValue } from "liquidjs";
+import { ImageDirectory, MissingImage, NamedImageDrop } from "../../../data/src/images.js";
 import { liquidObjectKind } from "../../../data/src/objects.js";
 import type { Snapshot } from "../../../data/src/schema.js";
 import { themePath } from "../../../theme/src/index.js";
@@ -22,10 +23,21 @@ interface FilterHooks {
   files: Map<string, string>;
   paths: ReadonlySet<string>;
   readAsset(path: string): Promise<Uint8Array>;
+  readData(path: string): void;
   sectionLocales(): unknown;
   diagnostic(code: string, message: string, file: string | null, line: number | null): void;
 }
 export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void {
+  for (const name of ["default", "size"] as const) {
+    const native = engine.filters[name];
+    if (typeof native !== "function") throw new Error(`Pinned LiquidJS ${name} filter unavailable`);
+    engine.registerFilter(name, function (input: unknown, ...args: unknown[]) {
+      if (input instanceof MissingImage) return name === "default" ? args[0] : 0;
+      if (input instanceof NamedImageDrop && name === "default") return input;
+      if (input instanceof ImageDirectory && name === "size") return 0;
+      return native.call(this, input, ...args);
+    });
+  }
   registerColorFilters(engine);
   registerCollectionLinkFilters(engine);
   registerJsonFilter(engine);
@@ -169,7 +181,7 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
     return `<link ${output.join(" ")} rel="preload">`;
   });
   engine.registerFilter("md5", (value: unknown) => md5(String(toValue(value) ?? "")));
-  const images = imageFilters(hooks.snapshot);
+  const images = imageFilters(hooks.snapshot, hooks.readData);
   engine.registerFilter("image_url", function (value: unknown, ...args: unknown[]) {
     return images.imageUrl(value, args, (message) =>
       hooks.diagnostic(
@@ -180,9 +192,16 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
       ),
     );
   });
-  engine.registerFilter("image_tag", (value: unknown, ...args: unknown[]) =>
-    images.imageTag(value, args),
-  );
+  engine.registerFilter("image_tag", function (value: unknown, ...args: unknown[]) {
+    return images.imageTag(value, args, (message) =>
+      hooks.diagnostic(
+        "not-implemented",
+        message,
+        this.token.file ?? null,
+        this.token.getPosition()[0] ?? null,
+      ),
+    );
+  });
   engine.registerFilter(
     "stylesheet_tag",
     (value: unknown) =>

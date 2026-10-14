@@ -156,6 +156,30 @@ export const snapshotSchema = z.strictObject({
       }
     }, "Invalid IANA timezone"),
   }),
+  images: z
+    .array(
+      image.extend({
+        filename: z
+          .string()
+          .min(1)
+          // biome-ignore lint/suspicious/noControlCharactersInRegex: Store filenames must reject NUL and line breaks in runtime and JSON Schema.
+          .regex(/^(?!\.{1,2}$)[^/\\\u0000\r\n]+$/),
+        id: z.string().min(1).optional(),
+        focalPoint: z
+          .strictObject({
+            x: z
+              .string()
+              .max(30)
+              .regex(/^(?:0(?:\.\d+)?|1(?:\.0+)?)$/),
+            y: z
+              .string()
+              .max(30)
+              .regex(/^(?:0(?:\.\d+)?|1(?:\.0+)?)$/),
+          })
+          .optional(),
+      }),
+    )
+    .optional(),
   products: z.array(product),
   collections: z.array(
     z.strictObject({

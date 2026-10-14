@@ -1,4 +1,5 @@
 import { Drop } from "liquidjs";
+import { ImageDirectory } from "./images.js";
 import type { Snapshot } from "./schema.js";
 import { type SearchCandidate, searchResults } from "./search.js";
 
@@ -709,6 +710,9 @@ export function liquidObjects(
     "search",
   );
   const globals: LiquidRecord = {
+    images: new ImageDirectory(snapshot.images, hooks.read, (property) =>
+      hooks.unsupported("image", property),
+    ),
     shop: tracked(
       {
         ...Object.fromEntries(Object.entries(snapshot.shop).filter(([key]) => key !== "seo")),

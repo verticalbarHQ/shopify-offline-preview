@@ -1,4 +1,5 @@
 import { type Liquid, toValue } from "liquidjs";
+import { ImageDirectory, MissingImage } from "../../../data/src/images.js";
 import { liquidObjectKind } from "../../../data/src/objects.js";
 
 /** Safe inside a script element, matching Shopify's JSON escaping. */
@@ -77,6 +78,8 @@ function project(value: Record<string, unknown>, fields: string[]) {
 }
 export function registerJsonFilter(engine: Liquid) {
   engine.registerFilter("json", (input: unknown) => {
+    if (input instanceof MissingImage || input instanceof ImageDirectory)
+      return jsonString({ error: "json not allowed for this object" });
     const output = JSON.stringify(toValue(input) ?? null, (_key, value: unknown) => {
       if (!record(value)) return value;
       const kind = liquidObjectKind(value);

@@ -296,3 +296,24 @@ Collection link filters (`url_for_type`, `url_for_vendor`, `link_to_type`, `link
 URL queries and fragments, escape HTML attributes, and preserve label markup. `within` accepts a
 snapshot collection object; strings and other objects leave the supplied URL unchanged. Empty
 catalog labels produce `Unknown Type` or `Unknown Vendor`. These filters also await oracle coverage.
+
+Snapshots may supply an optional top-level `images` array for uploads referenced by filename:
+
+```json
+{
+  "images": [{
+    "filename": "header.png", "file": "uploaded/header.png",
+    "alt": "Store header", "width": 640, "height": 320,
+    "id": "101", "focalPoint": {"x": "0.5", "y": "0.5"}
+  }]
+}
+```
+
+`file` is relative to the snapshot's `images/` directory. `filename` is the original upload name;
+product images are not automatically added to this directory. Filenames must be unique, and a
+shared local file must have consistent image metadata. Optional focal-point coordinates are exact
+decimal strings from 0 through 1; omitted ids or presentation metadata remain diagnosed when used.
+The same objects back `images['header.png']` and image picker settings such as
+`shopify://shop_images/header.png`, including dynamic sources. `default` retains a selected image's
+properties. A missing picker resolves to nil with a resource diagnostic; a missing filename lookup
+uses Shopify's truthy empty-image behavior. Image filters produce local URLs and never fetch files.

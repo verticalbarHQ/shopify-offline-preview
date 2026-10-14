@@ -24,6 +24,7 @@ const objects: Record<string, { global: boolean; properties: Record<string, stri
 const objectNames = new Set(Object.keys(objects));
 const dictionaries: Record<string, string> = {
   all_products: "product",
+  images: "image",
   collections: "collection",
   pages: "page",
   blogs: "blog",

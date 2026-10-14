@@ -1,4 +1,5 @@
 import { toValue } from "liquidjs";
+import { focalPointPercent, snapshotImageEntries } from "../../../data/src/images.js";
 import type { Snapshot } from "../../../data/src/schema.js";
 export class ImageUrlInputError extends Error {}
 export function namedArgs(args: unknown[]): Record<string, unknown> {
@@ -16,14 +17,14 @@ function escapeHtml(value: unknown): string {
     (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c,
   );
 }
-export function imageFilters(snapshot: Snapshot) {
-  const images = new Map(
-    [
-      ...snapshot.products.flatMap((product) => product.images),
-      ...snapshot.collections.flatMap((c) => (c.image ? [c.image] : [])),
-      ...snapshot.blogs.flatMap((b) => b.articles.flatMap((a) => (a.image ? [a.image] : []))),
-    ].map((image) => [image.file, image]),
-  );
+export function imageFilters(snapshot: Snapshot, read: (path: string) => void = () => {}) {
+  const entries = snapshotImageEntries(snapshot);
+  const images = new Map(entries.map(([, image]) => [image.file, image]));
+  const paths = new Map(entries.map(([path, image]) => [image.file, path]));
+  function observe(file: string, key: string) {
+    const path = paths.get(file);
+    if (path !== undefined) read(`${path}.${key}`);
+  }
   function imageUrl(
     input: unknown,
     args: unknown[],
@@ -47,6 +48,7 @@ export function imageFilters(snapshot: Snapshot) {
     const file = decodeURIComponent(url.pathname.slice(12));
     const image = images.get(file);
     if (!image) throw new ImageUrlInputError("invalid url input");
+    observe(file, "file");
     const options = namedArgs(args);
     const region = options.crop === "region";
     for (const dimension of ["width", "height"] as const)
@@ -54,6 +56,7 @@ export function imageFilters(snapshot: Snapshot) {
         const size = Number(options[dimension]);
         if (!Number.isInteger(size) || size < 1 || size > 5760)
           throw new ImageUrlInputError(`Invalid image ${dimension}`);
+        observe(file, dimension);
         url.searchParams.set(dimension, String(Math.min(size, image[dimension])));
       }
     for (const [key, value] of Object.entries(options))
@@ -106,13 +109,20 @@ export function imageFilters(snapshot: Snapshot) {
       throw new ImageUrlInputError("Region crop requires its complete rectangle");
     return url.pathname + url.search;
   }
-  function imageTag(input: unknown, args: unknown[]): string {
+  function imageTag(
+    input: unknown,
+    args: unknown[],
+    unsupported: (message: string) => void = () => {},
+  ): string {
     if (typeof input !== "string" || !input.startsWith("/sop/images/"))
       throw new Error("image_tag requires a local image_url result");
     const url = new URL(input, "https://offline.invalid");
     const image = images.get(decodeURIComponent(url.pathname.slice(12)));
     if (!image) throw new Error("Image input is absent from the local snapshot");
+    for (const key of ["file", "alt", "width", "height"]) observe(image.file, key);
     const options = namedArgs(args);
+    if ("filename" in image && !Object.hasOwn(image, "focalPoint"))
+      unsupported("Uploaded image presentation metadata is absent from the snapshot.");
     const sourceWidth = Number(url.searchParams.get("crop_width") ?? image.width);
     const sourceHeight = Number(url.searchParams.get("crop_height") ?? image.height);
     const requestedWidth = url.searchParams.get("width"),
@@ -128,6 +138,11 @@ export function imageFilters(snapshot: Snapshot) {
         ? Math.max(1, Math.round((sourceHeight * Number(requestedWidth)) / sourceWidth))
         : sourceHeight;
     const attributes: Record<string, unknown> = { src: input, alt: image.alt, width, height };
+    if (image.focalPoint) {
+      observe(image.file, "focalPoint.x");
+      observe(image.file, "focalPoint.y");
+      attributes.style = `object-position:${focalPointPercent(image.focalPoint.x)} ${focalPointPercent(image.focalPoint.y)};`;
+    }
     const widths =
       options.widths === undefined
         ? [165, 360, 533, 720, 940, 1066, width]
