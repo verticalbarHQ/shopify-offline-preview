@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { placeholderNames } from "./placeholders.js";
 
 const handle = z.string().min(1);
 // Source prices use decimal currency units, like Admin API exports; no float conversion at input.
@@ -156,6 +157,9 @@ export const snapshotSchema = z.strictObject({
       }
     }, "Invalid IANA timezone"),
   }),
+  placeholderSvgs: z
+    .partialRecord(z.enum(placeholderNames), z.string().min(1).max(2_000_000))
+    .optional(),
   images: z
     .array(
       image.extend({

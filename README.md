@@ -81,6 +81,12 @@ Data may come from any external collection or export tool. Prepare a local direc
 live-store data or convert vendor-specific exports. Local snapshot validation is available in the
 browser export, `render --data` and `dev --data`.
 
+Optional `placeholderSvgs` maps documented placeholder names to externally prepared SVG strings
+in `snapshot.json`. Supply each SVG's base output without a root class; the filter preserves its
+bytes and applies Shopify's class argument behavior. The catalog stays local, and the library
+does not fetch or redistribute platform artwork. A requested name without local SVG data produces
+a `missing-resource` diagnostic. Each entry is limited to two million characters.
+
 Optional shop metadata includes `description`, customer account flags, `enabled_payment_types`,
 boolean `features`, and `policies` with `title`, `body`, `url` and an optional string `id`.
 Omitted metadata stays unavailable and produces a diagnostic when read. Shop product and collection

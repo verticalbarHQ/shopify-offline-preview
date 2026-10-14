@@ -324,6 +324,10 @@ The library does not implement live-store collection or provider-specific export
 - Optional `images[]`: uploads identified by their original filename, with local file, alt text,
   dimensions and optional source id/focal-point coordinates. These supply global filename lookups
   and image picker settings. Product images do not stand in for unspecified uploads.
+- Optional `placeholderSvgs`: externally prepared SVG strings keyed by documented placeholder
+  names. The strings contain the base SVG output without a root class. The renderer consumes them
+  offline and applies class arguments without changing artwork bytes. Platform artwork is not
+  redistributed with the library; absent entries produce `missing-resource` diagnostics.
 - `cart`: lines (variant reference and quantity), note.
 - `filters`: the storefront filter configuration used for collection facets.
 - `scenarios`: named overlays (JSON merge patches over the snapshot).

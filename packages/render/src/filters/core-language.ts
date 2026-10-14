@@ -90,6 +90,22 @@ function inspect(input: unknown, seen = new WeakSet<object>()): string {
   }
 }
 
+/** Ruby-style string coercion for filters that accept arrays or ordinary hashes. */
+export function liquidFilterText(input: unknown): string {
+  const value: unknown = toValue(input);
+  if (value === null || value === undefined) return "";
+  if (Array.isArray(value)) return inspect(value);
+  if (typeof value === "object" && !(value instanceof Number) && !(value instanceof LiquidRange)) {
+    const prototype: unknown = Object.getPrototypeOf(value);
+    if (
+      (prototype === Object.prototype || prototype === null) &&
+      !(Object.hasOwn(value, "toString") && typeof Reflect.get(value, "toString") === "function")
+    )
+      return inspect(value);
+  }
+  return String(value);
+}
+
 /** Direct output concatenates arrays, but ordinary JSON hashes use Liquid's Ruby notation. */
 export function liquidOutputValue(input: unknown): unknown {
   const value: unknown = toValue(input);
