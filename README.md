@@ -375,6 +375,7 @@ evaluated in order, so later parameters can use earlier ones. Included snippets 
 variables and counters, and propagate break/continue to a calling loop. Array bindings repeat
 in the shared scope without creating a new `forloop`; temporary bindings restore afterwards.
 Snippet loading uses the same source parser, asset collection and inspector as render calls.
+Preview nesting is bounded to 100 inspector frames; deeper recursion produces a Liquid diagnostic.
 
 `pnpm language:check --suite-dir <clean-liquid-spec-checkout>` audits the pinned
 `Shopify/liquid-spec@84bf25e0edbca5f7e530574788b0f875ab331f50` basics inputs through the real SDK

@@ -94,6 +94,23 @@ test("top-level interrupts stop a file after the triggering tag", async () => {
   assert.ok(result.html.includes("Before"));
   assert.ok(!result.html.includes("NEVER"));
 });
+test("recursive includes return a bounded diagnostic instead of overflowing inspector result validation", async () => {
+  const result = await renderTheme(
+    new MemoryThemeFileSystem(files(`{%include 'own'%}|After`, "{%include 'own'%}")),
+    "/",
+    { inspect: true },
+  );
+  assert.ok(
+    result.diagnostics.some(
+      (d) => d.code === "liquid-error" && d.message.includes("Nesting too deep"),
+    ),
+  );
+  assert.ok(result.html.includes("|After"));
+  function depth(nodes: typeof result.tree): number {
+    return nodes.length ? 1 + Math.max(...nodes.map((node) => depth(node.children))) : 0;
+  }
+  assert.ok(depth(result.tree) <= 100);
+});
 test("include produces identical Node/browser output, diagnostics and inspector trees", async () => {
   const browser: typeof import("../packages/check/src/browser.js") = await import(
     new URL("../dist/browser.js", import.meta.url).href

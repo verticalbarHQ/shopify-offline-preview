@@ -146,6 +146,7 @@ export async function renderTheme(
     return { kind, type, file, settingsPath, id: `sop-${++serial}`, children: [] };
   }
   async function inside<T>(entry: RenderNode, callback: () => Promise<T>): Promise<T> {
+    if (stack.length >= 100) throw new Error("Nesting too deep");
     (stack.at(-1)?.children ?? tree).push(entry);
     stack.push(entry);
     const previous = location;
