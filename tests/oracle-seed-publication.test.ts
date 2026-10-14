@@ -10,7 +10,7 @@ import {
 } from "../tools/oracle/seed-execution.js";
 import type { ExpectedSeedIdentity } from "../tools/oracle/seed-identities.js";
 import { buildOracleSeedPlan } from "../tools/oracle/seed-plan.js";
-import { createOracleSeedPublicationVerifier } from "../tools/oracle/seed-publication.js";
+import { createOracleSeedPostconditions } from "../tools/oracle/seed-postconditions.js";
 import { seedBindingKey } from "../tools/oracle/seed-requests.js";
 import { seedAdminSchema } from "../tools/oracle/seed-schema.js";
 
@@ -365,12 +365,13 @@ test("executor postcondition receives isolated copies of the actual sent IDs and
   const ledger = createOracleSeedBindingLedger(config, snapshot, shopId, "authored", [], fetcher);
   await ledger.registerEnvironment({ kind: "Location", id: locationId });
   await ledger.registerEnvironment(publication);
-  const verifyPublication = createOracleSeedPublicationVerifier(
+  const verifyPublication = createOracleSeedPostconditions(
       config,
       snapshot,
       shopId,
       "authored",
       ledger,
+      [],
       { fetcher, sleep, attempts: 1 },
     ),
     executor = createOracleSeedExecutor(config, snapshot, shopId, "authored", schema, {

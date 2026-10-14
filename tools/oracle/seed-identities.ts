@@ -41,6 +41,7 @@ const nodeSchemas = {
   MediaImage: z.object({
     __typename: z.literal("MediaImage"),
     id,
+    alt: z.string().nullable().optional(),
     fileStatus: z.string(),
     image: z
       .object({
@@ -80,7 +81,7 @@ export const seedIdentitySelections: Record<SeedIdentityKind, string> = {
   Blog: "id handle",
   Article: "id handle blog { id handle }",
   Menu: "id handle",
-  MediaImage: "id fileStatus image { url width height } originalSource { url fileSize }",
+  MediaImage: "id alt fileStatus image { url width height } originalSource { url fileSize }",
   Location: "id isActive",
   Publication:
     "id catalog { __typename id ... on AppCatalog { apps(first:50) { nodes { id } pageInfo { hasNextPage } } } }",

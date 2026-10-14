@@ -17,6 +17,7 @@ import {
   SeedIdentityError,
 } from "../tools/oracle/seed-identities.js";
 import { buildOracleSeedPlan } from "../tools/oracle/seed-plan.js";
+import { createOracleSeedPostconditions } from "../tools/oracle/seed-postconditions.js";
 import { seedBindingKey } from "../tools/oracle/seed-requests.js";
 import { seedAdminSchema } from "../tools/oracle/seed-schema.js";
 
@@ -303,9 +304,21 @@ test("collection job receipt updates ledger order only after fresh complete memb
     return reply({ collectionReorderProducts: { job: { id: jobId }, userErrors: [] } });
   };
   const ledger = createOracleSeedBindingLedger(config, fixture, shopId, "authored", [], fetcher),
+    postconditions = createOracleSeedPostconditions(
+      config,
+      fixture,
+      shopId,
+      "authored",
+      ledger,
+      [],
+      { fetcher, attempts: 2, sleep: async () => {} },
+    ),
     executor = createOracleSeedExecutor(config, fixture, shopId, "authored", extra, {
       authorize: ok,
-      verifyResult: ok,
+      verifyResult: async (context, payload, variables) => {
+        // Other task fixtures in this ledger unit test omit full source responses.
+        if (context.kind === "collection-order") await postconditions(context, payload, variables);
+      },
       verifyBindings: ledger.verifyBindings,
       fetcher,
     });
@@ -346,6 +359,7 @@ test("collection job receipt updates ledger order only after fresh complete memb
     bindings: { ...bindings, [seedBindingKey("collection-id", desired.handle)]: collectionId },
   });
   mismatch = true;
+  order = [...members].reverse();
   await assert.rejects(ledger.record(ordered), code("read-back-failed"));
   mismatch = false;
   await ledger.record(ordered);

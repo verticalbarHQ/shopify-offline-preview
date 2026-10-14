@@ -83,6 +83,59 @@ const targets = z.object({
     .length(1),
 });
 
+/** Shared by the pre-receipt postcondition and the later byte-upload transport. No upload completion is claimed here. */
+export function validateOracleSeedUploadTarget(
+  context: SeedExecutionContext,
+  payload: unknown,
+  variables: unknown,
+  asset: { file: string; bytes: number },
+) {
+  try {
+    if (
+      context.kind !== "task" ||
+      context.task.resource !== "image" ||
+      context.options.mode !== "create" ||
+      context.template.operation !== "stagedUploadsCreate"
+    )
+      throw new Error();
+    const source = snapshotSchema.shape.products.element.shape.images.element.parse(
+      context.task.source,
+    );
+    if (
+      source.file !== asset.file ||
+      !Number.isSafeInteger(asset.bytes) ||
+      asset.bytes < 1 ||
+      asset.bytes > 32 * 1024 * 1024
+    )
+      throw new Error();
+    z.object({
+      input: z
+        .array(
+          z.object({
+            resource: z.literal("IMAGE"),
+            filename: z.literal(basename(source.file)),
+            mimeType: z.literal("image/png"),
+            httpMethod: z.literal("POST"),
+            fileSize: z.literal(String(asset.bytes)),
+          }),
+        )
+        .length(1),
+    }).parse(variables);
+    const target = targets.parse(payload).stagedTargets[0];
+    if (
+      !target ||
+      target.parameters.some((p) => p.name.toLowerCase() === "file") ||
+      new Set(target.parameters.map((p) => p.name.toLowerCase())).size !== target.parameters.length
+    )
+      throw new Error();
+    stagedUrl(target.url);
+    stagedUrl(target.resourceUrl);
+    return target;
+  } catch {
+    throw new SeedUploadError("invalid-target");
+  }
+}
+
 /** Operator-only upload transport; no credentials, retries, CLI or SDK import path. */
 export function createOracleSeedUploader(
   config: OracleConfig,
@@ -138,36 +191,12 @@ export function createOracleSeedUploader(
         sha256 !== asset.sha256
       )
         throw new SeedUploadError("asset-mismatch");
-      let target: z.infer<typeof targets>["stagedTargets"][number];
-      try {
-        const input = z.object({
-          input: z
-            .array(
-              z.object({
-                resource: z.literal("IMAGE"),
-                filename: z.literal(basename(source.file)),
-                mimeType: z.literal("image/png"),
-                httpMethod: z.literal("POST"),
-                fileSize: z.literal(String(asset.bytes)),
-              }),
-            )
-            .length(1),
-        });
-        input.parse(record.variables);
-        const parsed = targets.parse(record.payload).stagedTargets[0];
-        if (
-          !parsed ||
-          parsed.parameters.some((p) => p.name.toLowerCase() === "file") ||
-          new Set(parsed.parameters.map((p) => p.name.toLowerCase())).size !==
-            parsed.parameters.length
-        )
-          throw new Error();
-        stagedUrl(parsed.url);
-        stagedUrl(parsed.resourceUrl);
-        target = parsed;
-      } catch {
-        throw new SeedUploadError("invalid-target");
-      }
+      const target = validateOracleSeedUploadTarget(
+        context,
+        record.payload,
+        record.variables,
+        asset,
+      );
       if (attempted.has(receipt)) throw new SeedUploadError("target-used");
       const form = new FormData();
       for (const parameter of target.parameters) form.append(parameter.name, parameter.value);
