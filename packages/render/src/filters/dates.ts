@@ -1,6 +1,7 @@
 import { type Liquid, toValue } from "liquidjs";
 import type { Snapshot } from "../../../data/src/schema.js";
 import { parseThemeJson } from "../../../theme/src/index.js";
+import { formatDate } from "./date-format.js";
 import { namedArgs } from "./images.js";
 
 const english: Readonly<Record<string, string>> = {
@@ -22,7 +23,33 @@ function escapeHtml(value: unknown) {
 function record(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
-function instant(value: unknown): Date | null {
+/** A wall-clock value is interpreted in the shop zone, including DST gaps and overlaps. */
+function shopInstant(wall: number, formatter: Intl.DateTimeFormat): Date {
+  function offset(instant: number): number {
+    const parts = Object.fromEntries(
+      formatter.formatToParts(new Date(instant)).map((part) => [part.type, Number(part.value)]),
+    );
+    const local = new Date(0);
+    local.setUTCFullYear(parts.year ?? 0, (parts.month ?? 1) - 1, parts.day ?? 1);
+    local.setUTCHours(parts.hour ?? 0, parts.minute ?? 0, parts.second ?? 0, 0);
+    return local.valueOf() - Math.floor(instant / 1000) * 1000;
+  }
+  const day = 24 * 60 * 60 * 1000;
+  const offsets = new Set([offset(wall - 2 * day), offset(wall), offset(wall + 2 * day)]);
+  const candidates = [...offsets].map((difference) => {
+    const instant = wall - difference;
+    return { instant, local: instant + offset(instant) };
+  });
+  // The first occurrence wins during an overlap. A nonexistent time advances across the gap.
+  const exact = candidates.filter((candidate) => candidate.local === wall);
+  if (exact.length) return new Date(Math.min(...exact.map((candidate) => candidate.instant)));
+  const future = candidates
+    .filter((candidate) => candidate.local > wall)
+    .sort((a, b) => a.local - b.local || a.instant - b.instant)[0];
+  if (!future) throw new Error("Date cannot be resolved in the shop timezone");
+  return new Date(future.instant);
+}
+function instant(value: unknown, formatter: Intl.DateTimeFormat): Date | null {
   if (value instanceof Date) return Number.isFinite(value.valueOf()) ? value : null;
   if (typeof value === "number" || (typeof value === "string" && /^-?\d+$/.test(value))) {
     const date = new Date(Number(value) * 1000);
@@ -34,8 +61,14 @@ function instant(value: unknown): Date | null {
     /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}) ([+-]\d{2})(\d{2})$/,
     "$1T$2$3:$4",
   );
-  const date = new Date(normalized);
-  return Number.isFinite(date.valueOf()) ? date : null;
+  const explicitZone = /(?:z|[+-]\d{2}:?\d{2}|\b(?:GMT|UTC|[ECMP][SD]T))\s*$/i.test(normalized);
+  if (explicitZone) {
+    const date = new Date(normalized);
+    return Number.isFinite(date.valueOf()) ? date : null;
+  }
+  // Parsing as GMT obtains wall-clock components without consulting the machine's timezone.
+  const wall = Date.parse(`${normalized.replace(/(\d)[Tt](?=\d)/, "$1 ")} GMT`);
+  return Number.isFinite(wall) ? shopInstant(wall, formatter) : null;
 }
 export function registerDateFilters(
   engine: Liquid,
@@ -45,6 +78,16 @@ export function registerDateFilters(
 ): void {
   const native = engine.filters.date;
   if (typeof native !== "function") throw new Error("Liquid date filter is unavailable");
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: snapshot.shop.timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  });
   const locale = snapshot.shop.locale,
     language = locale.split("-")[0] ?? locale;
   const defaults = [...files.keys()].filter((file) => /^locales\/[^/]+\.default\.json$/.test(file));
@@ -73,7 +116,7 @@ export function registerDateFilters(
     engine.registerFilter(name, function (input: unknown, ...args: unknown[]) {
       const value = toValue(input),
         source = value === "now" || value === "today" ? snapshot.meta.now : value;
-      const date = instant(source);
+      const date = instant(source, formatter);
       if (!date) return String(value ?? "");
       const options = namedArgs(args);
       const report = (message: string) =>
@@ -83,19 +126,26 @@ export function registerDateFilters(
           this.token.file ?? null,
           this.token.getPosition()[0] ?? null,
         );
-      const positional = args.find((arg) => !Array.isArray(arg));
+      const positionalArgs = args.filter((arg) => !Array.isArray(arg));
+      const positional = toValue(positionalArgs[0]);
       const display =
         options.format !== undefined
           ? format(options.format, report)
           : typeof positional === "string"
             ? positional
             : format("default", report);
-      const text = native.call(this, date, display);
+      const passthrough =
+        options.format === undefined &&
+        positionalArgs.length > 0 &&
+        (positional === null || positional === undefined || positional === "");
+      const text = passthrough
+        ? String(value ?? "")
+        : formatDate(date, snapshot.shop.timezone, locale, display, this.context.memoryLimit);
       if (name === "date") return text;
       const datetime =
         options.datetime === undefined
           ? date.toISOString().replace(/\.\d{3}Z$/, "Z")
-          : native.call(this, date, String(options.datetime), 0);
+          : formatDate(date, "UTC", locale, String(options.datetime), this.context.memoryLimit);
       const attributes = Object.entries(options).flatMap(([key, value]) => {
         if (key === "datetime" || key === "format") return [];
         if (!/^[A-Za-z_:][A-Za-z0-9_.:-]*$/.test(key))

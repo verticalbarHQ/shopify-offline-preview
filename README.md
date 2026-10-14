@@ -349,6 +349,12 @@ result. Arithmetic keeps float results such as `3.0 | times: 2` as `6.0`, and `j
 float number lexemes, including nested values, without converting them to strings. Integer division
 by zero and all modulo by zero report Liquid errors. Float division by zero displays `Infinity`.
 
+Dates without an explicit timezone use `shop.timezone`; explicit offsets identify an instant
+that is displayed in shop time. Parsing and formatting do not consult the host timezone.
+During daylight saving changes, nonexistent local times advance across the gap and repeated
+times select their first occurrence. Empty or nil positional date formats preserve the input
+text. `time_tag` uses a UTC datetime attribute and shop-local display text.
+
 Cycle counters share an evaluated name across candidate lists, share literal values across quote
 styles, and keep unnamed variable cycles independent per parsed tag. Render calls isolate counters;
 includes share their caller's counters. Direct range arguments display their bounds, while array
