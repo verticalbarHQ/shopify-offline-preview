@@ -276,17 +276,25 @@ try {
   );
   assert.equal(
     await parent(
-      `(async()=>{await (${wait})(()=>window.SOP_INSPECTOR_STATE.result.html.includes('Edited local section'));return true;})()`,
+      `(async()=>{await (${wait})(()=>document.querySelector('#status').dataset.state==='ready' && window.SOP_INSPECTOR_STATE.result?.html.includes('Edited local section'));return true;})()`,
     ),
     true,
   );
   const input = defaultFixture();
   input.shop.name = "Snapshot changed";
+  // Saving can temporarily expose invalid JSON. Verify recovery from a real cleared result.
+  await writeFile(join(data, "snapshot.json"), "{incomplete save");
+  assert.equal(
+    await parent(
+      `(async()=>{await (${wait})(()=>document.querySelector('#status').dataset.state==='error');return window.SOP_INSPECTOR_STATE.result===null;})()`,
+    ),
+    true,
+  );
   await writeFile(join(data, "snapshot.json"), JSON.stringify(input));
   await writeFile(join(theme, "sections/main.liquid"), source);
   assert.equal(
     await parent(
-      `(async()=>{await (${wait})(()=>window.SOP_INSPECTOR_STATE.result.html.includes('Snapshot changed'));return true;})()`,
+      `(async()=>{await (${wait})(()=>document.querySelector('#status').dataset.state==='ready' && window.SOP_INSPECTOR_STATE.result?.html.includes('Snapshot changed'));return true;})()`,
     ),
     true,
   );
@@ -313,6 +321,7 @@ try {
     designMode: true,
     themeHotReload: true,
     snapshotHotReload: true,
+    invalidSaveRecovers: true,
     invalidInputClearsPreview: true,
   };
   await mkdir(".local/results", { recursive: true });
