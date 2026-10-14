@@ -104,6 +104,32 @@ export function createOracleSeedBindingLedger(
   const tuple = (values: { name: string; value: string }[]) =>
     JSON.stringify([...values].sort((a, b) => a.name.localeCompare(b.name)));
   return {
+    /** Requires this exact execution to be the current recorded owner of its resource, then rereads identity. */
+    async assertRecorded(receipt: VerifiedSeedExecution): Promise<ExpectedSeedIdentity> {
+      let record: ReturnType<typeof inspectVerifiedSeedExecution>;
+      try {
+        record = inspectVerifiedSeedExecution(receipt);
+      } catch {
+        throw new SeedLedgerError("unverified-execution");
+      }
+      const task = scope(record.context);
+      if (record.context.kind !== "task") throw new SeedLedgerError("unsupported-step");
+      const key =
+        task.resource === "article"
+          ? seedBindingKey("article-id", task.identity[0] ?? "", task.identity[1] ?? "")
+          : task.resource === "image"
+            ? seedBindingKey("image-id", task.identity[0] ?? "")
+            : seedBindingKey(`${task.resource}-id`, task.identity[0] ?? "");
+      const entry = current(key);
+      if (entry.proof !== receipt) throw new SeedLedgerError("unverified-execution");
+      try {
+        await check(entry);
+      } catch {
+        throw new SeedLedgerError("read-back-failed");
+      }
+      if (entries.get(key) !== entry) throw new SeedLedgerError("unverified-execution");
+      return structuredClone(entry.expected);
+    },
     get(key: string): string {
       const upload = staged.get(key);
       if (upload) return inspectVerifiedSeedUpload(upload).resourceUrl;
