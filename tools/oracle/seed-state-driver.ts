@@ -391,6 +391,8 @@ export async function openOracleSeedStateDriver(
         exclusive(() => runtime.prepareCart(...args)),
       captureCart: (...args: Parameters<typeof runtime.captureCart>) =>
         exclusive(() => runtime.captureCart(...args)),
+      captureCartContext: (...args: Parameters<typeof runtime.captureCartContext>) =>
+        exclusive(() => runtime.captureCartContext(...args)),
       close: () => exclusive(() => driver.close()),
     };
   } catch (error) {

@@ -268,6 +268,8 @@ export async function observeNativeShopSettings(
   let shop: z.infer<typeof snapshotSchema.shape.shop>;
   try {
     shop = snapshotSchema.shape.shop.parse({
+      id: first.shopId,
+      permanentDomain: first.permanentDomain,
       name: first.name,
       domain: first.domain,
       currency: first.currency,

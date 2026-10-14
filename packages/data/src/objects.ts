@@ -803,7 +803,15 @@ export function liquidObjects(
     ),
     shop: tracked(
       {
-        ...Object.fromEntries(Object.entries(snapshot.shop).filter(([key]) => key !== "seo")),
+        ...Object.fromEntries(
+          Object.entries(snapshot.shop).filter(
+            ([key]) => !["seo", "permanentDomain"].includes(key),
+          ),
+        ),
+        ...availableFields({
+          id: snapshot.shop.id === undefined ? undefined : id(snapshot.shop.id),
+          permanent_domain: snapshot.shop.permanentDomain,
+        }),
         products_count: snapshot.products.length,
         collections_count: snapshot.collections.length,
         ...(snapshot.shop.features
@@ -845,6 +853,7 @@ export function liquidObjects(
       },
       "shop",
       "shop",
+      { permanent_domain: "permanentDomain" },
     ),
     cart,
     search,

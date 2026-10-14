@@ -170,6 +170,10 @@ preview views. Omitted alt overrides use `alt`; explicit null remains null. A me
 inferred from the classic image ID. Preview image IDs are null. Obtain these values externally;
 the offline runtime makes no store requests.
 
+`shop.id` and `shop.permanentDomain` supply Liquid's shop ID and permanent domain separately from
+the primary domain. Cart notes, tax/duty flags, line instructions and component lists can explicitly
+contain null where observed; omitted optional metadata remains diagnosed when a theme reads it.
+
 ## Development inspector
 
 `dev` prints separate loopback origins for the inspector and the theme page. The inspector shows the
@@ -328,6 +332,13 @@ for each session write, and keeps cookies and cart tokens in memory. Cart captur
 state and the actual cart before and after both HTML reads. Observed line keys and response order
 can be applied to a calibrated case snapshot; this alone does not establish Shopify parity or
 capture readiness. These tools remain outside the published offline SDK.
+
+Comparison copies can opt into `instrumentTheme(root, { captureContext: true })`. The reserved
+snippet records Native request identity, cart context and epoch time in the same HTML response.
+`captureCartContext` checks its uploaded source alongside the full theme files and requires stable
+non-clock context across both captures. Calibrated snapshots use the first observed Native time;
+the captured section text remains subject to the ordinary stability check. Applying this context
+still requires separate resource, image and complete-case evidence.
 
 The seeding transport in `tools/oracle/seed-execution.ts` accepts only steps compiled from its
 validated fixture matrix. It requires trusted authorization, dependency ownership verification and

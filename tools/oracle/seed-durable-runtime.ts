@@ -139,6 +139,8 @@ export async function openOracleSeedDurableRuntime(
       operation(() => runtime.prepareCart(...args)),
     captureCart: (...args: Parameters<typeof runtime.captureCart>) =>
       operation(() => runtime.captureCart(...args)),
+    captureCartContext: (...args: Parameters<typeof runtime.captureCartContext>) =>
+      operation(() => runtime.captureCartContext(...args)),
     verifyStore: () => operation(() => runtime.verifyStore()),
     describeTask: (stateHash: string, taskKey: string) =>
       operation(() => runtime.describeTask(stateHash, taskKey)),

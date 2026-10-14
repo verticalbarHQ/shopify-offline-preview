@@ -6,6 +6,7 @@ import { validateSnapshotReferences } from "../../packages/data/src/scenarios.js
 import { type Snapshot, snapshotSchema } from "../../packages/data/src/schema.js";
 import { oracleThemeSchema } from "./admin-read.js";
 import { type CaptureDependencies, type CaptureInput, captureOraclePage } from "./capture.js";
+import { type ContextCaptureDependencies, captureOracleContextPage } from "./capture-context.js";
 import type { createOracleSeedBindingLedger } from "./seed-binding-ledger.js";
 import { buildOracleSeedPlan } from "./seed-plan.js";
 import { seedBindingKey } from "./seed-requests.js";
@@ -97,7 +98,7 @@ interface CartObservation {
   stateHash: string;
   caseId: string;
   lines: { productHandle: string; variantId: string; quantity: number; key: string }[];
-  note: string;
+  note: string | null;
 }
 interface Session {
   owner: object;
@@ -190,7 +191,7 @@ function receiveCookies(session: Session, response: Response, domain: string) {
       throw new OracleCartError("request-failed");
   }
 }
-function assertCart(cart: Cart, targets: Target[], currency: string, note: string) {
+function assertCart(cart: Cart, targets: Target[], currency: string, note: string | null) {
   if (cart.note !== (note || null) && cart.note !== note)
     throw new OracleCartError("cart-mismatch");
   const sum = targets.reduce(
@@ -313,6 +314,68 @@ export function createOracleCartSessions(
       throw new OracleCartError("request-failed");
     return parseCart(await bodyText(response));
   }
+  async function captureSession<T>(
+    receipt: VerifiedOracleCart,
+    input: Omit<CaptureInput, "config" | "path" | "cookie">,
+    dependencies: Omit<CaptureDependencies, "fetcher">,
+    perform: (
+      input: CaptureInput,
+      dependencies: CaptureDependencies & {
+        verifyThemeFiles: NonNullable<CaptureDependencies["verifyThemeFiles"]>;
+      },
+    ) => Promise<T>,
+  ): Promise<T> {
+    const session = sessions.get(receipt);
+    if (!session?.valid || !session.cart || session.owner !== owner)
+      throw new OracleCartError("session-invalid");
+    try {
+      if (typeof dependencies.verifyThemeFiles !== "function")
+        throw new OracleCartError("invalid-input");
+      const checkTheme = async () => {
+        const theme = oracleThemeSchema.parse(await dependencies.readTheme(input.previewThemeId));
+        if (
+          theme.id !== `gid://shopify/OnlineStoreTheme/${input.previewThemeId}` ||
+          theme.role !== "UNPUBLISHED" ||
+          theme.processing ||
+          theme.processingFailed
+        )
+          throw new OracleCartError("scope-mismatch");
+        await dependencies.verifyThemeFiles?.(theme);
+      };
+      await verify(session.observation.stateHash, session.targets);
+      if (!isDeepStrictEqual(await read(session), session.cart))
+        throw new OracleCartError("cart-mismatch");
+      const capture = await perform(
+        { ...input, config, path: "/cart", cookie: cookieHeader(session) },
+        {
+          ...dependencies,
+          verifyThemeFiles: checkTheme,
+          readIdentity: async () => {
+            const identity = await dependencies.readIdentity();
+            if (identity.id !== shopId) throw new OracleCartError("scope-mismatch");
+            return identity;
+          },
+          fetcher: async (url, init) => {
+            if (init?.method !== "GET") throw new OracleCartError("scope-mismatch");
+            const target = new URL(String(url));
+            if (target.origin !== `https://${config.domain}` || target.pathname !== "/cart")
+              throw new OracleCartError("scope-mismatch");
+            const response = await request(session, target.pathname + target.search),
+              text = await bodyText(response);
+            return new Response(text, { status: response.status, headers: response.headers });
+          },
+        },
+      );
+      await checkTheme();
+      if (!isDeepStrictEqual(await read(session), session.cart))
+        throw new OracleCartError("cart-mismatch");
+      await verify(session.observation.stateHash, session.targets);
+      return capture;
+    } catch (error) {
+      session.valid = false;
+      throw error;
+    }
+  }
   return {
     prepare: (caseId: string, dependencies: OracleCartDependencies): Promise<VerifiedOracleCart> =>
       operation(async () => {
@@ -341,7 +404,6 @@ export function createOracleCartSessions(
           if (
             !product ||
             !variant ||
-            line.instructions ||
             line.parentRelationship != null ||
             line.itemComponents?.length
           )
@@ -441,61 +503,20 @@ export function createOracleCartSessions(
       receipt: VerifiedOracleCart,
       input: Omit<CaptureInput, "config" | "path" | "cookie">,
       dependencies: Omit<CaptureDependencies, "fetcher">,
+    ) => operation(() => captureSession(receipt, input, dependencies, captureOraclePage)),
+    captureContext: (
+      receipt: VerifiedOracleCart,
+      input: Omit<CaptureInput, "config" | "path" | "cookie">,
+      dependencies: Omit<ContextCaptureDependencies, "fetcher">,
     ) =>
-      operation(async () => {
-        const session = sessions.get(receipt);
-        if (!session?.valid || !session.cart || session.owner !== owner)
-          throw new OracleCartError("session-invalid");
-        try {
-          if (typeof dependencies.verifyThemeFiles !== "function")
-            throw new OracleCartError("invalid-input");
-          const checkTheme = async () => {
-            const theme = oracleThemeSchema.parse(
-              await dependencies.readTheme(input.previewThemeId),
-            );
-            if (
-              theme.id !== `gid://shopify/OnlineStoreTheme/${input.previewThemeId}` ||
-              theme.role !== "UNPUBLISHED" ||
-              theme.processing ||
-              theme.processingFailed
-            )
-              throw new OracleCartError("scope-mismatch");
-            await dependencies.verifyThemeFiles?.(theme);
-          };
-          await verify(session.observation.stateHash, session.targets);
-          if (!isDeepStrictEqual(await read(session), session.cart))
-            throw new OracleCartError("cart-mismatch");
-          const capture = await captureOraclePage(
-            { ...input, config, path: "/cart", cookie: cookieHeader(session) },
-            {
-              ...dependencies,
-              verifyThemeFiles: checkTheme,
-              readIdentity: async () => {
-                const identity = await dependencies.readIdentity();
-                if (identity.id !== shopId) throw new OracleCartError("scope-mismatch");
-                return identity;
-              },
-              fetcher: async (url, init) => {
-                if (init?.method !== "GET") throw new OracleCartError("scope-mismatch");
-                const target = new URL(String(url));
-                if (target.origin !== `https://${config.domain}` || target.pathname !== "/cart")
-                  throw new OracleCartError("scope-mismatch");
-                const response = await request(session, target.pathname + target.search),
-                  text = await bodyText(response);
-                return new Response(text, { status: response.status, headers: response.headers });
-              },
-            },
-          );
-          await checkTheme();
-          if (!isDeepStrictEqual(await read(session), session.cart))
-            throw new OracleCartError("cart-mismatch");
-          await verify(session.observation.stateHash, session.targets);
-          return capture;
-        } catch (error) {
-          session.valid = false;
-          throw error;
-        }
-      }),
+      operation(() =>
+        captureSession(receipt, input, dependencies, (request, adapters) =>
+          captureOracleContextPage(request, shopId, {
+            ...adapters,
+            readCaptureContextSource: dependencies.readCaptureContextSource,
+          }),
+        ),
+      ),
   };
 }
 

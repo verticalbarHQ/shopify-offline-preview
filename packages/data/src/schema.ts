@@ -133,6 +133,8 @@ export interface MenuLink {
 export const snapshotSchema = z.strictObject({
   meta: z.strictObject({ now: z.iso.datetime({ offset: true }), schemaVersion: z.literal("1.0") }),
   shop: z.strictObject({
+    id: z.string().min(1).optional(),
+    permanentDomain: z.string().min(1).optional(),
     seo: seo.optional(),
     name: z.string(),
     domain: z.string(),
@@ -231,14 +233,15 @@ export const snapshotSchema = z.strictObject({
         key: z.string().min(1).optional(),
         instructions: z
           .strictObject({ can_remove: z.boolean(), can_update_quantity: z.boolean() })
+          .nullable()
           .optional(),
         parentRelationship: z.record(z.string(), z.json()).nullable().optional(),
-        itemComponents: z.array(z.record(z.string(), z.json())).optional(),
+        itemComponents: z.array(z.record(z.string(), z.json())).nullable().optional(),
       }),
     ),
-    note: z.string(),
-    taxesIncluded: z.boolean().optional(),
-    dutiesIncluded: z.boolean().optional(),
+    note: z.string().nullable(),
+    taxesIncluded: z.boolean().nullable().optional(),
+    dutiesIncluded: z.boolean().nullable().optional(),
   }),
   filters: z.array(
     z.strictObject({

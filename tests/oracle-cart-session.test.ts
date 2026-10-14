@@ -2,6 +2,11 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { liquidPrice } from "../packages/data/src/objects.js";
 import {
+  applyOracleCaptureContext,
+  captureContextKey,
+  captureContextSource,
+} from "../tools/oracle/capture-context.js";
+import {
   applyOracleCart,
   createOracleCartSessions,
   inspectVerifiedOracleCart,
@@ -29,6 +34,9 @@ async function fixture(empty = false) {
           productHandle: product.handle,
           variantId: variant.id,
           quantity: index + 1,
+          instructions: { can_remove: false, can_update_quantity: false },
+          parentRelationship: null,
+          itemComponents: [],
         })),
         note: "Authored cart note",
       },
@@ -123,7 +131,46 @@ function storefront(f: Awaited<ReturnType<typeof fixture>>, failure = "") {
       htmlGets++;
       assert.equal(init?.method, "GET");
       assert.equal(target.searchParams.get("preview_theme_id"), "7");
-      return new Response('<div id="shopify-section-main">Authored cart</div>', {
+      const value = cart(),
+        context = {
+          shopId: "1",
+          domain: config.domain,
+          path: "/cart",
+          locale: "en",
+          epoch: String(Math.floor(Date.now() / 1000)),
+          cart: {
+            currency: value.currency,
+            note: value.note,
+            taxesIncluded: false,
+            dutiesIncluded: false,
+            itemCount: value.item_count,
+            originalTotal: value.original_total_price,
+            subtotal: value.items_subtotal_price,
+            total: value.total_price,
+            discount: value.total_discount,
+            items: items.map((item) => ({
+              variantId: item.variant_id,
+              productId: item.product_id,
+              handle: item.handle,
+              key: item.key,
+              quantity: item.quantity,
+              price: item.price,
+              originalPrice: item.original_price,
+              finalPrice: item.final_price,
+              linePrice: item.line_price,
+              originalLinePrice: item.original_line_price,
+              finalLinePrice: item.final_line_price,
+              instructions: null,
+              parentRelationship: null,
+              itemComponents: null,
+            })),
+          },
+        },
+        extra =
+          failure === "context"
+            ? `<script id="${captureContextKey}" type="application/json">${JSON.stringify(Buffer.from(JSON.stringify(context)).toString("base64"))}</script>`
+            : "";
+      return new Response('<div id="shopify-section-main">Authored cart</div>' + extra, {
         headers: { "content-type": "text/html" },
       });
     }
@@ -182,6 +229,7 @@ function captureDependencies(f: Awaited<ReturnType<typeof fixture>>, failure = "
     files = 0,
     settings = 0;
   return {
+    readCaptureContextSource: async () => captureContextSource,
     readIdentity: async () => ({
       id: failure === "shop" ? "gid://shopify/Shop/2" : shopId,
       myshopifyDomain: config.domain,
@@ -356,7 +404,7 @@ test("cart drift, settings, store/theme identity and late uploaded-file changes 
 test("the composed runtime owns the cart session, excludes simultaneous seed operations and refuses sessions from another runtime", async () => {
   const f = await fixture(),
     s = f.s,
-    server = storefront(f),
+    server = storefront(f, "context"),
     runtime = createOracleSeedRuntime(config, s.snapshot, shopId, "authored", s.retained, [], {
       authorize: async () => {},
       fetcher: s.fetcher,
@@ -387,7 +435,19 @@ test("the composed runtime owns the cart session, excludes simultaneous seed ope
   await assert.rejects(f.controller.capture(receipt, captureInput, captureDependencies(f)), {
     code: "session-invalid",
   });
-  await runtime.captureCart(receipt, captureInput, captureDependencies(f));
+  const captured = await runtime.captureCartContext(receipt, captureInput, captureDependencies(f)),
+    cart = applyOracleCart(
+      config,
+      s.snapshot,
+      shopId,
+      f.request.caseId,
+      f.derived.snapshot,
+      receipt,
+    ),
+    calibrated = applyOracleCaptureContext(cart.snapshot, captured.context);
+  assert.equal(calibrated.snapshot.cart.lines[0]?.instructions, null);
+  assert.equal(calibrated.snapshot.cart.lines[0]?.itemComponents, null);
+  assert.equal(calibrated.snapshot.meta.now, captured.capture.capturedAt);
   assert.equal(server.htmlGets(), 2);
   assert.equal(server.posts(), 2);
   const changed = structuredClone(f.derived.snapshot);

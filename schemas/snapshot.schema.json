@@ -24,6 +24,14 @@
     "shop": {
       "type": "object",
       "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "permanentDomain": {
+          "type": "string",
+          "minLength": 1
+        },
         "seo": {
           "type": "object",
           "properties": {
@@ -1228,20 +1236,27 @@
                 "minLength": 1
               },
               "instructions": {
-                "type": "object",
-                "properties": {
-                  "can_remove": {
-                    "type": "boolean"
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "can_remove": {
+                        "type": "boolean"
+                      },
+                      "can_update_quantity": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "can_remove",
+                      "can_update_quantity"
+                    ],
+                    "additionalProperties": false
                   },
-                  "can_update_quantity": {
-                    "type": "boolean"
+                  {
+                    "type": "null"
                   }
-                },
-                "required": [
-                  "can_remove",
-                  "can_update_quantity"
-                ],
-                "additionalProperties": false
+                ]
               },
               "parentRelationship": {
                 "anyOf": [
@@ -1260,16 +1275,23 @@
                 ]
               },
               "itemComponents": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "propertyNames": {
-                    "type": "string"
+                "anyOf": [
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {
+                        "$ref": "#/$defs/__schema7"
+                      }
+                    }
                   },
-                  "additionalProperties": {
-                    "$ref": "#/$defs/__schema7"
+                  {
+                    "type": "null"
                   }
-                }
+                ]
               }
             },
             "required": [
@@ -1281,13 +1303,22 @@
           }
         },
         "note": {
-          "type": "string"
+          "type": [
+            "string",
+            "null"
+          ]
         },
         "taxesIncluded": {
-          "type": "boolean"
+          "type": [
+            "boolean",
+            "null"
+          ]
         },
         "dutiesIncluded": {
-          "type": "boolean"
+          "type": [
+            "boolean",
+            "null"
+          ]
         }
       },
       "required": [

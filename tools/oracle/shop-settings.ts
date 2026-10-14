@@ -86,6 +86,8 @@ export function compareOracleShopSettings(
   const wanted = snapshotSchema.shape.shop.parse(expected),
     observed = adminShop.parse(actual),
     mapped = {
+      id: observed.id.split("/").at(-1),
+      permanentDomain: observed.myshopifyDomain,
       name: observed.name,
       domain: observed.primaryDomain.host,
       currency: observed.currencyCode,
