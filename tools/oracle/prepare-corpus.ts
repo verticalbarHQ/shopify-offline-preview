@@ -1,14 +1,32 @@
-import { mkdir, mkdtemp, readFile, realpath, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { z } from "zod";
 import { prepareCorpus } from "./corpus.js";
+import { corpusEnvironmentSchema, emptyCorpusEnvironment } from "./corpus-environment.js";
 
 const args = process.argv.slice(2);
-if (args.length !== 2 || args[0] !== "--path-map")
-  throw new Error("Usage: prepare-corpus --path-map <fixture-path-map.json>");
-const file = args[1];
+let file: string | undefined;
+let environmentFile: string | undefined;
+for (let index = 0; index < args.length; index++) {
+  const flag = args[index];
+  const value = args[++index];
+  if (!value || value.startsWith("--")) throw new Error("Corpus option value required");
+  if (flag === "--path-map" && !file) file = value;
+  else if (flag === "--environment" && !environmentFile) environmentFile = value;
+  else throw new Error("Usage: prepare-corpus --path-map <file> [--environment <file>]");
+}
 if (!file) throw new Error("Fixture path mapping file required");
+let environment = emptyCorpusEnvironment;
+if (environmentFile) {
+  try {
+    environment = corpusEnvironmentSchema.parse(
+      JSON.parse(await readFile(environmentFile, "utf8")),
+    );
+  } catch {
+    throw new Error("Corpus environment document is invalid");
+  }
+}
 const mapping = z.record(z.string(), z.string()).parse(JSON.parse(await readFile(file, "utf8")));
 const source = z
   .array(
@@ -33,16 +51,17 @@ for (const filter of source)
     else
       unavailable.push({ id: item.id, reason: "Upstream example has no executable Liquid input" });
   }
-const prepared = prepareCorpus(available, mapping);
+const prepared = prepareCorpus(available, mapping, environment);
 const directory = await mkdtemp(join(tmpdir(), "sop-oracle-corpus-"));
 for (const [path, contents] of Object.entries(prepared.files)) {
-  await mkdir(dirname(join(directory, path)), { recursive: true });
-  await writeFile(join(directory, path), contents);
+  await mkdir(dirname(join(directory, path)), { recursive: true, mode: 0o700 });
+  await writeFile(join(directory, path), contents, { mode: 0o600 });
 }
 const manifest = {
   schemaVersion: "1.0",
   spec: JSON.parse(await readFile("upstream.json", "utf8")),
   directory,
+  environment,
   cases: prepared.cases,
   unavailable,
   status: "Prepared only; no Shopify capture or implementation evidence",
@@ -54,9 +73,15 @@ if ((await realpath(privateRoot)) !== privateRoot)
 await mkdir(".local/oracle", { recursive: true, mode: 0o700 });
 if ((await realpath(".local/oracle")) !== resolve(".local/oracle"))
   throw new Error("Private corpus manifest path cannot contain symlinks");
-await writeFile(".local/oracle/corpus-prepared.json", `${JSON.stringify(manifest, null, 2)}\n`, {
-  mode: 0o600,
-});
+const staging = await mkdtemp(join(resolve(".local/oracle"), "manifest-"));
+try {
+  const temporary = join(staging, "prepared.json");
+  await writeFile(temporary, `${JSON.stringify(manifest, null, 2)}\n`, { mode: 0o600, flag: "wx" });
+  await rename(temporary, resolve(".local/oracle/corpus-prepared.json"));
+} finally {
+  await rm(staging, { recursive: true, force: true });
+}
+
 console.log(
   JSON.stringify({
     directory,

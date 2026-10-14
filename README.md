@@ -317,3 +317,17 @@ The same objects back `images['header.png']` and image picker settings such as
 `shopify://shop_images/header.png`, including dynamic sources. `default` retains a selected image's
 properties. A missing picker resolves to nil with a resource diagnostic; a missing filename lookup
 uses Shopify's truthy empty-image behavior. Image filters produce local URLs and never fetch files.
+
+Corpus preparation accepts `--environment <fixture-dependencies.json>` alongside `--path-map`.
+The environment contains `files` entries with `path`, `encoding` (`utf8` or canonical `base64`),
+`content`, and `provenance: "authored-fixture"`. Dependencies may supply assets, locale JSON and
+`config/settings_schema.json` / `settings_data.json`; they cannot replace generated layouts,
+templates, sections or snippets. Raw files stay in the private manifest and temporary theme.
+
+Each case binds the exact byte contents of its generated harness and dependencies with
+`harnessHash`. Capture requires a `readThemeFiles` adapter and checks uploaded file hashes before
+and after the two HTML requests. `readOracleThemeFiles` provides a read-only Admin API adapter using
+existing credentials, sequential batches and credential-free Shopify CDN reads. Wrong roles,
+partial file lists, changed bytes and redirects fail capture. Offline replay requires the same
+environment and hash; readable dependency content is excluded from public observations. No app,
+token, upload or store mutation is performed by preparation or these read helpers.

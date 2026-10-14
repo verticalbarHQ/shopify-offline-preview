@@ -5,6 +5,13 @@ import { decodeHTML } from "entities";
 import { type DefaultTreeAdapterTypes, parse } from "parse5";
 import { z } from "zod";
 import { type CaptureDependencies, type CaptureInput, captureOracleHtmlPair } from "./capture.js";
+import {
+  type CorpusEnvironment,
+  type CorpusFiles,
+  corpusDependencyFiles,
+  corpusFilesFingerprint,
+  emptyCorpusEnvironment,
+} from "./corpus-environment.js";
 
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 export const corpusInputSchema = z.strictObject({
@@ -26,6 +33,7 @@ export interface PreparedCorpusCase extends CorpusInput {
   originalInputHash: string;
   preparedInputHash: string;
   transformation: "decode-html-entities";
+  harnessHash: string;
 }
 function localPath(path: string): URL {
   if (!path.startsWith("/") || path.startsWith("//") || /[\\\r\n\0#]/.test(path))
@@ -55,8 +63,9 @@ function templateKind(path: string): string {
 export function prepareCorpus(
   inputs: readonly unknown[],
   pathMap: Readonly<Record<string, string>>,
-): { cases: PreparedCorpusCase[]; files: Record<string, string> } {
-  const files: Record<string, string> = {
+  environment: CorpusEnvironment = emptyCorpusEnvironment,
+): { cases: PreparedCorpusCase[]; files: CorpusFiles } {
+  const baseFiles: CorpusFiles = {
     "layout/theme.liquid":
       "<!doctype html><html><head>{{content_for_header}}</head><body>{{content_for_layout}}</body></html>",
     "layout/sop-corpus.liquid":
@@ -64,6 +73,8 @@ export function prepareCorpus(
     "config/settings_schema.json": "[]",
     "config/settings_data.json": '{"current":{}}',
   };
+  Object.assign(baseFiles, corpusDependencyFiles(environment));
+  const files: CorpusFiles = { ...baseFiles };
   const cases: PreparedCorpusCase[] = [];
   const seen = new Set<string>();
   for (const value of inputs) {
@@ -79,7 +90,7 @@ export function prepareCorpus(
     const key = `sop-corpus-${hash(input.id).slice(0, 16)}`;
     const url = localPath(fixturePath);
     url.searchParams.set("view", key);
-    const item: PreparedCorpusCase = {
+    const item = {
       ...input,
       fixturePath,
       requestPath: url.pathname + url.search,
@@ -90,22 +101,27 @@ export function prepareCorpus(
       liquidSource: decodeHTML(input.liquid),
       originalInputHash: hash(input.liquid),
       preparedInputHash: hash(decodeHTML(input.liquid)),
-      transformation: "decode-html-entities",
+      transformation: "decode-html-entities" as const,
     };
     if (Object.hasOwn(files, item.snippet)) throw new Error("Corpus file identity collision");
-    files[item.snippet] = item.liquidSource;
-    files[item.section] =
+    const caseFiles: CorpusFiles = {};
+    caseFiles[item.snippet] = item.liquidSource;
+    caseFiles[item.section] =
       `{% capture sop_corpus_output %}{% render '${key}' %}{% endcapture %}<script id="${key}" type="application/json">{{sop_corpus_output | json}}</script>`;
-    files[item.template] = JSON.stringify({
+    caseFiles[item.template] = JSON.stringify({
       layout: "sop-corpus",
       sections: { main: { type: key } },
       order: ["main"],
     });
-    cases.push(item);
+    Object.assign(files, caseFiles);
+    cases.push({ ...item, harnessHash: corpusFilesFingerprint({ ...baseFiles, ...caseFiles }) });
   }
   return { cases, files };
 }
-function assertPreparedCase(item: PreparedCorpusCase): void {
+export function assertPreparedCorpusCase(
+  item: PreparedCorpusCase,
+  environment: CorpusEnvironment = emptyCorpusEnvironment,
+): CorpusFiles {
   const original = {
     id: item.id,
     kind: item.kind,
@@ -113,15 +129,21 @@ function assertPreparedCase(item: PreparedCorpusCase): void {
     path: item.path,
     liquid: item.liquid,
   };
-  const expected = prepareCorpus([original], { [item.path]: item.fixturePath }).cases[0];
+  const prepared = prepareCorpus([original], { [item.path]: item.fixturePath }, environment);
+  const expected = prepared.cases[0];
   if (
     !expected ||
     Object.entries(expected).some(([key, value]) => Reflect.get(item, key) !== value)
   )
     throw new Error("Prepared corpus provenance or routing has changed");
+  return prepared.files;
 }
-export function extractCorpusOutput(html: string, item: PreparedCorpusCase): string {
-  assertPreparedCase(item);
+export function extractCorpusOutput(
+  html: string,
+  item: PreparedCorpusCase,
+  environment: CorpusEnvironment = emptyCorpusEnvironment,
+): string {
+  assertPreparedCorpusCase(item, environment);
   const payloads: string[] = [];
   function visit(node: DefaultTreeAdapterTypes.Node) {
     if (
@@ -156,6 +178,7 @@ export const corpusObservationSchema = z.strictObject({
   source: z.literal("shopify-storefront"),
   specCommit: z.string().regex(/^[a-f0-9]{40}$/),
   fixtureHash: z.string().regex(/^[a-f0-9]{64}$/),
+  harnessHash: z.string().regex(/^[a-f0-9]{64}$/),
   caseId: corpusInputSchema.shape.id,
   name: corpusInputSchema.shape.name,
   originalInputHash: z.string().regex(/^[a-f0-9]{64}$/),
@@ -166,17 +189,34 @@ export const corpusObservationSchema = z.strictObject({
   outputHash: z.string().regex(/^[a-f0-9]{64}$/),
   outputBytes: z.number().int().nonnegative(),
 });
+export interface CorpusCaptureDependencies extends CaptureDependencies {
+  readThemeFiles(themeId: string, paths: readonly string[]): Promise<CorpusFiles>;
+}
 export async function captureCorpusCase(
   input: Omit<CaptureInput, "path" | "summaryOptions">,
   item: PreparedCorpusCase,
   metadata: { specCommit: string; fixtureHash: string },
-  dependencies: CaptureDependencies,
+  dependencies: CorpusCaptureDependencies,
+  environment: CorpusEnvironment = emptyCorpusEnvironment,
 ) {
-  assertPreparedCase(item);
+  const files = assertPreparedCorpusCase(item, environment);
   corpusObservationSchema.shape.specCommit.parse(metadata.specCommit);
   corpusObservationSchema.shape.fixtureHash.parse(metadata.fixtureHash);
-  const pair = await captureOracleHtmlPair({ ...input, path: item.requestPath }, dependencies);
-  const outputs = pair.privateRawHtml.map((html) => extractCorpusOutput(html, item));
+  const pair = await captureOracleHtmlPair(
+    { ...input, path: item.requestPath },
+    {
+      ...dependencies,
+      async verifyThemeFiles() {
+        const uploaded = await dependencies.readThemeFiles(
+          input.previewThemeId,
+          Object.keys(files).sort(),
+        );
+        if (corpusFilesFingerprint(uploaded) !== item.harnessHash)
+          throw new Error("Uploaded corpus harness files differ from the prepared fixture");
+      },
+    },
+  );
+  const outputs = pair.privateRawHtml.map((html) => extractCorpusOutput(html, item, environment));
   if (outputs[0] !== outputs[1])
     throw new Error("Unstable Shopify corpus capture; no observation is retained");
   const output = outputs[0];
@@ -187,6 +227,7 @@ export async function captureCorpusCase(
     source: "shopify-storefront",
     caseId: item.id,
     name: item.name,
+    harnessHash: item.harnessHash,
     originalInputHash: item.originalInputHash,
     preparedInputHash: item.preparedInputHash,
     requestPath: item.requestPath,

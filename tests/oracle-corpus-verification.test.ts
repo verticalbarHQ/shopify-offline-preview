@@ -27,6 +27,7 @@ async function sample(liquid = '{{ "<own input>" | escape }}', fixturePath = "/"
     source: "shopify-storefront",
     specCommit,
     fixtureHash: snapshotFingerprint(snapshot),
+    harnessHash: item.harnessHash,
     caseId: item.id,
     name: item.name,
     originalInputHash: item.originalInputHash,
@@ -123,7 +124,11 @@ test("an absent mapped fixture resource cannot produce a successful replay", asy
   const item = prepared.cases[0];
   assert.ok(item);
   await assert.rejects(
-    verifyCorpusObservation(item, { ...observation, requestPath: item.requestPath }, context),
+    verifyCorpusObservation(
+      item,
+      { ...observation, requestPath: item.requestPath, harnessHash: item.harnessHash },
+      context,
+    ),
     /Theme file not found: templates\/404/,
   );
 });

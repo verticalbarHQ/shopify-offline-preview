@@ -18,6 +18,7 @@ export interface CaptureDependencies {
   readIdentity(): Promise<OracleIdentity>;
   readTheme(id: string): Promise<OracleTheme>;
   fetcher?: typeof fetch;
+  verifyThemeFiles?(theme: OracleTheme): Promise<void>;
 }
 export interface CapturedPage {
   publicSummary: PrivateSummary["summary"];
@@ -52,6 +53,7 @@ export async function captureOracleHtmlPair(
   if (url.hostname !== input.config.domain)
     throw new Error("Capture path changed the pinned domain");
   url.searchParams.set("preview_theme_id", input.previewThemeId);
+  await dependencies.verifyThemeFiles?.(theme);
   const fetcher = dependencies.fetcher ?? fetch;
   async function capture(): Promise<string> {
     const response = await fetcher(url, {
@@ -70,6 +72,7 @@ export async function captureOracleHtmlPair(
   }
   const first = await capture();
   const second = await capture();
+  await dependencies.verifyThemeFiles?.(theme);
   return { capturedAt: new Date().toISOString(), privateRawHtml: [first, second] };
 }
 

@@ -125,7 +125,12 @@ test("guarded read-only corpus capture requires stable native payloads and publi
     { config, previewThemeId: "2", cookie: "synthetic-test-cookie" },
     item,
     metadata,
-    { readIdentity: async () => identity, readTheme: async () => preview, fetcher },
+    {
+      readIdentity: async () => identity,
+      readTheme: async () => preview,
+      readThemeFiles: async () => fixture().files,
+      fetcher,
+    },
   );
   assert.equal(gets, 2);
   assert.equal(result.observation.doubleCaptureStable, true);
@@ -141,6 +146,7 @@ test("guarded read-only corpus capture requires stable native payloads and publi
       {
         readIdentity: async () => identity,
         readTheme: async () => preview,
+        readThemeFiles: async () => fixture().files,
         fetcher: async () =>
           new Response(payload(item.payloadId, String(++attempt)), {
             headers: { "Content-Type": "text/html" },
@@ -157,6 +163,7 @@ test("guarded read-only corpus capture requires stable native payloads and publi
       {
         readIdentity: async () => ({ ...identity, metafield: null }),
         readTheme: async () => preview,
+        readThemeFiles: async () => fixture().files,
         fetcher,
       },
     ),
@@ -194,7 +201,12 @@ test("changed prepared requests or source hashes cannot acquire capture provenan
         { config, previewThemeId: "2", cookie: "synthetic-test-cookie" },
         changed,
         metadata,
-        { readIdentity: async () => identity, readTheme: async () => preview, fetcher },
+        {
+          readIdentity: async () => identity,
+          readTheme: async () => preview,
+          readThemeFiles: async () => fixture().files,
+          fetcher,
+        },
       ),
       /provenance/,
     );
@@ -211,6 +223,7 @@ test("private corpus files retain readable outputs with owner-only permissions w
     {
       readIdentity: async () => identity,
       readTheme: async () => preview,
+      readThemeFiles: async () => fixture().files,
       fetcher: async () =>
         new Response(payload(item.payloadId, "synthetic private output"), {
           headers: { "Content-Type": "text/html" },
