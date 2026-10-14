@@ -4,6 +4,7 @@ import { liquidObjectKind } from "../../../data/src/objects.js";
 import type { Snapshot } from "../../../data/src/schema.js";
 import { themePath } from "../../../theme/src/index.js";
 import { registerFontFilters } from "../fonts.js";
+import { registerNumericFilters } from "../numbers.js";
 import { formKind } from "../shopify-tags.js";
 import { renderAnchor } from "./anchors.js";
 import { registerCollectionLinkFilters } from "./collection-links.js";
@@ -46,6 +47,7 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
     });
   }
   registerCoreLanguage(engine);
+  registerNumericFilters(engine);
   registerColorFilters(engine);
   registerCollectionLinkFilters(engine);
   registerJsonFilter(engine);

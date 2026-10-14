@@ -28,6 +28,7 @@ import { ImageUrlInputError } from "./filters/images.js";
 import { registerShopifyFilters } from "./filters/index.js";
 import { fontSetting } from "./fonts.js";
 import { registerLoopTrace } from "./loop-trace.js";
+import { evalNumericValue } from "./numbers.js";
 import { registerPageMetadata } from "./page-metadata.js";
 import { parseLiquid } from "./parse-liquid.js";
 import { registerRenderTag } from "./render-tag.js";
@@ -483,8 +484,8 @@ export async function renderTheme(
             resolving = true;
             const single = /^\s*\{\{([\s\S]*?)\}\}\s*$/.exec(raw);
             const resolved = single
-              ? engine.evalValue(single[1] ?? "", dynamicContext())
-              : engine.parseAndRender(raw, dynamicContext());
+              ? evalNumericValue(engine, single[1] ?? "", dynamicContext())
+              : engine.render(parseLiquid(engine, raw, `settings.${key}`), dynamicContext());
             return resolved
               .then((value) =>
                 definition.type === "color"
@@ -855,7 +856,7 @@ export async function renderTheme(
     "section",
     class extends Tag {
       async render() {
-        const value: unknown = await engine.evalValue(this.token.args);
+        const value: unknown = await evalNumericValue(engine, this.token.args);
         if (typeof value !== "string") throw new Error("Section requires a string name");
         const configured = settingsConfig.sections;
         const record =
@@ -877,7 +878,7 @@ export async function renderTheme(
     "sections",
     class extends Tag {
       async render() {
-        const value: unknown = await engine.evalValue(this.token.args);
+        const value: unknown = await evalNumericValue(engine, this.token.args);
         if (typeof value !== "string") throw new Error("Sections requires a string name");
         const file = themePath(`sections/${value}.json`);
         const config = templateConfig(source(file), file);

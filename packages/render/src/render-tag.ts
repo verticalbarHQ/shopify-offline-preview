@@ -9,6 +9,7 @@ import {
   toValue,
   type ValueToken,
 } from "liquidjs";
+import { evalNumericValue } from "./numbers.js";
 
 interface Binding {
   kind: "with" | "for";
@@ -65,11 +66,15 @@ export function registerRenderTag(
         }
         this.args = new Hash(this.tokenizer, liquid.options.keyValueSeparator);
       }
+      *arguments() {
+        for (const value of Object.values(this.args.hash)) if (value) yield value;
+        for (const binding of this.bindings) yield binding.value;
+      }
       async render(context: Context) {
         if (this.snippetName === null) {
           if (this.dynamicExpression) {
             const result = await resolveApp(
-              await engine.evalValue(this.dynamicExpression, context),
+              await evalNumericValue(engine, this.dynamicExpression, context),
             );
             if (result !== null) return result;
           }
@@ -85,7 +90,7 @@ export function registerRenderTag(
           let forAlias: string | undefined;
           for (const binding of this.bindings) {
             const value: unknown = toValue(
-              await engine.evalValue(binding.value.getText(), context),
+              await evalNumericValue(engine, binding.value.getText(), context),
             );
             if (binding.kind === "for") {
               collection = Array.isArray(value)

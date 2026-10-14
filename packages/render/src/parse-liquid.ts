@@ -1,5 +1,6 @@
 import { NodeTypes, toLiquidAST, walk } from "@shopify/liquid-html-parser";
 import { type Liquid, Parser, Token, Tokenizer, TokenKind, type TopLevelToken } from "liquidjs";
+import { preserveNumericLiterals } from "./numbers.js";
 
 /** Structural HTML token made from the public Token base; retains original file/line offsets. */
 class RawBodyToken extends Token {
@@ -37,5 +38,7 @@ export function parseLiquid(engine: Liquid, text: string, file: string) {
   const tokens = new RawTokenizer(text, engine.options.operators, file).readTopLevelTokens(
     engine.options,
   );
-  return new Parser(engine).parseTokens(tokens);
+  const parsed = new Parser(engine).parseTokens(tokens);
+  preserveNumericLiterals(parsed);
+  return parsed;
 }

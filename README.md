@@ -337,6 +337,12 @@ with an empty search string (insertion at every Unicode character boundary, incl
 Ordinary replacement patterns retain the pinned engine's behavior. These fixes do not establish
 complete Liquid language conformance or Shopify oracle coverage.
 
+Numeric literals preserve integer/float identity through assignments, nested tags, render arguments
+and dynamic settings. Integer division floors the result; either float operand retains a fractional
+result. Arithmetic keeps float results such as `3.0 | times: 2` as `6.0`, and `json` preserves finite
+float number lexemes, including nested values, without converting them to strings. Integer division
+by zero and all modulo by zero report Liquid errors. Float division by zero displays `Infinity`.
+
 `pnpm language:check --suite-dir <clean-liquid-spec-checkout>` audits the pinned
 `Shopify/liquid-spec@84bf25e0edbca5f7e530574788b0f875ab331f50` basics inputs through the real SDK
 renderer with isolated snippet bindings. It requires Git and Ruby's standard YAML loader for this

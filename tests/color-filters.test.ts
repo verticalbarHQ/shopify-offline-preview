@@ -44,7 +44,7 @@ test("float color results keep native numeric comparison and arithmetic behavior
     new MemoryThemeFileSystem({ ...base, "sections/main.liquid": source }),
     "/",
   );
-  assert.ok(result.html.includes("Equal|Lower|6|#000000"));
+  assert.ok(result.html.includes("Equal|Lower|6.0|#000000"));
   assert.deepEqual(result.diagnostics, []);
 });
 test("color filters accept typed theme colors and preserve alpha while rejecting bad percentages", async () => {

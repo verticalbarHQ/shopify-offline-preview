@@ -1,8 +1,9 @@
-import { type Comparable, type Liquid, toValue } from "liquidjs";
+import { type Liquid, toValue } from "liquidjs";
 import { ColorValue, colorSetting } from "../color-settings.js";
+import { LiquidFloat } from "../numbers.js";
 
 /** Preserves the float's display while arithmetic and comparisons still use a number. */
-class DecimalNumber extends Number implements Comparable {
+class DecimalNumber extends LiquidFloat {
   constructor(
     value: number,
     readonly digits: number,
@@ -11,24 +12,6 @@ class DecimalNumber extends Number implements Comparable {
   }
   [Symbol.toPrimitive](hint: string) {
     return hint === "string" ? this.valueOf().toFixed(this.digits) : this.valueOf();
-  }
-  equals(other: unknown) {
-    const value: unknown = toValue(other);
-    return (
-      (typeof value === "number" || value instanceof Number) && this.valueOf() === Number(value)
-    );
-  }
-  gt(other: unknown) {
-    return this.valueOf() > Number(toValue(other));
-  }
-  geq(other: unknown) {
-    return this.valueOf() >= Number(toValue(other));
-  }
-  lt(other: unknown) {
-    return this.valueOf() < Number(toValue(other));
-  }
-  leq(other: unknown) {
-    return this.valueOf() <= Number(toValue(other));
   }
 }
 function channels(value: unknown): ColorValue {
@@ -92,7 +75,7 @@ export function registerColorFilters(engine: Liquid): void {
     if (!["red", "green", "blue", "alpha", "hue", "saturation", "lightness"].includes(key))
       throw new Error("Unsupported color component");
     if (
-      (typeof scalar !== "number" && typeof scalar !== "string") ||
+      (typeof scalar !== "number" && typeof scalar !== "string" && !(scalar instanceof Number)) ||
       !Number.isFinite(value) ||
       value < 0 ||
       value > maximum ||

@@ -11,6 +11,7 @@ import {
   type ValueToken,
 } from "liquidjs";
 import { liquidObjectKind, preserveLiquidObjectKind } from "../../data/src/objects.js";
+import { evalNumericValue } from "./numbers.js";
 
 const formKinds = new WeakMap<object, string>();
 export function formKind(value: unknown): string | undefined {
@@ -72,9 +73,9 @@ export function registerShopifyTags(engine: Liquid, hooks: TagHooks): void {
         this.templates = body(parser, tokens, "form");
       }
       async render(context: Context): Promise<string> {
-        const kind = String(await engine.evalValue(this.kind.getText(), context));
+        const kind = String(await evalNumericValue(engine, this.kind.getText(), context));
         const target = this.resource
-          ? await engine.evalValue(this.resource.getText(), context)
+          ? await evalNumericValue(engine, this.resource.getText(), context)
           : null;
         const resourceId = record(target) ? target.id : undefined;
         const configuration: Record<
@@ -170,7 +171,7 @@ export function registerShopifyTags(engine: Liquid, hooks: TagHooks): void {
       }
       async render(context: Context): Promise<string> {
         const path = this.array.getText();
-        const array: unknown = await engine.evalValue(path, context);
+        const array: unknown = await evalNumericValue(engine, path, context);
         if (!Array.isArray(array)) {
           hooks.unsupported(`Pagination source ${path} is not an available array.`);
           return `[not implemented: paginate ${escapeHtml(path)}]`;
@@ -178,7 +179,7 @@ export function registerShopifyTags(engine: Liquid, hooks: TagHooks): void {
         const keys = path.split(".");
         const property = keys.at(-1);
         const root = keys[0];
-        const parent = await engine.evalValue(keys.slice(0, -1).join("."), context);
+        const parent = await evalNumericValue(engine, keys.slice(0, -1).join("."), context);
         const expectedKind = {
           products: "collection",
           articles: "blog",
@@ -195,7 +196,7 @@ export function registerShopifyTags(engine: Liquid, hooks: TagHooks): void {
           hooks.unsupported(`Independent pagination for ${path} is not implemented.`);
           return `[not implemented: paginate ${escapeHtml(path)}]`;
         }
-        const size = Number(await engine.evalValue(this.size.getText(), context));
+        const size = Number(await evalNumericValue(engine, this.size.getText(), context));
         if (!Number.isInteger(size) || size < 1 || size > 250)
           throw new Error("Pagination size must be from 1 to 250");
         const url = new URL(hooks.path, "https://offline.invalid");
@@ -246,7 +247,8 @@ export function registerShopifyTags(engine: Liquid, hooks: TagHooks): void {
         const slice = array.slice(offset, offset + size);
         let local: unknown = slice;
         for (let index = keys.length - 2; index >= 0; index--) {
-          const original: unknown = await engine.evalValue(
+          const original: unknown = await evalNumericValue(
+            engine,
             keys.slice(0, index + 1).join("."),
             context,
           );

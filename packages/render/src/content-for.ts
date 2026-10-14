@@ -6,6 +6,7 @@ import {
   type TopLevelToken,
   type ValueToken,
 } from "liquidjs";
+import { evalNumericValue } from "./numbers.js";
 /** Named keys such as closest.product use the public tokenizer's value parser. */
 export function registerContentFor(
   engine: Liquid,
@@ -42,12 +43,12 @@ export function registerContentFor(
         }
       }
       async render(context: Context) {
-        const kind = String(await engine.evalValue(this.kind.getText(), context));
+        const kind = String(await evalNumericValue(engine, this.kind.getText(), context));
         if (!["block", "blocks"].includes(kind))
           throw new Error("content_for requires block or blocks");
         const args: Record<string, unknown> = Object.create(null);
         for (const [name, value] of this.args)
-          args[name] = await engine.evalValue(value.getText(), context);
+          args[name] = await evalNumericValue(engine, value.getText(), context);
         return render(kind, args, context);
       }
     },
