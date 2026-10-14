@@ -3,6 +3,7 @@ import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 import { promisify } from "node:util";
 import { z } from "zod";
 import { defaultFixture } from "../packages/data/src/fixture.js";
@@ -82,6 +83,12 @@ client.on((event) => {
       .parse(event.params).context;
     if (context.auxData?.isDefault) contexts.set(context.auxData.frameId, context.id);
   }
+  if (event.method === "Runtime.executionContextDestroyed") {
+    const { executionContextId } = z.object({ executionContextId: z.number() }).parse(event.params);
+    for (const [frameId, contextId] of contexts)
+      if (contextId === executionContextId) contexts.delete(frameId);
+  }
+  if (event.method === "Runtime.executionContextsCleared") contexts.clear();
   if (event.method === "Network.requestWillBeSent") {
     const parsed = z.object({ request: z.object({ url: z.string() }) }).parse(event.params);
     requests.push(parsed.request.url);
@@ -92,10 +99,21 @@ await client.call("Page.enable", {}, attached.sessionId);
 await client.call("Network.enable", {}, attached.sessionId);
 const wait = `async predicate=>{const until=Date.now()+10000;while(!predicate()){if(Date.now()>until)throw new Error('Interaction timed out');await new Promise(resolve=>setTimeout(resolve,25));}}`;
 async function parent(expression: string) {
-  return client.evaluate(attached.sessionId, expression);
+  try {
+    return await client.evaluate(attached.sessionId, expression);
+  } catch (error) {
+    throw new Error(
+      `Inspector parent evaluation: ${expression.replace(wait, "wait").slice(0, 160)}`,
+      { cause: error },
+    );
+  }
 }
 async function frameContext() {
-  for (let attempt = 0; attempt < 40; attempt++) {
+  const previewUrl = z
+    .string()
+    .url()
+    .parse(await parent("document.querySelector('#preview').src"));
+  for (let attempt = 0; attempt < 200; attempt++) {
     const frames = z
       .object({
         frameTree: z.object({
@@ -105,30 +123,40 @@ async function frameContext() {
         }),
       })
       .parse(await client.call("Page.getFrameTree", {}, attached.sessionId));
-    const frame = frames.frameTree.childFrames?.find((frame) =>
-      frame.frame.url.startsWith(session.previewOrigin),
-    );
+    const frame = frames.frameTree.childFrames?.find((frame) => frame.frame.url === previewUrl);
     const context = frame && contexts.get(frame.frame.id);
     if (context !== undefined) {
       try {
         if (
           await client.evaluate(
             attached.sessionId,
-            "!!document.getElementById('sop-diagnostic-badges')",
+            `location.href===${JSON.stringify(previewUrl)} && !!document.getElementById('sop-diagnostic-badges')`,
             context,
           )
         )
           return context;
-      } catch {
-        /* detaching old iframe */
+      } catch (error) {
+        if (
+          !(error instanceof Error) ||
+          !/Cannot find context|Execution context was destroyed/.test(error.message)
+        )
+          throw error;
       }
     }
-    await parent("new Promise(resolve=>setTimeout(resolve,25))");
+    await delay(50);
   }
   throw new Error("Preview bridge not ready");
 }
 async function child(expression: string) {
-  return client.evaluate(attached.sessionId, expression, await frameContext());
+  const context = await frameContext();
+  try {
+    return await client.evaluate(attached.sessionId, expression, context);
+  } catch (error) {
+    throw new Error(
+      `Inspector preview evaluation: ${expression.replace(wait, "wait").slice(0, 160)}`,
+      { cause: error },
+    );
+  }
 }
 try {
   await parent(
@@ -287,6 +315,7 @@ try {
     snapshotHotReload: true,
     invalidInputClearsPreview: true,
   };
+  await mkdir(".local/results", { recursive: true });
   await writeFile(
     ".local/results/inspector-interactions.json",
     `${JSON.stringify(result, null, 2)}\n`,
