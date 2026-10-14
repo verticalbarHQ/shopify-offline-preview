@@ -15,6 +15,7 @@ import {
 } from "./seed-identities.js";
 import { buildOracleSeedPlan } from "./seed-plan.js";
 import { type SeedValue, seedBindingKey } from "./seed-requests.js";
+import { inspectVerifiedSeedUpload, type VerifiedSeedUpload } from "./seed-upload.js";
 import { type OracleConfig, oracleConfigSchema } from "./store-guard.js";
 
 interface Entry {
@@ -52,6 +53,8 @@ export function createOracleSeedBindingLedger(
   if (!/^gid:\/\/shopify\/Shop\/[1-9]\d*$/.test(shopId) || !token.trim() || plan.issues.length)
     throw new SeedLedgerError("scope-mismatch");
   const entries = new Map<string, Entry>(),
+    staged = new Map<string, VerifiedSeedUpload>(),
+    usedUploads = new WeakSet<VerifiedSeedUpload>(),
     used = new WeakSet<VerifiedSeedExecution>();
   let recording = false;
   function scope(context: SeedExecutionContext) {
@@ -101,7 +104,34 @@ export function createOracleSeedBindingLedger(
     JSON.stringify([...values].sort((a, b) => a.name.localeCompare(b.name)));
   return {
     get(key: string): string {
+      const upload = staged.get(key);
+      if (upload) return inspectVerifiedSeedUpload(upload).resourceUrl;
       return current(key).value;
+    },
+    /** A transport acknowledgement is a staged source, never processed-image ownership. */
+    recordUpload(receipt: VerifiedSeedUpload): void {
+      if (recording) throw new SeedLedgerError("concurrent-record");
+      let record: ReturnType<typeof inspectVerifiedSeedUpload>;
+      try {
+        record = inspectVerifiedSeedUpload(receipt);
+      } catch {
+        throw new SeedLedgerError("unverified-execution");
+      }
+      const task = scope(record.context),
+        asset = assets.find((a) => a.file === record.file),
+        key = seedBindingKey("staged-image-url", record.file);
+      if (
+        task.resource !== "image" ||
+        task.identity[0] !== record.file ||
+        !asset ||
+        asset.bytes !== record.bytes ||
+        asset.sha256 !== record.sha256 ||
+        usedUploads.has(receipt) ||
+        staged.has(key)
+      )
+        throw new SeedLedgerError("binding-mismatch");
+      staged.set(key, receipt);
+      usedUploads.add(receipt);
     },
     /** Explicit read-only environment choices are not fixture ownership or mutation authorization. */
     async registerEnvironment(
@@ -357,6 +387,21 @@ export function createOracleSeedBindingLedger(
       Object.values(context.template.variables).forEach(references);
       const checked = new Set<Entry>();
       for (const key of required) {
+        const upload = staged.get(key);
+        if (upload) {
+          const record = inspectVerifiedSeedUpload(upload);
+          scope(record.context);
+          if (
+            task.resource !== "image" ||
+            task.sourceHash !== record.context.task.sourceHash ||
+            task.identity[0] !== record.file ||
+            context.template.operation !== "fileCreate" ||
+            !Object.hasOwn(values, key) ||
+            values[key] !== record.resourceUrl
+          )
+            throw new SeedLedgerError("binding-mismatch");
+          continue;
+        }
         const entry = current(key);
         if (!Object.hasOwn(values, key) || values[key] !== entry.value)
           throw new SeedLedgerError("binding-mismatch");
