@@ -334,6 +334,15 @@ read-back provenance; matching a handle or tag alone does not create ownership o
 This reader performs no writes and is separate from the offline SDK. Full source-field calibration
 and the trusted seeding callback integration still remain to be completed.
 
+The in-memory binding ledger in `tools/oracle/seed-binding-ledger.ts` records only opaque
+`executeVerified` results followed by resource identity reads. Hand-built objects, serialized
+`verified` flags, changed fixture/store scopes and failed reads cannot add owned bindings. Product
+variant aliases are rebuilt from complete option tuples; removed aliases are discarded atomically.
+Its prewrite callback rechecks recorded dependencies and fully enumerates handles before creation.
+Environment location/publication choices are verified separately and do not grant mutation approval.
+Durable provenance recovery, platform-default menu bootstrap, staged-upload receipts, full source
+calibration and live authorization integration remain unfinished; no live seeding CLI is provided.
+
 The corpus capture helper uses the same pinned-development-store and unpublished-theme guards as
 page capture, extracts one exact JSON string payload, and requires two identical outputs. Public
 observations contain hashes and provenance, with raw HTML and readable outputs kept private.

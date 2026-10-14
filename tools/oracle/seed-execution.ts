@@ -38,6 +38,24 @@ export class SeedExecutionError extends Error {
   }
 }
 type JsonObject = Record<string, z.infer<ReturnType<typeof z.json>>>;
+export interface VerifiedSeedExecution {
+  readonly kind: "verified-seed-execution";
+}
+export interface VerifiedSeedExecutionRecord {
+  context: SeedExecutionContext;
+  payload: JsonObject;
+  variables: JsonObject;
+}
+const verifiedExecutions = new WeakMap<VerifiedSeedExecution, VerifiedSeedExecutionRecord>();
+/** Serialized flags or hand-built objects cannot claim completed guarded execution. */
+export function inspectVerifiedSeedExecution(
+  receipt: VerifiedSeedExecution,
+): VerifiedSeedExecutionRecord {
+  const record = verifiedExecutions.get(receipt);
+  if (!record) throw new SeedExecutionError("invalid-step");
+  return structuredClone(record);
+}
+
 const guardQuery = `query OfflinePreviewSeedGuard {
   shop { id myshopifyDomain name currencyCode ianaTimezone plan { partnerDevelopment }
     metafield(namespace:"sop",key:"oracle_store") { value } }
@@ -100,6 +118,7 @@ export interface SeedExecutionContext {
   apiVersion: "2026-10";
   kind: SeedExecutionStep["kind"];
   options: SeedRequestOptions;
+  observedOrder?: readonly string[];
   fixtureHash: string;
   stateHash: string;
   expectedShopId: string;
@@ -165,158 +184,170 @@ export function createOracleSeedExecutor(
     if (!parsed.success) throw new Error("Response unavailable");
     return { status: response.status, ok: response.ok, document: parsed.data };
   }
+  async function perform(input: SeedExecutionStep): Promise<VerifiedSeedExecutionRecord> {
+    if (busy) throw new SeedExecutionError("concurrent-execution");
+    busy = true;
+    try {
+      const step = structuredClone(input),
+        state = plan.states.find((s) => s.hash === step.stateHash),
+        task = state?.tasks.find((t) => t.key === step.taskKey);
+      if (!task || !state) throw new SeedExecutionError("invalid-step");
+      let template: SeedRequestTemplate;
+      try {
+        let templates: SeedRequestTemplate[];
+        if (step.kind === "task") templates = compileSeedTask(task, step.options);
+        else if (
+          step.kind === "publication" &&
+          (task.resource === "product" || task.resource === "collection")
+        )
+          templates = [
+            compileSeedPublication(
+              task.resource === "product" ? "Product" : "Collection",
+              task.identity[0] ?? "",
+            ),
+          ];
+        else if (
+          step.kind === "collection-order" &&
+          task.resource === "collection" &&
+          step.observedOrder
+        ) {
+          const collection = snapshotSchema.shape.collections.element.parse(task.source);
+          if (collection.sortOrder !== "manual") throw new Error("Manual collection required");
+          templates = compileSeedCollectionOrder(
+            task.identity[0] ?? "",
+            step.observedOrder,
+            collection.products,
+          );
+        } else throw new Error("Step unavailable");
+        const selected = templates[step.requestIndex ?? 0];
+        if (!selected || !Number.isInteger(step.requestIndex ?? 0) || !scopes[selected.operation])
+          throw new Error("Step unavailable");
+        template = selected;
+      } catch {
+        throw new SeedExecutionError("invalid-step");
+      }
+      try {
+        if (validateSeedRequestTemplate(template, retainedSchema).length)
+          throw new Error("Contract mismatch");
+      } catch {
+        throw new SeedExecutionError("schema-mismatch");
+      }
+      let body: ReturnType<typeof resolveSeedRequest>;
+      try {
+        body = resolveSeedRequest(template, step.bindings);
+      } catch {
+        throw new SeedExecutionError("binding-invalid");
+      }
+      const context = () => ({
+        domain: pinned.domain,
+        apiVersion: pinned.apiVersion,
+        kind: step.kind,
+        options: structuredClone(step.options),
+        ...(step.observedOrder ? { observedOrder: structuredClone(step.observedOrder) } : {}),
+        fixtureHash: plan.fixtureHash,
+        stateHash: state.hash,
+        expectedShopId,
+        task: structuredClone(task),
+        template: structuredClone(template),
+      });
+      for (let attempt = 0; attempt < 4; attempt++) {
+        try {
+          await dependencies.authorize(context());
+        } catch {
+          throw new SeedExecutionError("authorization-denied");
+        }
+        let observed: z.infer<typeof guardData>;
+        try {
+          const result = await send({ query: guardQuery });
+          if (!result.ok || result.document.errors?.length) throw new Error("Guard unavailable");
+          observed = guardData.parse(result.document.data);
+        } catch {
+          throw new SeedExecutionError("guard-unavailable");
+        }
+        try {
+          assertOracleStore(pinned, observed.shop);
+          if (observed.shop.id !== expectedShopId) throw new Error("Shop changed");
+        } catch {
+          throw new SeedExecutionError("guard-denied");
+        }
+        const handles = new Set(observed.currentAppInstallation.accessScopes.map((s) => s.handle));
+        if (scopes[template.operation]?.some((s) => !handles.has(s)))
+          throw new SeedExecutionError("scope-missing");
+        try {
+          await dependencies.verifyBindings(context(), structuredClone(step.bindings));
+        } catch {
+          throw new SeedExecutionError("binding-verification-failed");
+        }
+        let result: Awaited<ReturnType<typeof send>>;
+        try {
+          result = await send(body);
+        } catch {
+          throw new SeedExecutionError("mutation-outcome-unknown");
+        }
+        const rejected =
+          !result.document.data &&
+          result.document.errors?.length &&
+          result.document.errors.every(
+            (e) => e.extensions?.code === "THROTTLED" && !e.path?.length,
+          ) &&
+          (result.ok || result.status === 429);
+        if (rejected) {
+          if (attempt === 3) throw new SeedExecutionError("throttle-limit");
+          const cost = result.document.extensions?.cost;
+          const wait = cost
+            ? Math.max(
+                1000,
+                Math.ceil(
+                  ((cost.requestedQueryCost - cost.throttleStatus.currentlyAvailable) /
+                    cost.throttleStatus.restoreRate) *
+                    1000,
+                ),
+              )
+            : 1000 * 2 ** attempt;
+          if (wait > 30000) throw new SeedExecutionError("throttle-limit");
+          try {
+            await sleep(wait);
+          } catch {
+            throw new SeedExecutionError("throttle-limit");
+          }
+          continue;
+        }
+        if (!result.ok || result.document.errors?.length)
+          throw new SeedExecutionError("mutation-outcome-unknown");
+        const payload = result.document.data?.[template.operation];
+        if (
+          !payload ||
+          typeof payload !== "object" ||
+          Array.isArray(payload) ||
+          !Array.isArray(payload.userErrors)
+        )
+          throw new SeedExecutionError("mutation-outcome-unknown");
+        if (payload.userErrors.length) throw new SeedExecutionError("user-errors");
+        try {
+          await dependencies.verifyResult(context(), structuredClone(payload));
+        } catch {
+          throw new SeedExecutionError("postcondition-failed");
+        }
+        return {
+          context: context(),
+          payload: structuredClone(payload),
+          variables: structuredClone(body.variables),
+        };
+      }
+      throw new SeedExecutionError("throttle-limit");
+    } finally {
+      busy = false;
+    }
+  }
   return {
     async execute(input: SeedExecutionStep): Promise<JsonObject> {
-      if (busy) throw new SeedExecutionError("concurrent-execution");
-      busy = true;
-      try {
-        const step = structuredClone(input),
-          state = plan.states.find((s) => s.hash === step.stateHash),
-          task = state?.tasks.find((t) => t.key === step.taskKey);
-        if (!task || !state) throw new SeedExecutionError("invalid-step");
-        let template: SeedRequestTemplate;
-        try {
-          let templates: SeedRequestTemplate[];
-          if (step.kind === "task") templates = compileSeedTask(task, step.options);
-          else if (
-            step.kind === "publication" &&
-            (task.resource === "product" || task.resource === "collection")
-          )
-            templates = [
-              compileSeedPublication(
-                task.resource === "product" ? "Product" : "Collection",
-                task.identity[0] ?? "",
-              ),
-            ];
-          else if (
-            step.kind === "collection-order" &&
-            task.resource === "collection" &&
-            step.observedOrder
-          ) {
-            const collection = snapshotSchema.shape.collections.element.parse(task.source);
-            if (collection.sortOrder !== "manual") throw new Error("Manual collection required");
-            templates = compileSeedCollectionOrder(
-              task.identity[0] ?? "",
-              step.observedOrder,
-              collection.products,
-            );
-          } else throw new Error("Step unavailable");
-          const selected = templates[step.requestIndex ?? 0];
-          if (!selected || !Number.isInteger(step.requestIndex ?? 0) || !scopes[selected.operation])
-            throw new Error("Step unavailable");
-          template = selected;
-        } catch {
-          throw new SeedExecutionError("invalid-step");
-        }
-        try {
-          if (validateSeedRequestTemplate(template, retainedSchema).length)
-            throw new Error("Contract mismatch");
-        } catch {
-          throw new SeedExecutionError("schema-mismatch");
-        }
-        let body: ReturnType<typeof resolveSeedRequest>;
-        try {
-          body = resolveSeedRequest(template, step.bindings);
-        } catch {
-          throw new SeedExecutionError("binding-invalid");
-        }
-        const context = () => ({
-          domain: pinned.domain,
-          apiVersion: pinned.apiVersion,
-          kind: step.kind,
-          options: structuredClone(step.options),
-          fixtureHash: plan.fixtureHash,
-          stateHash: state.hash,
-          expectedShopId,
-          task: structuredClone(task),
-          template: structuredClone(template),
-        });
-        for (let attempt = 0; attempt < 4; attempt++) {
-          try {
-            await dependencies.authorize(context());
-          } catch {
-            throw new SeedExecutionError("authorization-denied");
-          }
-          let observed: z.infer<typeof guardData>;
-          try {
-            const result = await send({ query: guardQuery });
-            if (!result.ok || result.document.errors?.length) throw new Error("Guard unavailable");
-            observed = guardData.parse(result.document.data);
-          } catch {
-            throw new SeedExecutionError("guard-unavailable");
-          }
-          try {
-            assertOracleStore(pinned, observed.shop);
-            if (observed.shop.id !== expectedShopId) throw new Error("Shop changed");
-          } catch {
-            throw new SeedExecutionError("guard-denied");
-          }
-          const handles = new Set(
-            observed.currentAppInstallation.accessScopes.map((s) => s.handle),
-          );
-          if (scopes[template.operation]?.some((s) => !handles.has(s)))
-            throw new SeedExecutionError("scope-missing");
-          try {
-            await dependencies.verifyBindings(context(), structuredClone(step.bindings));
-          } catch {
-            throw new SeedExecutionError("binding-verification-failed");
-          }
-          let result: Awaited<ReturnType<typeof send>>;
-          try {
-            result = await send(body);
-          } catch {
-            throw new SeedExecutionError("mutation-outcome-unknown");
-          }
-          const rejected =
-            !result.document.data &&
-            result.document.errors?.length &&
-            result.document.errors.every(
-              (e) => e.extensions?.code === "THROTTLED" && !e.path?.length,
-            ) &&
-            (result.ok || result.status === 429);
-          if (rejected) {
-            if (attempt === 3) throw new SeedExecutionError("throttle-limit");
-            const cost = result.document.extensions?.cost;
-            const wait = cost
-              ? Math.max(
-                  1000,
-                  Math.ceil(
-                    ((cost.requestedQueryCost - cost.throttleStatus.currentlyAvailable) /
-                      cost.throttleStatus.restoreRate) *
-                      1000,
-                  ),
-                )
-              : 1000 * 2 ** attempt;
-            if (wait > 30000) throw new SeedExecutionError("throttle-limit");
-            try {
-              await sleep(wait);
-            } catch {
-              throw new SeedExecutionError("throttle-limit");
-            }
-            continue;
-          }
-          if (!result.ok || result.document.errors?.length)
-            throw new SeedExecutionError("mutation-outcome-unknown");
-          const payload = result.document.data?.[template.operation];
-          if (
-            !payload ||
-            typeof payload !== "object" ||
-            Array.isArray(payload) ||
-            !Array.isArray(payload.userErrors)
-          )
-            throw new SeedExecutionError("mutation-outcome-unknown");
-          if (payload.userErrors.length) throw new SeedExecutionError("user-errors");
-          try {
-            await dependencies.verifyResult(context(), structuredClone(payload));
-          } catch {
-            throw new SeedExecutionError("postcondition-failed");
-          }
-          return payload;
-        }
-        throw new SeedExecutionError("throttle-limit");
-      } finally {
-        busy = false;
-      }
+      return (await perform(input)).payload;
+    },
+    async executeVerified(input: SeedExecutionStep): Promise<VerifiedSeedExecution> {
+      const result = await perform(input);
+      const receipt: VerifiedSeedExecution = Object.freeze({ kind: "verified-seed-execution" });
+      verifiedExecutions.set(receipt, result);
+      return receipt;
     },
   };
 }

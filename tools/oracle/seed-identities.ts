@@ -361,3 +361,210 @@ export async function verifyOracleSeedImageBytes(
   )
     throw new SeedIdentityError("binding-mismatch");
 }
+
+/** Read the complete variant list for one actual parent before rebinding fixture variant identities. */
+export async function readOracleSeedVariants(
+  config: OracleConfig,
+  token: string,
+  expectedShopId: string,
+  productId: string,
+  fetcher: typeof fetch = fetch,
+): Promise<Extract<SeedIdentityNode, { __typename: "ProductVariant" }>[]> {
+  try {
+    oracleConfigSchema.parse(config);
+    if (
+      !token.trim() ||
+      !/^gid:\/\/shopify\/Shop\/[1-9]\d*$/.test(expectedShopId) ||
+      !/^gid:\/\/shopify\/Product\/[1-9]\d*$/.test(productId)
+    )
+      throw new Error("Input");
+  } catch {
+    throw new SeedIdentityError("invalid-input");
+  }
+  let data: {
+    shop: { id: string; myshopifyDomain: string; plan: { partnerDevelopment: boolean } };
+    product: {
+      id: string;
+      handle: string;
+      tags: string[];
+      variants: {
+        nodes: {
+          __typename: "ProductVariant";
+          id: string;
+          selectedOptions: { name: string; value: string }[];
+        }[];
+        pageInfo: { hasNextPage: boolean };
+      };
+    };
+  };
+  try {
+    const response = await fetcher(
+      `https://${config.domain}/admin/api/${config.apiVersion}/graphql.json`,
+      {
+        method: "POST",
+        redirect: "error",
+        headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": token },
+        body: JSON.stringify({
+          query: `query OfflinePreviewSeedVariants($id:ID!) { shop { id myshopifyDomain plan { partnerDevelopment } } product(id:$id) { id handle tags variants(first:250) { nodes { __typename id selectedOptions { name value } } pageInfo { hasNextPage } } } }`,
+          variables: { id: productId },
+        }),
+        signal: AbortSignal.timeout(30000),
+      },
+    );
+    if (!response.ok || response.headers.get("x-shopify-api-version") !== config.apiVersion)
+      throw new Error("Response");
+    const bytes = await response.arrayBuffer();
+    if (bytes.byteLength > 8 * 1024 * 1024) throw new Error("Bound");
+    const parsed = z
+      .object({
+        data: z.object({
+          shop: z.object({
+            id,
+            myshopifyDomain: z.string(),
+            plan: z.object({ partnerDevelopment: z.boolean() }),
+          }),
+          product: productRef.extend({
+            tags: z.array(z.string()),
+            variants: z.object({
+              nodes: z
+                .array(
+                  z.object({
+                    __typename: z.literal("ProductVariant"),
+                    id,
+                    selectedOptions: options,
+                  }),
+                )
+                .max(250),
+              pageInfo,
+            }),
+          }),
+        }),
+        errors: z.array(z.unknown()).optional(),
+      })
+      .parse(JSON.parse(new TextDecoder("utf8", { fatal: true }).decode(bytes)));
+    if (parsed.errors?.length) throw new Error("Query");
+    data = parsed.data;
+  } catch {
+    throw new SeedIdentityError("resource-unavailable");
+  }
+  if (
+    data.shop.id !== expectedShopId ||
+    data.shop.myshopifyDomain !== config.domain ||
+    !data.shop.plan.partnerDevelopment ||
+    data.product.id !== productId
+  )
+    throw new SeedIdentityError("store-mismatch");
+  if (data.product.variants.pageInfo.hasNextPage)
+    throw new SeedIdentityError("incomplete-membership");
+  if (
+    new Set(data.product.variants.nodes.map((v) => v.id)).size !==
+    data.product.variants.nodes.length
+  )
+    throw new SeedIdentityError("binding-mismatch");
+  const parent = { id: data.product.id, handle: data.product.handle, tags: data.product.tags };
+  return data.product.variants.nodes.map((v) => ({ ...v, product: structuredClone(parent) }));
+}
+
+/** Full bounded enumeration, not a search filter that could silently miss a colliding handle. */
+export async function assertOracleSeedHandleAbsent(
+  config: OracleConfig,
+  token: string,
+  expectedShopId: string,
+  kind: "Product" | "Collection" | "Page" | "Blog" | "Menu" | "Article",
+  handle: string,
+  fetcher: typeof fetch = fetch,
+  blogId?: string,
+): Promise<void> {
+  const roots = {
+    Product: "products",
+    Collection: "collections",
+    Page: "pages",
+    Blog: "blogs",
+    Menu: "menus",
+    Article: "articles",
+  };
+  try {
+    oracleConfigSchema.parse(config);
+    if (
+      !token.trim() ||
+      !/^gid:\/\/shopify\/Shop\/[1-9]\d*$/.test(expectedShopId) ||
+      !Object.hasOwn(roots, kind) ||
+      !handle ||
+      (kind === "Article" && !/^gid:\/\/shopify\/Blog\/[1-9]\d*$/.test(blogId ?? ""))
+    )
+      throw new Error("Input");
+  } catch {
+    throw new SeedIdentityError("invalid-input");
+  }
+  let after: string | null = null;
+  const cursors = new Set<string>(),
+    seen = new Set<string>();
+  for (let page = 0; page < 100; page++) {
+    let shop: { id: string; myshopifyDomain: string; plan: { partnerDevelopment: boolean } },
+      connection: {
+        nodes: { id: string; handle: string }[];
+        pageInfo: { hasNextPage: boolean; endCursor: string | null };
+      };
+    try {
+      const selection = `${roots[kind]}(first:100,after:$after) { nodes { id handle } pageInfo { hasNextPage endCursor } }`;
+      const response = await fetcher(
+        `https://${config.domain}/admin/api/${config.apiVersion}/graphql.json`,
+        {
+          method: "POST",
+          redirect: "error",
+          headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": token },
+          body: JSON.stringify({
+            query: `query OfflinePreviewSeedAbsence($after:String${kind === "Article" ? ",$blog:ID!" : ""}) { shop { id myshopifyDomain plan { partnerDevelopment } } ${kind === "Article" ? `blog(id:$blog) { id ${selection} }` : selection} }`,
+            variables: { after, ...(kind === "Article" ? { blog: blogId } : {}) },
+          }),
+          signal: AbortSignal.timeout(30000),
+        },
+      );
+      if (!response.ok || response.headers.get("x-shopify-api-version") !== config.apiVersion)
+        throw new Error("Response");
+      const bytes = await response.arrayBuffer();
+      if (bytes.byteLength > 2 * 1024 * 1024) throw new Error("Bound");
+      const parsed = z
+        .object({
+          data: z.record(z.string(), z.unknown()),
+          errors: z.array(z.unknown()).optional(),
+        })
+        .parse(JSON.parse(new TextDecoder("utf8", { fatal: true }).decode(bytes)));
+      if (parsed.errors?.length) throw new Error("Query");
+      shop = z
+        .object({
+          id,
+          myshopifyDomain: z.string(),
+          plan: z.object({ partnerDevelopment: z.boolean() }),
+        })
+        .parse(parsed.data.shop);
+      const parent =
+        kind === "Article" ? z.object({ id, articles: z.unknown() }).parse(parsed.data.blog) : null;
+      if (parent && parent.id !== blogId) throw new Error("Parent mismatch");
+      connection = z
+        .object({
+          nodes: z.array(productRef).max(100),
+          pageInfo: z.object({ hasNextPage: z.boolean(), endCursor: z.string().nullable() }),
+        })
+        .parse(parent ? parent.articles : parsed.data[roots[kind]]);
+    } catch {
+      throw new SeedIdentityError("resource-unavailable");
+    }
+    if (
+      shop.id !== expectedShopId ||
+      shop.myshopifyDomain !== config.domain ||
+      !shop.plan.partnerDevelopment
+    )
+      throw new SeedIdentityError("store-mismatch");
+    for (const node of connection.nodes) {
+      if (seen.has(node.id)) throw new SeedIdentityError("incomplete-membership");
+      seen.add(node.id);
+      if (node.handle === handle) throw new SeedIdentityError("binding-mismatch");
+    }
+    if (!connection.pageInfo.hasNextPage) return;
+    after = connection.pageInfo.endCursor;
+    if (!after || cursors.has(after)) throw new SeedIdentityError("incomplete-membership");
+    cursors.add(after);
+  }
+  throw new SeedIdentityError("incomplete-membership");
+}
