@@ -348,6 +348,13 @@ styles, and keep unnamed variable cycles independent per parsed tag. Render call
 includes share their caller's counters. Direct range arguments display their bounds, while array
 arguments concatenate their values. Core language conformance remains under audit.
 
+Nested loops expose `forloop.parentloop`, including multi-level parent metadata and live saved
+references. Includes share the caller's loop context; isolated render calls start their own root
+loop context. Inspector loop instrumentation preserves these relationships through loop control
+and scope restoration.
+The standalone `reversed` keyword is recognized immediately after the collection, before named
+`limit` and `offset` attributes.
+
 `pnpm language:check --suite-dir <clean-liquid-spec-checkout>` audits the pinned
 `Shopify/liquid-spec@84bf25e0edbca5f7e530574788b0f875ab331f50` basics inputs through the real SDK
 renderer with isolated snippet bindings. It requires Git and Ruby's standard YAML loader for this
