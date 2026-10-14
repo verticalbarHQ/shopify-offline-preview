@@ -316,6 +316,15 @@ necessary sequential moves and requires a completed reorder job. This tool has n
 and does not execute mutations or grant authorization. Server behavior and read-back calibration
 remain unverified until the guarded oracle setup runs.
 
+The seeding transport in `tools/oracle/seed-execution.ts` accepts only steps compiled from its
+validated fixture matrix. It requires trusted authorization, dependency ownership verification and
+read-back verification callbacks. Each attempt rechecks the pinned shop ID/domain, development-store
+status, marker and operation scopes. Explicit pre-execution throttles permit at most four attempts;
+lost responses, other server errors and failed postconditions require reconciliation before another
+write. Errors expose fixed codes, without API messages or credential values. This component creates
+no approvals or credentials and has no live CLI. Backup/restoration, owner-confirmed first wipe,
+staged upload handling and the actual verification integration remain prerequisites.
+
 The corpus capture helper uses the same pinned-development-store and unpublished-theme guards as
 page capture, extracts one exact JSON string payload, and requires two identical outputs. Public
 observations contain hashes and provenance, with raw HTML and readable outputs kept private.
