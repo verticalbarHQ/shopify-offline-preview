@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { defaultFixture } from "../../packages/data/src/fixture.js";
+import type { Snapshot } from "../../packages/data/src/schema.js";
 import { backupDigest } from "../../tools/oracle/backup-audit.js";
 import { createOracleSeedBindingLedger } from "../../tools/oracle/seed-binding-ledger.js";
 import { createOracleSeedExecutor } from "../../tools/oracle/seed-execution.js";
@@ -37,7 +38,7 @@ export const config = { domain: "authored-demo.myshopify.com", apiVersion: "2026
     error instanceof SeedGeneratedError && error.code === name,
   reply = (data: unknown, version = "2026-10") =>
     Response.json({ data }, { headers: { "x-shopify-api-version": version } });
-export function setup(withImage = false) {
+export function setup(withImage = false, customize?: (snapshot: Snapshot) => void) {
   const snapshot = defaultFixture();
   const firstImage = snapshot.products[0]?.images[0],
     imageId = "gid://shopify/MediaImage/55",
@@ -56,6 +57,7 @@ export function setup(withImage = false) {
     assert.ok(variant);
     variant.image = firstImage.file;
   }
+  customize?.(snapshot);
   const plan = buildOracleSeedPlan(config, snapshot),
     state = plan.states[0];
   assert.ok(state);
@@ -76,7 +78,7 @@ export function setup(withImage = false) {
     if (init?.method === "GET") return new Response(imageBytes);
     const body = JSON.parse(String(init?.body)),
       query = String(body.query);
-    if (query.includes("OfflinePreviewSeedGuard"))
+    if (query.includes("OfflinePreviewSeedGuard") || query.includes("OfflinePreviewOracleIdentity"))
       return reply({
         shop: {
           ...shop,

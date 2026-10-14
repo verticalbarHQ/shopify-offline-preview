@@ -1,4 +1,5 @@
 import { type Snapshot, snapshotSchema } from "../../packages/data/src/schema.js";
+import { createOracleCartSessions } from "./cart-session.js";
 import { createOracleNativeImageRecorder, type NativeImageDependencies } from "./image-native.js";
 import { createOracleSeedBindingLedger } from "./seed-binding-ledger.js";
 import type { SeedCompletionDependencies } from "./seed-completion.js";
@@ -55,6 +56,7 @@ export function createOracleSeedRuntime(
     snapshot = snapshotSchema.parse(inputSnapshot),
     fetcher = dependencies.fetcher ?? fetch,
     ledger = createOracleSeedBindingLedger(config, snapshot, shopId, token, images, fetcher),
+    carts = createOracleCartSessions(config, snapshot, shopId, token, ledger, fetcher),
     generated = createOracleSeedGeneratedRecorder(config, snapshot, shopId, token, ledger, fetcher),
     stateReader = createOracleSeedStateReader(config, snapshot, shopId, token, ledger, {
       ...dependencies.completion,
@@ -89,6 +91,10 @@ export function createOracleSeedRuntime(
   return {
     status: () => (recovery ? ("recovery-required" as const) : ("accepting-steps" as const)),
     getBinding: ledger.get,
+    prepareCart: (...args: Parameters<typeof carts.prepare>) =>
+      operation(() => carts.prepare(...args)),
+    captureCart: (...args: Parameters<typeof carts.capture>) =>
+      operation(() => carts.capture(...args)),
     verifyStore: () => operation(() => stateReader.guard()),
     describeTask: (stateHash: string, taskKey: string) =>
       operation(() => stateReader.describe(stateHash, taskKey)),

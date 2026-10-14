@@ -322,6 +322,13 @@ necessary sequential moves and requires a completed reorder job. This tool has n
 and does not execute mutations or grant authorization. Server behavior and read-back calibration
 remain unverified until the guarded oracle setup runs.
 
+The internal oracle runtime also prepares isolated storefront carts from owned, verified and
+published fixture variants. It refuses existing carts, requires a separate authorization callback
+for each session write, and keeps cookies and cart tokens in memory. Cart captures recheck source
+state and the actual cart before and after both HTML reads. Observed line keys and response order
+can be applied to a calibrated case snapshot; this alone does not establish Shopify parity or
+capture readiness. These tools remain outside the published offline SDK.
+
 The seeding transport in `tools/oracle/seed-execution.ts` accepts only steps compiled from its
 validated fixture matrix. It requires trusted authorization, dependency ownership verification and
 read-back verification callbacks. Each attempt rechecks the pinned shop ID/domain, development-store

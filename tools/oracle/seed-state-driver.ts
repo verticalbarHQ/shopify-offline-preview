@@ -387,6 +387,10 @@ export async function openOracleSeedStateDriver(
         native: NativeImageDependencies,
       ) =>
         exclusive(() => runtime.observeNativeImages(stateHash, taskKey, themeId, cookie, native)),
+      prepareCart: (...args: Parameters<typeof runtime.prepareCart>) =>
+        exclusive(() => runtime.prepareCart(...args)),
+      captureCart: (...args: Parameters<typeof runtime.captureCart>) =>
+        exclusive(() => runtime.captureCart(...args)),
       close: () => exclusive(() => driver.close()),
     };
   } catch (error) {

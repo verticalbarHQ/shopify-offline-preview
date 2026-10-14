@@ -135,6 +135,10 @@ export async function openOracleSeedDurableRuntime(
           ? ("accepting-steps" as const)
           : ("recovery-required" as const),
     getBinding: runtime.getBinding,
+    prepareCart: (...args: Parameters<typeof runtime.prepareCart>) =>
+      operation(() => runtime.prepareCart(...args)),
+    captureCart: (...args: Parameters<typeof runtime.captureCart>) =>
+      operation(() => runtime.captureCart(...args)),
     verifyStore: () => operation(() => runtime.verifyStore()),
     describeTask: (stateHash: string, taskKey: string) =>
       operation(() => runtime.describeTask(stateHash, taskKey)),
