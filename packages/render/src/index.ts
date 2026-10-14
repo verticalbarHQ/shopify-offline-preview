@@ -24,6 +24,7 @@ import { registerBasicTags } from "./basic-tags.js";
 import { ColorScheme, ColorSchemeGroup, colorPalette, colorSetting } from "./color-settings.js";
 import { registerContentFor } from "./content-for.js";
 import { type RenderNode, type RenderResult, renderSchema } from "./contracts.js";
+import { registerCycleTag } from "./cycle-tag.js";
 import { ImageUrlInputError } from "./filters/images.js";
 import { registerShopifyFilters } from "./filters/index.js";
 import { fontSetting } from "./fonts.js";
@@ -245,6 +246,7 @@ export async function renderTheme(
   });
   const assetBundles = new ThemeAssetBundles(files, snapshot);
   registerBasicTags(engine);
+  registerCycleTag(engine);
   registerShopifyTags(engine, {
     path: route.path,
     unsupported: (message) => diagnostic("not-implemented", message),

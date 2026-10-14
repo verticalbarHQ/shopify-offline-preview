@@ -343,6 +343,11 @@ result. Arithmetic keeps float results such as `3.0 | times: 2` as `6.0`, and `j
 float number lexemes, including nested values, without converting them to strings. Integer division
 by zero and all modulo by zero report Liquid errors. Float division by zero displays `Infinity`.
 
+Cycle counters share an evaluated name across candidate lists, share literal values across quote
+styles, and keep unnamed variable cycles independent per parsed tag. Render calls isolate counters;
+includes share their caller's counters. Direct range arguments display their bounds, while array
+arguments concatenate their values. Core language conformance remains under audit.
+
 `pnpm language:check --suite-dir <clean-liquid-spec-checkout>` audits the pinned
 `Shopify/liquid-spec@84bf25e0edbca5f7e530574788b0f875ab331f50` basics inputs through the real SDK
 renderer with isolated snippet bindings. It requires Git and Ruby's standard YAML loader for this
