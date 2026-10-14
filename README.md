@@ -331,3 +331,16 @@ existing credentials, sequential batches and credential-free Shopify CDN reads. 
 partial file lists, changed bytes and redirects fail capture. Offline replay requires the same
 environment and hash; readable dependency content is excluded from public observations. No app,
 token, upload or store mutation is performed by preparation or these read helpers.
+
+Core language overrides match reference behavior for `contains nil` (always false) and `replace`
+with an empty search string (insertion at every Unicode character boundary, including both ends).
+Ordinary replacement patterns retain the pinned engine's behavior. These fixes do not establish
+complete Liquid language conformance or Shopify oracle coverage.
+
+`pnpm language:check --suite-dir <clean-liquid-spec-checkout>` audits the pinned
+`Shopify/liquid-spec@84bf25e0edbca5f7e530574788b0f875ab331f50` basics inputs through the real SDK
+renderer with isolated snippet bindings. It requires Git and Ruby's standard YAML loader for this
+dev command; the published renderer does not use Ruby. Only a clean checkout at that commit is
+accepted. Source files remain outside the repo and package. The metadata-only report identifies
+failing and unexercised cases, and the command exits 1 if either exists. It does not replace the
+complete language suite, parser-mode/drop/error tests or the designated Shopify oracle.

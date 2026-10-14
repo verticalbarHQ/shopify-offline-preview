@@ -56,7 +56,8 @@
     "test:browser-offline": "node tools/browser-network-off.mjs",
     "oracle:offline-check": "tsx tools/oracle/check-offline-comparison.ts",
     "parity:check": "tsx tools/check-parity.ts",
-    "oracle:corpus-prepare": "tsx tools/oracle/prepare-corpus.ts"
+    "oracle:corpus-prepare": "tsx tools/oracle/prepare-corpus.ts",
+    "language:check": "tsx tools/check-liquid-language.ts"
   },
   "dependencies": {
     "@shopify/liquid-html-parser": "2.10.2",

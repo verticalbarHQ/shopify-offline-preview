@@ -8,6 +8,7 @@ import { formKind } from "../shopify-tags.js";
 import { renderAnchor } from "./anchors.js";
 import { registerCollectionLinkFilters } from "./collection-links.js";
 import { registerColorFilters } from "./colors.js";
+import { registerCoreLanguage } from "./core-language.js";
 import { registerDateFilters } from "./dates.js";
 import { registerEventFilters } from "./events.js";
 import { handleize } from "./handle.js";
@@ -44,6 +45,7 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
       return native.call(this, input, ...args);
     });
   }
+  registerCoreLanguage(engine);
   registerColorFilters(engine);
   registerCollectionLinkFilters(engine);
   registerJsonFilter(engine);
