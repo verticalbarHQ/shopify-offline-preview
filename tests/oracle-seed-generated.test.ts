@@ -1,238 +1,31 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
 import { test } from "node:test";
-import { benchmarkMatrix, defaultFixture } from "../packages/data/src/fixture.js";
+import { benchmarkMatrix } from "../packages/data/src/fixture.js";
 import {
-  createOracleSeedBindingLedger,
   inspectVerifiedSeedOwnership,
   SeedLedgerError,
 } from "../tools/oracle/seed-binding-ledger.js";
-import { createOracleSeedExecutor } from "../tools/oracle/seed-execution.js";
 import {
   applyOracleSeedGenerated,
-  createOracleSeedGeneratedRecorder,
   inspectVerifiedSeedGenerated,
   readOracleSeedGeneratedMetadata,
   SeedGeneratedError,
 } from "../tools/oracle/seed-generated.js";
-import { buildOracleSeedPlan } from "../tools/oracle/seed-plan.js";
 import { createOracleSeedStateReader } from "../tools/oracle/seed-state-reader.js";
 
-// Authored GraphQL responses only. Test authorization callbacks are not real owner approval.
-const config = { domain: "authored-demo.myshopify.com", apiVersion: "2026-10" as const },
-  shopId = "gid://shopify/Shop/1",
-  locationId = "gid://shopify/Location/1",
-  productLegacy = "9007199254740993",
-  productId = `gid://shopify/Product/${productLegacy}`,
-  createdAt = "2026-10-15T01:23:45Z",
-  shop = { id: shopId, myshopifyDomain: config.domain, plan: { partnerDevelopment: true } },
-  contracts: unknown = JSON.parse(
-    await readFile(new URL("./fixtures/oracle-seed-input-contracts.json", import.meta.url), "utf8"),
-  ),
-  code = (name: string) => (error: unknown) =>
-    error instanceof SeedGeneratedError && error.code === name,
-  reply = (data: unknown, version = "2026-10") =>
-    Response.json({ data }, { headers: { "x-shopify-api-version": version } });
-function setup() {
-  const snapshot = defaultFixture();
-  for (const p of snapshot.products) {
-    p.images = [];
-    for (const v of p.variants) v.image = null;
-  }
-  const source = snapshot.products[0];
-  assert.ok(source);
-  const plan = buildOracleSeedPlan(config, snapshot),
-    state = plan.states[0];
-  assert.ok(state);
-  const task = state.tasks.find((t) => t.resource === "product");
-  assert.ok(task);
-  const variants = source.variants.map((v, index) => ({
-      id: `gid://shopify/ProductVariant/${BigInt(productLegacy) + BigInt(index + 1)}`,
-      legacyResourceId: String(BigInt(productLegacy) + BigInt(index + 1)),
-      selectedOptions: v.optionValues,
-    })),
-    parent = { id: productId, handle: source.handle, tags: source.tags };
-  let reads = 0,
-    writes = 0,
-    change = false,
-    foreign = false,
-    badContent = false;
-  const fetcher: typeof fetch = async (_url, init) => {
-    const body = JSON.parse(String(init?.body)),
-      query = String(body.query);
-    if (query.includes("OfflinePreviewSeedGuard"))
-      return reply({
-        shop: {
-          ...shop,
-          name: "Authored shop",
-          currencyCode: "USD",
-          ianaTimezone: "UTC",
-          metafield: { value: "true" },
-        },
-        currentAppInstallation: {
-          accessScopes: ["write_products", "write_inventory", "read_locations"].map((handle) => ({
-            handle,
-          })),
-        },
-      });
-    if (query.includes("OfflinePreviewSeedAbsence"))
-      return reply({
-        shop,
-        products: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
-      });
-    if (query.includes("OfflinePreviewSeedIdentities"))
-      return reply({
-        shop,
-        nodes: body.variables.ids.map((id: string) =>
-          id === locationId
-            ? { __typename: "Location", id, isActive: true }
-            : id === productId
-              ? { __typename: "Product", ...parent }
-              : {
-                  __typename: "ProductVariant",
-                  ...variants.find((v) => v.id === id),
-                  product: parent,
-                },
-        ),
-      });
-    if (query.includes("OfflinePreviewSeedVariants"))
-      return reply({
-        shop,
-        product: {
-          ...parent,
-          variants: {
-            nodes: variants.map((v) => ({ __typename: "ProductVariant", ...v })),
-            pageInfo: { hasNextPage: false },
-          },
-        },
-      });
-    if (query.includes("OfflinePreviewSeedGenerated")) {
-      reads++;
-      return reply({
-        shop,
-        nodes: [
-          {
-            __typename: "Product",
-            ...parent,
-            legacyResourceId: productLegacy,
-            createdAt: change && reads % 2 === 0 ? "2026-10-15T01:23:46Z" : createdAt,
-            publishedAt: null,
-            variants: {
-              nodes: variants.map((v, i) =>
-                foreign && i === 0
-                  ? { ...v, id: "gid://shopify/ProductVariant/99", legacyResourceId: "99" }
-                  : v,
-              ),
-              pageInfo: { hasNextPage: false },
-            },
-          },
-        ],
-      });
-    }
-    if (query.includes("OfflinePreviewSeedSource"))
-      return reply({
-        shop,
-        nodes: [
-          {
-            __typename: "Product",
-            ...parent,
-            title: badContent ? "changed" : source.title,
-            templateSuffix: source.templateSuffix,
-            descriptionHtml: source.descriptionHtml,
-            vendor: source.vendor,
-            productType: source.productType,
-            status: "ACTIVE",
-            seo: source.seo,
-            category: null,
-            isGiftCard: false,
-            requiresSellingPlan: false,
-            options: source.options.map((o, index) => ({
-              name: o.name,
-              position: index + 1,
-              optionValues: o.values.map((name) => ({ name })),
-            })),
-            media: { nodes: [], pageInfo: { hasNextPage: false } },
-            variants: {
-              nodes: source.variants.map((v, index) => ({
-                id: variants[index]?.id,
-                position: index + 1,
-                selectedOptions: v.optionValues,
-                price: v.price,
-                compareAtPrice: v.compareAtPrice,
-                sku: v.sku,
-                taxable: v.taxable,
-                inventoryPolicy: v.inventoryPolicy === "deny" ? "DENY" : "CONTINUE",
-                inventoryQuantity: v.inventoryQuantity,
-                barcodes: {
-                  nodes: v.barcode ? [{ value: v.barcode, type: null }] : [],
-                  pageInfo: { hasNextPage: false },
-                },
-                media: { nodes: [], pageInfo: { hasNextPage: false } },
-                inventoryItem: {
-                  id: `gid://shopify/InventoryItem/${index + 1}`,
-                  sku: v.sku,
-                  tracked: true,
-                  requiresShipping: v.requiresShipping,
-                  measurement: { weight: { value: v.weight, unit: "GRAMS" } },
-                  inventoryLevel: {
-                    isActive: true,
-                    location: { id: locationId },
-                    quantities: [{ name: "available", quantity: v.inventoryQuantity }],
-                  },
-                },
-              })),
-              pageInfo: { hasNextPage: false, endCursor: null },
-            },
-          },
-        ],
-      });
-    assert.ok(query.startsWith("mutation "));
-    writes++;
-    return reply({ productSet: { product: { id: productId }, userErrors: [] } });
-  };
-  const ledger = createOracleSeedBindingLedger(config, snapshot, shopId, "authored", [], fetcher),
-    executor = createOracleSeedExecutor(config, snapshot, shopId, "authored", contracts, {
-      authorize: async () => {},
-      verifyResult: async () => {},
-      verifyBindings: ledger.verifyBindings,
-      fetcher,
-    }),
-    recorder = createOracleSeedGeneratedRecorder(
-      config,
-      snapshot,
-      shopId,
-      "authored",
-      ledger,
-      fetcher,
-    );
-  const step = {
-    stateHash: state.hash,
-    taskKey: task.key,
-    kind: "task" as const,
-    options: { mode: "create" as const },
-    bindings: { '["inventory-location"]': locationId },
-  };
-  return {
-    snapshot,
-    source,
-    plan,
-    state,
-    task,
-    ledger,
-    executor,
-    recorder,
-    variants,
-    step,
-    fetcher,
-    reads: () => reads,
-    writes: () => writes,
-    set: (failure: "change" | "foreign" | "content") => {
-      change = failure === "change";
-      foreign = failure === "foreign";
-      badContent = failure === "content";
-    },
-  };
-}
+import {
+  code,
+  config,
+  createdAt,
+  locationId,
+  productId,
+  productLegacy,
+  reply,
+  setup,
+  shop,
+  shopId,
+} from "./helpers/seed-product.js";
+
 test("generated reader is read-only, pins store/version/ID and preserves integer IDs above numeric precision", async () => {
   const { fetcher } = setup();
   const metadata = await readOracleSeedGeneratedMetadata(

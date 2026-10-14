@@ -1,5 +1,6 @@
 import { type Snapshot, snapshotSchema } from "../../packages/data/src/schema.js";
 import { backupDigest } from "./backup-audit.js";
+import type { NativeImageDependencies } from "./image-native.js";
 import { openOracleSeedDurableRuntime } from "./seed-durable-runtime.js";
 import type { SeedExecutionStep, VerifiedSeedExecution } from "./seed-execution.js";
 import { inspectVerifiedSeedGenerated, type VerifiedSeedGenerated } from "./seed-generated.js";
@@ -343,31 +344,50 @@ export async function openOracleSeedStateDriver(
     );
     await runtime.registerEnvironment(dependencies.location);
     await runtime.registerEnvironment(dependencies.publication);
+    let busy = false;
+    async function exclusive<T>(fn: () => Promise<T>): Promise<T> {
+      if (busy) throw new SeedDriverError("concurrent-run");
+      busy = true;
+      try {
+        return await fn();
+      } finally {
+        busy = false;
+      }
+    }
     return {
-      async runState(stateHash: string) {
-        const result = await driver.runState(stateHash),
-          state = inspectVerifiedSeedState(result.resourceState),
-          plan = buildOracleSeedPlan(config, snapshot);
-        if (
-          state.domain !== config.domain ||
-          state.shopId !== shopId ||
-          state.fixtureHash !== plan.fixtureHash ||
-          state.stateHash !== stateHash
-        )
-          throw new SeedDriverError("verification-failed");
-        for (const receipt of result.generated) {
-          const generated = inspectVerifiedSeedGenerated(receipt);
+      runState: (stateHash: string) =>
+        exclusive(async () => {
+          const result = await driver.runState(stateHash),
+            state = inspectVerifiedSeedState(result.resourceState),
+            plan = buildOracleSeedPlan(config, snapshot);
           if (
-            generated.domain !== config.domain ||
-            generated.shopId !== shopId ||
-            generated.fixtureHash !== plan.fixtureHash ||
-            generated.stateHash !== stateHash
+            state.domain !== config.domain ||
+            state.shopId !== shopId ||
+            state.fixtureHash !== plan.fixtureHash ||
+            state.stateHash !== stateHash
           )
             throw new SeedDriverError("verification-failed");
-        }
-        return result;
-      },
-      close: driver.close,
+          for (const receipt of result.generated) {
+            const generated = inspectVerifiedSeedGenerated(receipt);
+            if (
+              generated.domain !== config.domain ||
+              generated.shopId !== shopId ||
+              generated.fixtureHash !== plan.fixtureHash ||
+              generated.stateHash !== stateHash
+            )
+              throw new SeedDriverError("verification-failed");
+          }
+          return result;
+        }),
+      observeNativeImages: (
+        stateHash: string,
+        taskKey: string,
+        themeId: string,
+        cookie: string,
+        native: NativeImageDependencies,
+      ) =>
+        exclusive(() => runtime.observeNativeImages(stateHash, taskKey, themeId, cookie, native)),
+      close: () => exclusive(() => driver.close()),
     };
   } catch (error) {
     await runtime.close();

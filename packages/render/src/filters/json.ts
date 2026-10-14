@@ -78,8 +78,9 @@ function record(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 function project(value: Record<string, unknown>, fields: string[]) {
+  const keys = new Set(Object.keys(value));
   return Object.fromEntries(
-    fields.filter((field) => Object.hasOwn(value, field)).map((field) => [field, value[field]]),
+    fields.filter((field) => keys.has(field)).map((field) => [field, value[field]]),
   );
 }
 export function registerJsonFilter(engine: Liquid) {
@@ -91,6 +92,7 @@ export function registerJsonFilter(engine: Liquid) {
     )
       return jsonString({ error: "json not allowed for this object" });
     const paths = new WeakMap<object, (string | number)[]>();
+    const projectedVariants = new WeakSet<object>();
     const floats: { path: (string | number)[]; text: string }[] = [];
     let first = true;
     const output = JSON.stringify(
@@ -107,8 +109,32 @@ export function registerJsonFilter(engine: Liquid) {
         const kind = liquidObjectKind(value);
         if (kind === "variant") {
           const variant = project(value, variantFields);
+          projectedVariants.add(variant);
           paths.set(variant, path);
           return variant;
+        }
+        if (kind === "image") {
+          // Variant JSON has a structured featured-image field; direct image drops serialize as their URL.
+          return key === "featured_image" && projectedVariants.has(this)
+            ? project(value, ["id", "product_id", "position", "alt", "width", "height", "src"])
+            : value.src;
+        }
+        if (kind === "media_image") {
+          const media = project(value, [
+            "alt",
+            "id",
+            "position",
+            "aspect_ratio",
+            "height",
+            "media_type",
+            "src",
+            "width",
+          ]);
+          media.preview_image = record(value.preview_image)
+            ? project(value.preview_image, ["aspect_ratio", "height", "width", "src"])
+            : null;
+          paths.set(media, path);
+          return media;
         }
         if (kind === "product") {
           const product = project(value, productFields);

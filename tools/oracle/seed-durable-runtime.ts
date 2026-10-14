@@ -1,5 +1,6 @@
 import type { Snapshot } from "../../packages/data/src/schema.js";
 import { backupDigest } from "./backup-audit.js";
+import type { NativeImageDependencies } from "./image-native.js";
 import { inspectPreparedSeedCheckpoint } from "./seed-binding-ledger.js";
 import {
   inspectVerifiedSeedExecution,
@@ -146,6 +147,13 @@ export async function openOracleSeedDurableRuntime(
       operation(() => runtime.recordGenerated(receipt)),
     observeGenerated: (stateHash: string, taskKey: string) =>
       operation(() => runtime.observeGenerated(stateHash, taskKey)),
+    observeNativeImages: (
+      stateHash: string,
+      taskKey: string,
+      themeId: string,
+      cookie: string,
+      native: NativeImageDependencies,
+    ) => operation(() => runtime.observeNativeImages(stateHash, taskKey, themeId, cookie, native)),
     registerEnvironment: (
       expected: Extract<ExpectedSeedIdentity, { kind: "Location" | "Publication" }>,
     ) => operation(() => runtime.registerEnvironment(structuredClone(expected))),

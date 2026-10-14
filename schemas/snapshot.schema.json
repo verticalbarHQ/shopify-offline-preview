@@ -183,7 +183,21 @@
             "pattern": "^(?!\\/)(?!.*[\\\\\\u0000])(?!.*(?:^|\\/)\\.{1,2}(?:\\/|$))(?!.*\\/\\/)(?!.*\\/$).+$"
           },
           "alt": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "width": {
             "type": "integer",
@@ -199,10 +213,6 @@
             "type": "string",
             "minLength": 1,
             "pattern": "^(?!\\.{1,2}$)[^/\\\\\\u0000\\r\\n]+$"
-          },
-          "id": {
-            "type": "string",
-            "minLength": 1
           },
           "focalPoint": {
             "type": "object",
@@ -600,7 +610,21 @@
                   "pattern": "^(?!\\/)(?!.*[\\\\\\u0000])(?!.*(?:^|\\/)\\.{1,2}(?:\\/|$))(?!.*\\/\\/)(?!.*\\/$).+$"
                 },
                 "alt": {
-                  "type": "string"
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "id": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "width": {
                   "type": "integer",
@@ -611,6 +635,22 @@
                   "type": "integer",
                   "exclusiveMinimum": 0,
                   "maximum": 9007199254740991
+                },
+                "mediaId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "mediaAlt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "previewAlt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 }
               },
               "required": [
@@ -742,7 +782,21 @@
                     "pattern": "^(?!\\/)(?!.*[\\\\\\u0000])(?!.*(?:^|\\/)\\.{1,2}(?:\\/|$))(?!.*\\/\\/)(?!.*\\/$).+$"
                   },
                   "alt": {
-                    "type": "string"
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "id": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "width": {
                     "type": "integer",
@@ -977,7 +1031,21 @@
                           "pattern": "^(?!\\/)(?!.*[\\\\\\u0000])(?!.*(?:^|\\/)\\.{1,2}(?:\\/|$))(?!.*\\/\\/)(?!.*\\/$).+$"
                         },
                         "alt": {
-                          "type": "string"
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "id": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         },
                         "width": {
                           "type": "integer",

@@ -7,9 +7,11 @@ import {
 import type { Snapshot } from "../../../data/src/schema.js";
 export class ImageUrlDrop extends Drop {
   #url: string;
-  constructor(url: string) {
+  readonly metadata: { alt: unknown; presentation: boolean } | undefined;
+  constructor(url: string, metadata?: { alt: unknown; presentation: boolean }) {
     super();
     this.#url = url;
+    this.metadata = metadata;
   }
   valueOf() {
     return this.#url;
@@ -48,8 +50,19 @@ export function imageFilters(snapshot: Snapshot, read: (path: string) => void = 
     unsupported: (message: string) => void,
   ): string | ImageUrlDrop {
     let value: unknown = toValue(input);
+    let origin =
+      input instanceof ImageUrlDrop
+        ? input.metadata
+        : input instanceof NamedImageDrop
+          ? { alt: input.alt, presentation: input.media_type !== null }
+          : undefined;
     if (value && typeof value === "object") {
       const keys = new Set(Reflect.ownKeys(value));
+      if (keys.has("alt"))
+        origin = {
+          alt: Reflect.get(value, "alt"),
+          presentation: !keys.has("id") || Reflect.get(value, "id") !== null,
+        };
       for (const name of ["src", "image", "featured_image", "preview_image"]) {
         if (keys.has(name)) {
           value = Reflect.get(value, name);
@@ -126,8 +139,8 @@ export function imageFilters(snapshot: Snapshot, read: (path: string) => void = 
       throw new ImageUrlInputError("Region crop requires its complete rectangle");
     const result = url.pathname + url.search;
     return input instanceof ImageUrlDrop ||
-      (input instanceof NamedImageDrop && input.media_type === null)
-      ? new ImageUrlDrop(result)
+      (origin && (!origin.presentation || origin.alt !== image.alt))
+      ? new ImageUrlDrop(result, origin)
       : result;
   }
   function imageTag(
@@ -135,7 +148,8 @@ export function imageFilters(snapshot: Snapshot, read: (path: string) => void = 
     args: unknown[],
     unsupported: (message: string) => void = () => {},
   ): string {
-    const presentation = !(input instanceof ImageUrlDrop);
+    const presentation =
+      input instanceof ImageUrlDrop ? (input.metadata?.presentation ?? false) : true;
     const value = toValue(input);
     if (typeof value !== "string" || !value.startsWith("/sop/images/"))
       throw new Error("image_tag requires a local image_url result");
@@ -160,7 +174,12 @@ export function imageFilters(snapshot: Snapshot, read: (path: string) => void = 
       : requestedWidth
         ? Math.max(1, Math.round((sourceHeight * Number(requestedWidth)) / sourceWidth))
         : sourceHeight;
-    const attributes: Record<string, unknown> = { src: value, alt: image.alt, width, height };
+    const attributes: Record<string, unknown> = {
+      src: value,
+      alt: input instanceof ImageUrlDrop && input.metadata ? input.metadata.alt : image.alt,
+      width,
+      height,
+    };
     if (presentation && image.focalPoint) {
       observe(image.file, "focalPoint.x");
       observe(image.file, "focalPoint.y");

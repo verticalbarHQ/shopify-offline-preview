@@ -1,4 +1,5 @@
-import type { Snapshot } from "../../packages/data/src/schema.js";
+import { type Snapshot, snapshotSchema } from "../../packages/data/src/schema.js";
+import { createOracleNativeImageRecorder, type NativeImageDependencies } from "./image-native.js";
 import { createOracleSeedBindingLedger } from "./seed-binding-ledger.js";
 import type { SeedCompletionDependencies } from "./seed-completion.js";
 import {
@@ -15,7 +16,7 @@ import type { StoredSeedCheckpoint } from "./seed-journal.js";
 import { createOracleSeedPostconditions } from "./seed-postconditions.js";
 import { createOracleSeedStateReader } from "./seed-state-reader.js";
 import { createOracleSeedUploader, SeedUploadError } from "./seed-upload.js";
-import type { OracleConfig } from "./store-guard.js";
+import { type OracleConfig, oracleConfigSchema } from "./store-guard.js";
 
 export class SeedRuntimeError extends Error {
   constructor(
@@ -41,8 +42,8 @@ export interface SeedRuntimeDependencies {
 /** One in-process execution lane with mandatory composed postconditions and atomic binding registration.
  * No batch seeder, durable recovery, wipe, marker, credentials or live entry point is supplied here. */
 export function createOracleSeedRuntime(
-  config: OracleConfig,
-  snapshot: Snapshot,
+  inputConfig: OracleConfig,
+  inputSnapshot: Snapshot,
   shopId: string,
   token: string,
   schema: unknown,
@@ -50,7 +51,9 @@ export function createOracleSeedRuntime(
   dependencies: SeedRuntimeDependencies,
 ) {
   if (typeof dependencies.authorize !== "function") throw new SeedRuntimeError("invalid-input");
-  const fetcher = dependencies.fetcher ?? fetch,
+  const config = oracleConfigSchema.parse(inputConfig),
+    snapshot = snapshotSchema.parse(inputSnapshot),
+    fetcher = dependencies.fetcher ?? fetch,
     ledger = createOracleSeedBindingLedger(config, snapshot, shopId, token, images, fetcher),
     generated = createOracleSeedGeneratedRecorder(config, snapshot, shopId, token, ledger, fetcher),
     stateReader = createOracleSeedStateReader(config, snapshot, shopId, token, ledger, {
@@ -100,6 +103,24 @@ export function createOracleSeedRuntime(
         const ownership = await ledger.observeOwnedTask(stateHash, taskKey);
         return generated.recordOwned(ownership);
       }),
+    observeNativeImages: (
+      stateHash: string,
+      taskKey: string,
+      themeId: string,
+      cookie: string,
+      native: NativeImageDependencies,
+    ) =>
+      operation(() =>
+        createOracleNativeImageRecorder(
+          config,
+          snapshot,
+          shopId,
+          token,
+          ledger,
+          native,
+          fetcher,
+        ).observe(stateHash, taskKey, themeId, cookie),
+      ),
     checkpoint: () => {
       if (busy) throw new SeedRuntimeError("concurrent-operation");
       if (recovery) throw new SeedRuntimeError("recovery-required");

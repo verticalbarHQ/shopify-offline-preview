@@ -129,10 +129,16 @@ export function buildOracleSeedPlan(config: OracleConfig, input: Snapshot) {
     }
     const images = new Map<string, ReturnType<typeof snapshotImages>[number]>();
     for (const image of snapshotImages(desired)) {
+      // File ownership is independent of per-association readonly image/media identifiers and view alt text.
+      const upload = { ...image };
+      delete upload.id;
+      delete upload.mediaId;
+      delete upload.mediaAlt;
+      delete upload.previewAlt;
       const previous = images.get(image.file);
-      if (previous && hash(previous) !== hash(image))
+      if (previous && hash(previous) !== hash(upload))
         issue("conflicting-image-metadata", key("image", image.file));
-      else images.set(image.file, image);
+      else images.set(image.file, upload);
     }
     for (const [file, image] of images) add("image", [file], image);
     for (const product of desired.products) {

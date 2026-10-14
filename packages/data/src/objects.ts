@@ -45,16 +45,26 @@ function id(value: string): number | string {
 function availableFields(values: LiquidRecord): LiquidRecord {
   return Object.fromEntries(Object.entries(values).filter(([, value]) => value !== undefined));
 }
-function image(value: Snapshot["products"][number]["images"][number], index: number): LiquidRecord {
+function image(
+  value: Snapshot["products"][number]["images"][number],
+  index: number | null = null,
+): LiquidRecord {
   const src = `/sop/images/${value.file.split("/").map(encodeURIComponent).join("/")}`;
   return {
-    ...value,
+    file: value.file,
+    alt: value.alt,
+    width: value.width,
+    height: value.height,
+    ...(value.id === undefined ? {} : { id: value.id === null ? null : id(value.id) }),
     src,
     url: src,
     aspect_ratio: value.width / value.height,
-    position: index + 1,
-    media_type: "image",
-    preview_image: { ...value, src, url: src, aspect_ratio: value.width / value.height },
+    position: index === null ? null : index + 1,
+    product_id: null,
+    variants: null,
+    "attached_to_variant?": null,
+    media_type: null,
+    preview_image: null,
   };
 }
 
@@ -79,7 +89,12 @@ export function liquidObjects(
     "lt",
     "leq",
   ]);
-  function tracked<T extends object>(value: T, type: string, path: string): T {
+  function tracked<T extends object>(
+    value: T,
+    type: string,
+    path: string,
+    sourceKeys?: Readonly<Record<string, string | null>>,
+  ): T {
     let entries = cache.get(value);
     if (!entries) {
       entries = new Map();
@@ -105,7 +120,9 @@ export function liquidObjects(
         if (typeof key !== "string") return Reflect.get(target, key, receiver);
         if (internal.has(key)) return undefined;
         if (Object.hasOwn(target, key)) {
-          hooks.read(Array.isArray(target) ? `${path}[${key}]` : `${path}.${key}`);
+          const source = sourceKeys && Object.hasOwn(sourceKeys, key) ? sourceKeys[key] : key;
+          if (source !== null)
+            hooks.read(Array.isArray(target) ? `${path}[${source}]` : `${path}.${source}`);
           return Reflect.get(target, key, receiver);
         }
         if (Array.isArray(target) || ["settings", "dictionary", "metafields"].includes(type))
@@ -162,7 +179,46 @@ export function liquidObjects(
   }
   for (const [productIndex, source] of snapshot.products.entries()) {
     const path = `products[${productIndex}]`;
-    const images = source.images.map(image);
+    const images = source.images.map((value, index) =>
+        tracked(image(value, index), "image", `${path}.images[${index}]`),
+      ),
+      media = source.images.map((value, index) => {
+        const preview = tracked(
+            {
+              ...image(value),
+              id: null,
+              alt:
+                value.previewAlt === undefined
+                  ? value.mediaAlt === undefined
+                    ? value.alt
+                    : value.mediaAlt
+                  : value.previewAlt,
+            },
+            "image",
+            `${path}.images[${index}]`,
+            {
+              id: null,
+              alt:
+                value.previewAlt !== undefined
+                  ? "previewAlt"
+                  : value.mediaAlt !== undefined
+                    ? "mediaAlt"
+                    : "alt",
+            },
+          ),
+          record = image(value, index);
+        delete record.id;
+        if (value.mediaId !== undefined) record.id = id(value.mediaId);
+        record.alt = value.mediaAlt === undefined ? value.alt : value.mediaAlt;
+        record.media_type = "image";
+        record.preview_image = preview;
+        const result = tracked(record, "image", `${path}.images[${index}]`, {
+          id: "mediaId",
+          alt: value.mediaAlt === undefined ? "alt" : "mediaAlt",
+        });
+        objectKinds.set(result, "media_image");
+        return result;
+      });
     const variants = source.variants.map((variant, index) => {
       const options = source.options.map(
         (option) => variant.optionValues.find((value) => value.name === option.name)?.value ?? "",
@@ -198,7 +254,7 @@ export function liquidObjects(
           url: `/products/${source.handle}?variant=${encodeURIComponent(variant.id)}`,
           image: images.find((i) => i.file === variant.image) ?? null,
           featured_image: images.find((i) => i.file === variant.image) ?? null,
-          featured_media: images.find((i) => i.file === variant.image) ?? null,
+          featured_media: media.find((i) => i.file === variant.image) ?? null,
           ...availableFields({
             quantity_rule: trackedJson(
               variant.quantityRule,
@@ -248,6 +304,30 @@ export function liquidObjects(
       );
     });
     const selected = variants.find((variant) => variant.selected);
+    for (const [index, record] of images.entries()) {
+      const file = source.images[index]?.file;
+      // Associations are getters so the graph is complete after variant construction and does not serialize cycles.
+      Object.defineProperties(record, {
+        product_id: {
+          enumerable: true,
+          get: () => {
+            if (source.id === undefined) {
+              hooks.unsupported("image", "product_id");
+              return undefined;
+            }
+            return id(source.id);
+          },
+        },
+        variants: {
+          enumerable: false,
+          get: () => variants.filter((_variant, index) => source.variants[index]?.image === file),
+        },
+        "attached_to_variant?": {
+          enumerable: true,
+          get: () => source.variants.some((variant) => variant.image === file),
+        },
+      });
+    }
     const firstAvailable = variants.find((variant) => variant.available) ?? null;
     const prices = source.variants.map((variant) => liquidPrice(variant.price));
     const comparePrices = source.variants.flatMap((variant) =>
@@ -306,8 +386,8 @@ export function liquidObjects(
       })),
       images,
       featured_image: images[0] ?? null,
-      media: images,
-      featured_media: images[0] ?? null,
+      media,
+      featured_media: media[0] ?? null,
       metafields: source.metafields,
     };
     const product = tracked(dto, "product", path);
@@ -331,7 +411,9 @@ export function liquidObjects(
           products: members,
           products_count: members.length,
           all_products_count: members.length,
-          image: source.image ? image(source.image, 0) : null,
+          image: source.image
+            ? tracked(image(source.image), "image", `collections[${collectionIndex}].image`)
+            : null,
           template_suffix: source.templateSuffix,
           default_sort_by: source.sortOrder,
           get sort_options() {
@@ -463,7 +545,13 @@ export function liquidObjects(
                 excerpt: article.excerptHtml,
                 author: article.author,
                 published_at: article.publishedAt,
-                image: article.image ? image(article.image, 0) : null,
+                image: article.image
+                  ? tracked(
+                      image(article.image),
+                      "image",
+                      `blogs[${blogIndex}].articles[${index}].image`,
+                    )
+                  : null,
                 url: `/blogs/${source.handle}/${article.handle}`,
                 tags: article.tags,
                 template_suffix: article.templateSuffix,

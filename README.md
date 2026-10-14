@@ -164,6 +164,12 @@ variant id. Images use paths relative to `images/`. Schema validation checks sou
 integrity and scenario derivation are also checked by the renderer. The runtime validates IANA timezone
 names, beyond the JSON Schema's string shape. No real customer data belongs in fixtures.
 
+Image `alt` accepts a string or null; an optional `id` supplies the classic Liquid image ID.
+Product images also accept `mediaId`, `mediaAlt`, and `previewAlt` for their separate media and
+preview views. Omitted alt overrides use `alt`; explicit null remains null. A media ID is never
+inferred from the classic image ID. Preview image IDs are null. Obtain these values externally;
+the offline runtime makes no store requests.
+
 ## Development inspector
 
 `dev` prints separate loopback origins for the inspector and the theme page. The inspector shows the

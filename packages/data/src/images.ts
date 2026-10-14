@@ -104,6 +104,7 @@ export class NamedImageDrop extends Drop {
   get id() {
     if (this.#preview) return null;
     const value = this.#field("id");
+    if (value === null) return null;
     if (typeof value !== "string") return undefined;
     return /^\d+$/.test(value) && Number.isSafeInteger(Number(value)) ? Number(value) : value;
   }

@@ -14,7 +14,8 @@ const imagePathPattern =
   /^(?!\/)(?!.*[\\\u0000])(?!.*(?:^|\/)\.{1,2}(?:\/|$))(?!.*\/\/)(?!.*\/$).+$/;
 const image = z.strictObject({
   file: z.string().min(1).regex(imagePathPattern),
-  alt: z.string(),
+  alt: z.string().nullable(),
+  id: z.string().min(1).nullable().optional(),
   width: z.number().int().positive(),
   height: z.number().int().positive(),
 });
@@ -73,7 +74,13 @@ const product = z.strictObject({
   templateSuffix: z.string().nullable(),
   options: z.array(z.strictObject({ name: z.string(), values: z.array(z.string()) })),
   variants: z.array(variant).min(1),
-  images: z.array(image),
+  images: z.array(
+    image.extend({
+      mediaId: z.string().min(1).optional(),
+      mediaAlt: z.string().nullable().optional(),
+      previewAlt: z.string().nullable().optional(),
+    }),
+  ),
   metafields,
   giftCard: z.boolean().optional(),
   requiresSellingPlan: z.boolean().optional(),
@@ -168,7 +175,6 @@ export const snapshotSchema = z.strictObject({
           .min(1)
           // biome-ignore lint/suspicious/noControlCharactersInRegex: Store filenames must reject NUL and line breaks in runtime and JSON Schema.
           .regex(/^(?!\.{1,2}$)[^/\\\u0000\r\n]+$/),
-        id: z.string().min(1).optional(),
         focalPoint: z
           .strictObject({
             x: z

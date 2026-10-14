@@ -79,7 +79,10 @@ function seoValue(source: {
     ...(source.description === undefined ? {} : { description: source.description }),
   };
 }
-function imageValue(image: { file: string; alt: string } | null, article = false): SeedValue {
+function imageValue(
+  image: { file: string; alt: string | null } | null,
+  article = false,
+): SeedValue {
   if (!image) return null;
   return {
     [article ? "url" : "src"]: binding("image-url", [image.file], "URL"),
