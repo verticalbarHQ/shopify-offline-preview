@@ -50,6 +50,11 @@ client.on((event) => {
       .parse(event.params).context;
     if (context.auxData?.isDefault) contexts.set(context.auxData.frameId, context.id);
   }
+  if (event.method === "Runtime.executionContextDestroyed") {
+    const { executionContextId } = z.object({ executionContextId: z.number() }).parse(event.params);
+    for (const [frameId, contextId] of contexts)
+      if (contextId === executionContextId) contexts.delete(frameId);
+  }
   if (event.method === "Runtime.executionContextsCleared") contexts.clear();
 });
 await client.call("Runtime.enable", {}, attached.sessionId);
@@ -65,12 +70,22 @@ const wait = `async predicate => {const until=Date.now()+10000;while(!predicate(
 try {
   for (const [index, item] of manifest.entries()) {
     const origin = origins[index];
-    await client.call("Page.navigate", { url: `${origin}/` }, attached.sessionId);
+    const navigation = z
+      .object({ loaderId: z.string() })
+      .parse(await client.call("Page.navigate", { url: `${origin}/` }, attached.sessionId));
     let parentReady = false;
     // A late load event from the previous page can arrive after navigation starts.
-    // Wait for this document's ready state; retry only destroyed navigation contexts.
+    // Match the navigation loader before readiness, even for a same-origin reload.
+    // Retry only destroyed navigation contexts.
     for (let attempt = 0; attempt < 200; attempt++) {
       try {
+        const document = z
+          .object({ frameTree: z.object({ frame: z.object({ loaderId: z.string() }) }) })
+          .parse(await client.call("Page.getFrameTree", {}, attached.sessionId));
+        if (document.frameTree.frame.loaderId !== navigation.loaderId) {
+          await delay(50);
+          continue;
+        }
         parentReady =
           (await client.evaluate(
             attached.sessionId,
@@ -101,6 +116,7 @@ try {
           sourceNodes: z.array(z.object({ id: z.string(), kind: z.string(), file: z.string() })),
           coreDiagnostics: z.number(),
           iframeIsolated: z.boolean(),
+          previewUrl: z.string().url(),
         })
         .parse(
           await client.evaluate(
@@ -110,7 +126,7 @@ try {
       await (${wait})(()=>document.querySelector('#status').dataset.state==='ready');
       const result=window.SOP_INSPECTOR_STATE.result;
       const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(result))))].map(b=>b.toString(16).padStart(2,'0')).join('');
-      return {hash,nodes:document.querySelectorAll('.tree-node').length,sourceNodes:[...document.querySelectorAll('.tree-node')].map(node=>({id:node.dataset.nodeId,kind:node.dataset.kind,file:node.dataset.file})),coreDiagnostics:document.querySelectorAll('#diagnostics .diagnostic').length,iframeIsolated:document.querySelector('#preview').contentDocument===null};})()`,
+      return {hash,nodes:document.querySelectorAll('.tree-node').length,sourceNodes:[...document.querySelectorAll('.tree-node')].map(node=>({id:node.dataset.nodeId,kind:node.dataset.kind,file:node.dataset.file})),coreDiagnostics:document.querySelectorAll('#diagnostics .diagnostic').length,iframeIsolated:document.querySelector('#preview').contentDocument===null,previewUrl:document.querySelector('#preview').src};})()`,
           ),
         );
       assert.equal(actual.hash, expectedHash, `${item.name}/${page.id}: CLI/core contract differs`);
@@ -128,9 +144,21 @@ try {
           `${item.name}/${page.id}: source file absent for ${node.id}`,
         );
       assert.equal(actual.iframeIsolated, true);
-      let frameId: string | undefined;
-      let frameContext: number | undefined;
-      for (let attempt = 0; attempt < 20; attempt++) {
+      const previewUrl = new URL(actual.previewUrl);
+      const viewId = previewUrl.searchParams.get("__sop_view");
+      assert.ok(viewId, `${item.name}/${page.id}: preview view ID absent`);
+      assert.equal(previewUrl.searchParams.get("__sop_route"), page.path);
+      assert.equal(previewUrl.searchParams.get("__sop_scenario"), page.scenario);
+      const childSchema = z.object({
+        regions: z.number(),
+        badges: z.number(),
+        path: z.string(),
+        viewId: z.string(),
+      });
+      let child: z.infer<typeof childSchema> | undefined;
+      // The parent is ready before iframe navigation finishes. Read the bridge and
+      // measurements atomically from this generation, never from a prior same-route view.
+      for (let attempt = 0; attempt < 200; attempt++) {
         const frames = z
           .object({
             frameTree: z.object({
@@ -140,37 +168,33 @@ try {
             }),
           })
           .parse(await client.call("Page.getFrameTree", {}, attached.sessionId));
-        frameId = frames.frameTree.childFrames?.find(
-          (frame) =>
-            new URL(frame.frame.url).searchParams.get("__sop_scenario") === page.scenario &&
-            new URL(frame.frame.url).searchParams.get("__sop_route") === page.path,
+        const frameId = frames.frameTree.childFrames?.find(
+          (frame) => frame.frame.url === actual.previewUrl,
         )?.frame.id;
-        frameContext = frameId ? contexts.get(frameId) : undefined;
+        const frameContext = frameId ? contexts.get(frameId) : undefined;
         if (frameContext !== undefined) {
           try {
-            const ready = await client.evaluate(
+            const observation = await client.evaluate(
               attached.sessionId,
-              "!!document.getElementById('sop-diagnostic-badges')",
+              `(()=>{if(location.href!==${JSON.stringify(actual.previewUrl)})return null;const element=document.getElementById('sop-bridge-config');const badges=document.getElementById('sop-diagnostic-badges');if(!element||!badges)return null;const config=JSON.parse(element.textContent);return {regions:config.regions.filter(region=>document.getElementById(region.domId)).length,badges:badges.children.length,path:config.path,viewId:config.viewId};})()`,
               frameContext,
             );
-            if (ready) break;
-          } catch {
-            /* A prior iframe context may be detaching. */
+            if (observation !== null) {
+              child = childSchema.parse(observation);
+              assert.equal(child.viewId, viewId, `${item.name}/${page.id}: stale preview view`);
+              break;
+            }
+          } catch (error) {
+            if (
+              !(error instanceof Error) ||
+              !/Cannot find context|Execution context was destroyed/.test(error.message)
+            )
+              throw error;
           }
         }
-        frameContext = undefined;
-        await client.evaluate(attached.sessionId, "new Promise(resolve=>setTimeout(resolve,30))");
+        await delay(50);
       }
-      assert.ok(frameContext !== undefined, `${item.name}/${page.id}: iframe bridge absent`);
-      const child = z
-        .object({ regions: z.number(), badges: z.number(), path: z.string() })
-        .parse(
-          await client.evaluate(
-            attached.sessionId,
-            `(()=>{const config=JSON.parse(document.getElementById('sop-bridge-config').textContent);return {regions:config.regions.filter(region=>document.getElementById(region.domId)).length,badges:document.getElementById('sop-diagnostic-badges').children.length,path:config.path};})()`,
-            frameContext,
-          ),
-        );
+      assert.ok(child, `${item.name}/${page.id}: current iframe bridge absent`);
       assert.equal(child.path, page.path, `${item.name}/${page.id}: preview route changed`);
       rows.push({
         theme: item.name,
