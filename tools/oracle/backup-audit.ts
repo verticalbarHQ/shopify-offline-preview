@@ -81,15 +81,15 @@ function json(bytes: Uint8Array): unknown {
   return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
 }
 
-/** Audits existing partial exports without interpreting theme instructions or making API calls. */
+/** Audits existing partial exports without interpreting archived instructions or making API calls. */
 export async function auditOracleBackups(
   config: OracleConfig,
   catalogPath: string,
-  themePath: string,
+  themeDirectory: string,
 ) {
   oracleConfigSchema.parse(config);
   const catalogRoot = await directory(catalogPath),
-    themeRoot = await directory(themePath);
+    themeRoot = await directory(themeDirectory);
   const catalogBytes = await localFile(catalogRoot, "manifest.json"),
     themeBytes = await localFile(themeRoot, "manifest.json");
   const catalog = catalogSchema.parse(json(catalogBytes)),
@@ -151,11 +151,6 @@ export async function auditOracleBackups(
   async function inventory(relative: string): Promise<void> {
     for (const entry of await readdir(join(themeFilesRoot, relative), { withFileTypes: true })) {
       const path = relative ? `${relative}/${entry.name}` : entry.name;
-      if (
-        !relative &&
-        !/^(?:assets|blocks|config|layout|locales|sections|snippets|templates)$/.test(entry.name)
-      )
-        continue;
       if (entry.isSymbolicLink()) {
         issues.add("theme-symlink-entry");
         continue;
@@ -171,11 +166,11 @@ export async function auditOracleBackups(
     verifiedThemeBytes = 0,
     unexpectedThemeEntries = 0;
   for (const entry of theme.files) {
-    if (
-      !/^(?:assets|blocks|config|layout|locales|sections|snippets|templates)\//.test(entry.path)
-    ) {
+    try {
+      themePath(entry.path);
+    } catch {
       unexpectedThemeEntries++;
-      issues.add("theme-unexpected-path");
+      issues.add("theme-unsafe-path");
       continue;
     }
     if (paths.has(entry.path)) {

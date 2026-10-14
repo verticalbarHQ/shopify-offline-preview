@@ -284,7 +284,7 @@ store before collection; preparation does not establish conformance.
 
 `pnpm oracle:backup-audit --catalog <archive-dir> --theme <archive-dir>` audits existing partial
 pre-wipe exports against `.local/oracle.json`. It checks file hashes, product counts, cursor chains,
-nested pagination and the theme inventory without reading non-theme instruction files. Output
+nested pagination and the archive inventory without interpreting archived instruction files. Output
 contains counts and hashes, with a local report under `.local/results`; it contains no archived
 payloads. Exit 2 means integrity or scope findings, and exit 3 means invalid/inaccessible input.
 Even exit 0 does not establish complete store coverage, successful restoration, fresh store

@@ -141,16 +141,21 @@ test("cursor-chain gaps and duplicate product IDs are detected", async () => {
     },
   );
 });
-test("non-theme instructions are excluded from archive scope and are never opened", async () => {
+test("root instruction files are hashed as archive data without being interpreted", async () => {
   await sample(async (catalog, theme) => {
     await edit(join(theme, "manifest.json"), (value) => {
       assert.ok(Array.isArray(value.files));
-      value.files.push({ path: "AGENTS.md", bytes: 42, sha256: hash("unused") });
+      value.files.push({
+        path: "AGENTS.md",
+        bytes: Buffer.byteLength("Own archived text data"),
+        sha256: hash("Own archived text data"),
+      });
     });
+    await writeFile(join(theme, "files", "AGENTS.md"), "Own archived text data");
     const result = await auditOracleBackups(config, catalog, theme);
-    assert.equal(result.theme.unexpectedEntries, 1);
-    assert.equal(result.theme.verifiedThemeFiles, 1);
-    assert.deepEqual(result.issues, ["theme-unexpected-path"]);
+    assert.equal(result.theme.unexpectedEntries, 0);
+    assert.equal(result.theme.verifiedThemeFiles, 2);
+    assert.deepEqual(result.issues, []);
   });
 });
 test("symlinked theme files and traversal cannot escape the local archive", async () => {
@@ -163,6 +168,7 @@ test("symlinked theme files and traversal cannot escape the local archive", asyn
     });
     const result = await auditOracleBackups(config, catalog, theme);
     assert.ok(result.issues.includes("theme-file-unreadable-or-unsafe"));
+    assert.ok(result.issues.includes("theme-unsafe-path"));
     assert.equal(result.theme.verifiedThemeFiles, 0);
   });
 });
