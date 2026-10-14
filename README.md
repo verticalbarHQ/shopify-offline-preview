@@ -282,3 +282,11 @@ observations contain hashes and provenance, with raw HTML and readable outputs k
 Observations are not automatically converted into registered implementation evidence. Native
 server output that changes between captures requires evidenced normalization or an explicit
 server-only disposition before it can qualify; unstable output is never silently accepted.
+
+`tools/oracle/verify-corpus.ts` replays a captured case against the supplied snapshot without
+network access. It requires the original and decoded input hashes, mapped request, fixture hash and
+upstream pin to match the observation. Both the output hash and UTF-8 byte count must match;
+Liquid errors, unsupported behavior, server-only omissions and missing resources prevent a pass.
+The helper returns hashes and diagnostic codes without readable output. A successful comparison
+alone does not populate the implementation registry or prove coverage of other filters, tags or
+object properties in the same example.
