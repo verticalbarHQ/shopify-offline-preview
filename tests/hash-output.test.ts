@@ -120,6 +120,19 @@ test("preview context spawning preserves global lookup, limits and variable isol
   assert.equal(child.readProperty({ "1..3": "wrong" }, new LiquidRange(1, 3)), undefined);
   assert.equal(child.readProperty(Object.create({ hidden: "wrong" }), "hidden"), undefined);
 });
+test("preview lookup evaluates ordinary Drop keys once", () => {
+  const engine = new Liquid();
+  const context = new PreviewContext({}, engine.options);
+  let reads = 0;
+  class Key extends Drop {
+    valueOf() {
+      reads++;
+      return reads === 1 ? "first" : "second";
+    }
+  }
+  assert.equal(context.readProperty({ first: "selected", second: "wrong" }, new Key()), "selected");
+  assert.equal(reads, 1);
+});
 test("hash display and range keys have identical Node and browser results", async () => {
   const browser: typeof import("../packages/check/src/browser.js") = await import(
     new URL("../dist/browser.js", import.meta.url).href

@@ -12,13 +12,19 @@ if (args.length !== 2 || args[0] !== "--suite-dir" || !args[1])
   throw new Error("Usage: check-liquid-language --suite-dir <pinned-liquid-spec-checkout>");
 const directory = resolve(args[1]);
 const pin = "84bf25e0edbca5f7e530574788b0f875ab331f50";
+// Canonical runner inputs from this pin's lib/liquid/spec/time_freezer.rb.
+const executionContext = {
+  snapshotNow: "2024-01-01T00:01:58Z",
+  shopTimezone: "UTC",
+  source: "lib/liquid/spec/time_freezer.rb",
+};
 const actualPin = execFileSync("git", ["rev-parse", "HEAD"], {
   cwd: directory,
   encoding: "utf8",
 }).trim();
 if (
   actualPin !== pin ||
-  execFileSync("git", ["status", "--porcelain", "--", "specs/basics"], {
+  execFileSync("git", ["status", "--porcelain", "--", "specs/basics", executionContext.source], {
     cwd: directory,
     encoding: "utf8",
   }).trim()
@@ -119,6 +125,8 @@ for (const { file, spec } of input.cases) {
     continue;
   }
   const snapshot = defaultFixture();
+  snapshot.meta.now = executionContext.snapshotNow;
+  snapshot.shop.timezone = executionContext.shopTimezone;
   const product = snapshot.products.find((p) => p.handle === fixtureProductHandle);
   if (!product) throw new Error("Fixture product missing");
   product.metafields._liquid_spec = { environment };
@@ -169,6 +177,7 @@ const report = {
   scope:
     "SDK renderer basics suite through isolated snippet bindings; not complete liquid-spec or Shopify oracle conformance",
   pin,
+  executionContext,
   counts,
   loaderFailures: input.loaderFailures,
   rows: rows.map(({ file, name, status, diagnosticCodes, reason, complexity }) => ({

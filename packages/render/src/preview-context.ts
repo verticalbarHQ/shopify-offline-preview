@@ -1,10 +1,10 @@
-import { Context, type Scope, toValue } from "liquidjs";
+import { Context, type Scope } from "liquidjs";
 import { LiquidRange } from "./range-values.js";
 
 /** JSON object keys remain scalar keys; a range must not alias its display text. */
 export class PreviewContext extends Context {
   override readProperty(object: Scope, key: Parameters<Context["readProperty"]>[1]): unknown {
-    if (toValue(key) instanceof LiquidRange) return undefined;
+    if (key instanceof LiquidRange) return undefined;
     return super.readProperty(object, key);
   }
   override spawn(scope = {}): PreviewContext {
