@@ -354,4 +354,6 @@ renderer with isolated snippet bindings. It requires Git and Ruby's standard YAM
 dev command; the published renderer does not use Ruby. Only a clean checkout at that commit is
 accepted. Source files remain outside the repo and package. The metadata-only report identifies
 failing and unexercised cases, and the command exits 1 if either exists. It does not replace the
-complete language suite, parser-mode/drop/error tests or the designated Shopify oracle.
+complete language suite or designated Shopify oracle. Test Drop constructor directives, which cannot
+be instantiated by the snapshot JSON bridge, are reported as unexercised rather than treated as
+ordinary objects or passing examples.

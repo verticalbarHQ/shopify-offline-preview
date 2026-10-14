@@ -5,6 +5,7 @@ import { z } from "zod";
 import { defaultFixture, fixtureProductHandle } from "../packages/data/src/fixture.js";
 import { renderTheme } from "../packages/render/src/index.js";
 import { MemoryThemeFileSystem } from "../packages/theme/src/index.js";
+import { hasDropConstructor } from "./liquid-spec-environment.js";
 
 const args = process.argv.slice(2);
 if (args.length !== 2 || args[0] !== "--suite-dir" || !args[1])
@@ -98,6 +99,15 @@ for (const { file, spec } of input.cases) {
     continue;
   }
   const environment = spec.environment ?? {};
+  if (hasDropConstructor(environment)) {
+    rows.push({
+      file,
+      name: spec.name,
+      status: "bridge-unsupported",
+      reason: "Test Drop constructor directives cannot be represented by the snapshot JSON bridge",
+    });
+    continue;
+  }
   const keys = Object.keys(environment);
   if (keys.some((key) => !/^[A-Za-z_][A-Za-z0-9_]*$/.test(key))) {
     rows.push({
