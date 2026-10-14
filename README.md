@@ -296,6 +296,16 @@ hashes, counts, duplicate references, nested pagination and image-file inventory
 counts and hashes; exit codes follow `oracle:backup-audit`. Remote capture stability and restoration
 remain separate evidence, even when the local archive passes.
 
+`pnpm oracle:seed-prepare --snapshot <snapshot.json> --images <fixture-png-dir>` prepares a local desired-state plan for the
+entire 18-request benchmark matrix. It groups identical persistent states, keeps session carts
+separate, orders resource dependencies and reports ambiguous image metadata, inventory and menu
+references. The private plan retains source payloads under `.local/results`; stdout contains
+counts, hashes and blocker codes. These tasks are source-shaped preparation data, not executable
+Admin API requests. Real IDs, generated timestamps, image processing and shop settings require
+calibration. The command makes no requests, uploads or mutations and does not authorize a wipe.
+The fixture image files must be local PNGs with dimensions matching their snapshot metadata.
+Their exact byte hashes are recorded for later upload and calibration; symlinks are rejected.
+
 The corpus capture helper uses the same pinned-development-store and unpublished-theme guards as
 page capture, extracts one exact JSON string payload, and requires two identical outputs. Public
 observations contain hashes and provenance, with raw HTML and readable outputs kept private.

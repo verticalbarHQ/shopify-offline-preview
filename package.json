@@ -59,7 +59,8 @@
     "oracle:corpus-prepare": "tsx tools/oracle/prepare-corpus.ts",
     "language:check": "tsx tools/check-liquid-language.ts",
     "oracle:backup-audit": "tsx tools/oracle/check-backups.ts",
-    "oracle:supplemental-backup-audit": "tsx tools/oracle/check-supplemental-backup.ts"
+    "oracle:supplemental-backup-audit": "tsx tools/oracle/check-supplemental-backup.ts",
+    "oracle:seed-prepare": "tsx tools/oracle/prepare-seed.ts"
   },
   "dependencies": {
     "@shopify/liquid-html-parser": "2.10.2",
