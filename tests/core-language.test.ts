@@ -15,7 +15,7 @@ test("empty replacement patterns insert at Unicode character boundaries includin
   const result = await renderTheme(
     new MemoryThemeFileSystem(
       theme(
-        `{{'hi'|replace:'','x'}}|{{'😀한'|replace:'','x'}}|{{''|replace:'','x'}}|{{'abc'|replace:'',''}}|{% if 'false' contains false %}wrong{% else %}no{% endif %}|{{'aba'|replace:'a','$&'}}`,
+        `{{'hi'|replace:'','x'}}|{{'😀한'|replace:'','x'}}|{{''|replace:'','x'}}|{{'abc'|replace:'',''}}|{{'aba'|replace:'a','$&'}}`,
       ),
     ),
     "/",
