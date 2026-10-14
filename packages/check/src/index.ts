@@ -15,7 +15,7 @@ import {
 import { parseThemeJson, type ThemeFileSystem, themePath } from "../../theme/src/index.js";
 import type { CheckResult, Diagnostic, Feature } from "./contracts.js";
 import { variableEnvironments } from "./type-environments.js";
-import { lookupKey } from "./type-facts.js";
+import { baseType, linkObjectType, lookupKey } from "./type-facts.js";
 
 export { type CheckResult, checkSchema } from "./contracts.js";
 
@@ -31,6 +31,9 @@ const dictionaries: Record<string, string> = {
   metaobjects: "metaobject",
 };
 function propertyReturns(type: string, property: string): string[] | undefined {
+  const resource = linkObjectType(type);
+  if (resource !== undefined && property === "object") return [resource];
+  type = baseType(type);
   const properties = objectNames.has(type) ? objects[type]?.properties : undefined;
   return properties && Object.hasOwn(properties, property) ? properties[property] : undefined;
 }
@@ -176,7 +179,8 @@ function scanLiquid(text: string, file: string): Scan {
         const initial =
           environments.get(node)?.get(node.name) ??
           (objectNames.has(node.name) ? new Set([node.name]) : new Set<string>());
-        for (const type of initial) if (objectNames.has(type)) add("object", type, true, node);
+        for (const type of initial)
+          if (objectNames.has(baseType(type))) add("object", baseType(type), true, node);
         if ((!initial.size || initial.has("?")) && node.lookups.length) {
           result.complete = false;
           result.diagnostics.push(
@@ -214,14 +218,14 @@ function scanLiquid(text: string, file: string): Scan {
             if (lookup.type === NodeTypes.String) {
               const returns = propertyReturns(type, lookup.value);
               if (returns) {
-                add("object-property", `${type}.${lookup.value}`, true, node);
+                add("object-property", `${baseType(type)}.${lookup.value}`, true, node);
                 for (const value of returns) next.add(value);
               } else if (
-                objectNames.has(type) &&
-                Object.keys(objects[type]?.properties ?? {}).length &&
+                objectNames.has(baseType(type)) &&
+                Object.keys(objects[baseType(type)]?.properties ?? {}).length &&
                 !["settings", "metafields", "metaobject"].includes(type)
               ) {
-                add("object-property", `${type}.${lookup.value}`, false, node);
+                add("object-property", `${baseType(type)}.${lookup.value}`, false, node);
               }
             } else {
               result.complete = false;

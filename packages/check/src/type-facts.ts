@@ -1,4 +1,5 @@
 import {
+  type LiquidArgument,
   type LiquidConditionalExpression,
   type LiquidExpression,
   NodeTypes,
@@ -50,6 +51,56 @@ const linkTypes: Readonly<Record<string, string>> = {
   policy_link: "policy",
   product_link: "product",
 };
+export function baseType(type: string): string {
+  return linkObjectType(type) !== undefined ? "link" : type;
+}
+export function linkObjectType(type: string): string | undefined {
+  return type.startsWith("link#") && Object.hasOwn(linkTypes, type.slice(5))
+    ? linkTypes[type.slice(5)]
+    : undefined;
+}
+/** Constraints come only from known native element types and literal predicates. */
+export function filterElementTypes(
+  types: Set<string>,
+  args: LiquidArgument[],
+  positive: boolean,
+): Set<string> {
+  const property = args[0],
+    value = args[1];
+  if (property?.type !== NodeTypes.String || value?.type !== NodeTypes.String) return types;
+  const result = new Set<string>();
+  for (const type of types) {
+    if (!type.endsWith("[]")) {
+      result.add("?");
+      continue;
+    }
+    const element = type.slice(0, -2);
+    if (
+      property.value === "type" &&
+      Object.hasOwn(linkTypes, value.value) &&
+      baseType(element) === "link"
+    ) {
+      const selected = linkObjectType(element);
+      if (selected !== undefined) {
+        if ((selected === linkTypes[value.value]) === positive) result.add(type);
+      } else result.add(positive ? `link#${value.value}[]` : type);
+    } else if (
+      property.value === "object_type" &&
+      searchKinds.has(value.value) &&
+      searchKinds.has(element)
+    ) {
+      if ((element === value.value) === positive) result.add(type);
+    } else if (
+      property.value === "media_type" &&
+      mediaKinds.has(value.value) &&
+      (element === "media" || mediaKinds.has(element))
+    ) {
+      for (const kind of element === "media" ? mediaKinds : [element])
+        if ((kind === value.value) === positive) result.add(`${kind}[]`);
+    } else result.add(type);
+  }
+  return result.size ? result : new Set(["nil[]"]);
+}
 const searchKinds = new Set(["product", "article", "page"]);
 const mediaKinds = new Set(["image", "video", "external_video", "model"]);
 
@@ -71,8 +122,8 @@ export function narrowValue(
   if (
     property.value === "type" &&
     Object.hasOwn(linkTypes, literal.value) &&
-    types.has("link") &&
-    [...types].every((type) => ["link", "nil", "?"].includes(type))
+    [...types].some((type) => baseType(type) === "link") &&
+    [...types].every((type) => ["link", "nil", "?"].includes(baseType(type)))
   ) {
     const target = {
       ...expression,
@@ -81,9 +132,24 @@ export function narrowValue(
     key = lookupKey(target);
     const objectTypes = hooks.lookup(target, symbols);
     const selected = linkTypes[literal.value];
+    const matchingLink = [...types].some(
+      (type) => type === "link" || linkObjectType(type) === selected,
+    );
     result = positive
-      ? new Set([selected ?? "?", ...(types.has("?") ? ["?"] : [])])
+      ? new Set([...(matchingLink ? [selected ?? "?"] : []), ...(types.has("?") ? ["?"] : [])])
       : new Set([...objectTypes].filter((type) => type !== selected));
+    if (positive) {
+      const parentKey = lookupKey(parent);
+      if (parentKey) {
+        const parentTypes = new Set<string>();
+        if (matchingLink) parentTypes.add(`link#${literal.value}`);
+        if (types.has("?")) parentTypes.add("?");
+        symbols = new Map(symbols).set(
+          parentKey,
+          parentTypes.size ? parentTypes : new Set(["nil"]),
+        );
+      }
+    }
   } else if (property.value === "object_type" && searchKinds.has(literal.value)) {
     if (![...types].some((type) => searchKinds.has(type))) return symbols;
     result = new Set(

@@ -392,3 +392,111 @@ test("a merchant product type string cannot be mistaken for a menu link discrimi
   assert.ok(features.some((feature) => feature.name === "product.object" && !feature.known));
   assert.ok(features.some((feature) => feature.name === "article.products"));
 });
+
+test("filtered link elements preserve their resource constraint through first find map and loops", async () => {
+  const files = theme();
+  files["sections/header.liquid"] =
+    `{% assign selected=linklists.main.links | where: 'type', 'collection_link' | first %}{{selected.object.products}}
+{% assign found=linklists.main.links | find: 'type', 'product_link' %}{{found.object.price}}
+{% assign resources=linklists.main.links | where: 'type', 'collection_link' | map: 'object' %}{% for resource in resources %}{{resource.products_count}}{% endfor %}
+{% assign links=linklists.main.links | where: 'type', 'collection_link' | reverse %}{% for entry in links %}{{entry.object.products}}{% endfor %}`;
+  const result = await checkTheme(new MemoryThemeFileSystem(files));
+  const features =
+    result.pages[0]?.features.filter((feature) =>
+      feature.occurrences.some((o) => o.file === "sections/header.liquid"),
+    ) ?? [];
+  for (const name of [
+    "collection.products",
+    "collection.products_count",
+    "product.price",
+    "link.object",
+  ])
+    assert.ok(
+      features.some((feature) => feature.name === name),
+      name,
+    );
+  for (const name of [
+    "article.products",
+    "blog.products",
+    "page.products",
+    "product.products",
+    "article.price",
+    "collection.price",
+  ])
+    assert.ok(!features.some((feature) => feature.name === name), name);
+  assert.ok(!features.some((feature) => feature.name.includes("link#")));
+});
+
+test("literal filters narrow search and media elements while caller data and merchant types stay untrusted", async () => {
+  const files = theme();
+  files["sections/header.liquid"] =
+    `{% assign results=search.results | where: 'object_type', 'product' %}{% for result in results %}{{result.price}}{% endfor %}
+{% assign images=product.media | where: 'media_type', 'image' %}{% for image in images %}{{image.width}}{% endfor %}
+{% assign product_links=collection.products | where: 'type', 'collection_link' %}{% for item in product_links %}{{item.object.products}}{% endfor %}
+{% assign uncertain=caller_input | where: 'type', 'collection_link' | first %}{{uncertain.object.products}}`;
+  const result = await checkTheme(new MemoryThemeFileSystem(files));
+  const features = result.pages[0]?.features ?? [];
+  assert.ok(features.some((feature) => feature.name === "product.price"));
+  assert.ok(features.some((feature) => feature.name === "image.width"));
+  assert.ok(features.some((feature) => feature.name === "product.object" && !feature.known));
+  assert.ok(
+    !features.some((feature) =>
+      ["article.price", "page.price", "media.width"].includes(feature.name),
+    ),
+  );
+  assert.equal(result.summary.complete, false);
+  assert.ok(
+    result.diagnostics.some(
+      (d) => d.code === "unresolved-object" && d.message.includes("uncertain"),
+    ),
+  );
+});
+
+test("contradicting literal predicates produce no resource properties and dynamic predicates retain the input", async () => {
+  const files = theme();
+  files["sections/header.liquid"] =
+    `{% assign links=linklists.main.links | where: 'type', 'collection_link' %}
+{% assign absent=links | where: 'type', 'product_link' | first %}{{absent.object.price}}
+{% assign rejected=links | reject: 'type', 'collection_link' | first %}{{rejected.object.products}}
+{% assign kept=links | reject: 'type', 'product_link' | first %}{{kept.object.products}}
+{% assign chosen=links | where: 'type', requested_type | first %}{{chosen.object.products}}
+{% for entry in links %}{% if entry.type == 'product_link' %}{{entry.object.price}}{% endif %}{% endfor %}`;
+  const result = await checkTheme(new MemoryThemeFileSystem(files));
+  const features =
+    result.pages[0]?.features.filter((feature) =>
+      feature.occurrences.some((o) => o.file === "sections/header.liquid"),
+    ) ?? [];
+  assert.ok(!features.some((feature) => feature.name === "product.price"));
+  const collection = features.find((feature) => feature.name === "collection.products");
+  assert.ok(collection?.occurrences.some((o) => o.line === 4));
+  assert.ok(collection?.occurrences.some((o) => o.line === 5));
+  assert.ok(!collection?.occurrences.some((o) => o.line === 3));
+});
+
+test("filtered resource constraints produce identical public check JSON in Node and browser", async () => {
+  const files = theme();
+  files["sections/header.liquid"] =
+    "{% assign links=linklists.main.links | where: 'type', 'collection_link' %}{% assign selected=links | first %}{{selected.object.products}}{% assign resources=links | map: 'object' %}{% for resource in resources %}{{resource.products_count}}{% endfor %}";
+  const browser: typeof import("../packages/check/src/browser.js") = await import(
+    new URL("../dist/browser.js", import.meta.url).href
+  );
+  assert.equal(
+    JSON.stringify(await browser.checkTheme(new browser.MemoryThemeFileSystem(files))),
+    JSON.stringify(await checkTheme(new MemoryThemeFileSystem(files))),
+  );
+});
+
+test("copying a guarded menu link retains its related resource type without refining the unguarded input", async () => {
+  const files = theme();
+  files["sections/header.liquid"] =
+    `{% for entry in linklists.main.links %}{% if entry.type == 'collection_link' %}{% assign copied=entry %}{% assign resource=copied.object %}{{resource.products}}{% endif %}
+{{entry.object.products}}{% endfor %}`;
+  const features = (await checkTheme(new MemoryThemeFileSystem(files))).pages[0]?.features ?? [];
+  const occurrences =
+    features
+      .find((feature) => feature.name === "article.products")
+      ?.occurrences.filter((o) => o.file === "sections/header.liquid") ?? [];
+  assert.ok(!occurrences.some((o) => o.line === 1));
+  assert.ok(occurrences.some((o) => o.line === 2));
+  assert.ok(features.some((feature) => feature.name === "collection.products"));
+});

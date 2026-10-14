@@ -226,7 +226,10 @@ and includes types carried between iterations and across branches. Documented `d
 filters retain their source types; unknown filter results and untyped caller inputs keep coverage
 incomplete. Conditions on menu link `type`, search result `object_type` and `media_type` refine
 resource properties in their branches, including short-circuit conditions. Reassignment and loop
-shadowing discard stale refinements. This inference does not mark any feature oracle-verified. The initial rendering check compares repeat runs and Node/browser builds
+shadowing discard stale refinements. Literal discriminator predicates in `where` and `find` also
+retain native element constraints through `first`, `map` and loops; merchant product types and
+untyped caller values are not treated as menu links. This inference does not mark any feature
+oracle-verified. The initial rendering check compares repeat runs and Node/browser builds
 across all 36 cases while reporting remaining errors and unsupported features. The browser smoke
 command starts a loopback-only verification page for those same cases. These checks do **not** assert
 Shopify render parity and do not waive acceptance gates. `oracle:offline-check` instruments temporary

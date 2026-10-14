@@ -9,6 +9,7 @@ import {
 
 import {
   bind,
+  filterElementTypes,
   mergeSymbols,
   narrowCondition,
   narrowValue,
@@ -74,6 +75,7 @@ export function variableEnvironments(
         if (fallback && fallback.type !== NodeTypes.NamedArgument)
           types = new Set([...types, ...hooks.lookup(fallback, symbols)]);
       } else if (["first", "last", "find", "find_index"].includes(filter.name)) {
+        if (filter.name === "find") types = filterElementTypes(types, filter.args, true);
         types =
           filter.name === "find_index"
             ? new Set(["number"])
@@ -83,6 +85,8 @@ export function variableEnvironments(
           filter.name,
         )
       ) {
+        if (filter.name === "where" || filter.name === "reject")
+          types = filterElementTypes(types, filter.args, filter.name === "where");
         types = new Set([...types].map((type) => (type.endsWith("[]") ? type : "?")));
       } else if (filter.name === "map") {
         const property = filter.args[0];
