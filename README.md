@@ -290,3 +290,9 @@ Liquid errors, unsupported behavior, server-only omissions and missing resources
 The helper returns hashes and diagnostic codes without readable output. A successful comparison
 alone does not populate the implementation registry or prove coverage of other filters, tags or
 object properties in the same example.
+
+Collection link filters (`url_for_type`, `url_for_vendor`, `link_to_type`, `link_to_vendor`,
+`within`, `sort_by`) generate catalog URLs and anchors from snapshot values. They retain existing
+URL queries and fragments, escape HTML attributes, and preserve label markup. `within` accepts a
+snapshot collection object; strings and other objects leave the supplied URL unchanged. Empty
+catalog labels produce `Unknown Type` or `Unknown Vendor`. These filters also await oracle coverage.

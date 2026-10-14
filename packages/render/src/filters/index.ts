@@ -4,6 +4,8 @@ import type { Snapshot } from "../../../data/src/schema.js";
 import { themePath } from "../../../theme/src/index.js";
 import { registerFontFilters } from "../fonts.js";
 import { formKind } from "../shopify-tags.js";
+import { renderAnchor } from "./anchors.js";
+import { registerCollectionLinkFilters } from "./collection-links.js";
 import { registerColorFilters } from "./colors.js";
 import { registerDateFilters } from "./dates.js";
 import { registerEventFilters } from "./events.js";
@@ -25,6 +27,7 @@ interface FilterHooks {
 }
 export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void {
   registerColorFilters(engine);
+  registerCollectionLinkFilters(engine);
   registerJsonFilter(engine);
   registerStructuredDataFilter(engine, hooks.snapshot.shop, hooks.diagnostic);
   registerDateFilters(engine, hooks.snapshot, hooks.files, hooks.diagnostic);
@@ -85,41 +88,7 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
     } catch {
       /* Relative or non-URL href strings still render as supplied. */
     }
-    const boolean = new Set([
-      "allowfullscreen",
-      "async",
-      "autofocus",
-      "autoplay",
-      "checked",
-      "controls",
-      "defer",
-      "disabled",
-      "formnovalidate",
-      "hidden",
-      "ismap",
-      "itemscope",
-      "loop",
-      "multiple",
-      "muted",
-      "nomodule",
-      "novalidate",
-      "open",
-      "playsinline",
-      "readonly",
-      "required",
-      "reversed",
-      "selected",
-    ]);
-    const output = Object.entries(attributes).flatMap(([name, input]) => {
-      if (!/^[A-Za-z_:][A-Za-z0-9_:.-]*$/.test(name))
-        throw new Error("Invalid link attribute name");
-      const scalar = toValue(input);
-      if (scalar === null || scalar === undefined || scalar === false) return [];
-      return [
-        `${name}="${escapeAttribute(scalar === true && boolean.has(name.toLowerCase()) ? name : scalar)}"`,
-      ];
-    });
-    return `<a ${output.join(" ")}>${String(toValue(value) ?? "")}</a>`;
+    return renderAnchor(value, attributes);
   });
   const translate = translateFactory(hooks.files, hooks.snapshot.shop.locale, hooks.sectionLocales);
   engine.registerFilter("translate", function (value: unknown, ...args: unknown[]) {
