@@ -26,6 +26,28 @@ export interface SeedRequestOptions {
   collectionMembers?: readonly string[];
   imageBytes?: number;
 }
+/** Shared step selection for the transport and durable request fingerprint. */
+export function compileSeedStepTemplates(
+  task: SeedTask,
+  kind: "task" | "publication" | "collection-order",
+  options: SeedRequestOptions,
+  observedOrder?: readonly string[],
+): SeedRequestTemplate[] {
+  if (kind === "task") return compileSeedTask(task, options);
+  if (kind === "publication" && (task.resource === "product" || task.resource === "collection"))
+    return [
+      compileSeedPublication(
+        task.resource === "product" ? "Product" : "Collection",
+        task.identity[0] ?? "",
+      ),
+    ];
+  if (kind === "collection-order" && task.resource === "collection" && observedOrder) {
+    const collection = snapshotSchema.shape.collections.element.parse(task.source);
+    if (collection.sortOrder !== "manual") throw new Error("Manual collection required");
+    return compileSeedCollectionOrder(task.identity[0] ?? "", observedOrder, collection.products);
+  }
+  throw new Error("Step unavailable");
+}
 export const seedBindingKey = (kind: string, ...identity: string[]) =>
   JSON.stringify([kind, ...identity]);
 function binding(kind: string, identity: readonly string[], resource = kind): SeedValue {

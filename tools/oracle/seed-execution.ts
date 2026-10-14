@@ -1,10 +1,8 @@
 import { z } from "zod";
-import { type Snapshot, snapshotSchema } from "../../packages/data/src/schema.js";
+import type { Snapshot } from "../../packages/data/src/schema.js";
 import { buildOracleSeedPlan, type SeedTask } from "./seed-plan.js";
 import {
-  compileSeedCollectionOrder,
-  compileSeedPublication,
-  compileSeedTask,
+  compileSeedStepTemplates,
   resolveSeedRequest,
   type SeedRequestOptions,
   type SeedRequestTemplate,
@@ -199,31 +197,12 @@ export function createOracleSeedExecutor(
       if (!task || !state) throw new SeedExecutionError("invalid-step");
       let template: SeedRequestTemplate;
       try {
-        let templates: SeedRequestTemplate[];
-        if (step.kind === "task") templates = compileSeedTask(task, step.options);
-        else if (
-          step.kind === "publication" &&
-          (task.resource === "product" || task.resource === "collection")
-        )
-          templates = [
-            compileSeedPublication(
-              task.resource === "product" ? "Product" : "Collection",
-              task.identity[0] ?? "",
-            ),
-          ];
-        else if (
-          step.kind === "collection-order" &&
-          task.resource === "collection" &&
-          step.observedOrder
-        ) {
-          const collection = snapshotSchema.shape.collections.element.parse(task.source);
-          if (collection.sortOrder !== "manual") throw new Error("Manual collection required");
-          templates = compileSeedCollectionOrder(
-            task.identity[0] ?? "",
-            step.observedOrder,
-            collection.products,
-          );
-        } else throw new Error("Step unavailable");
+        const templates = compileSeedStepTemplates(
+          task,
+          step.kind,
+          step.options,
+          step.observedOrder,
+        );
         const selected = templates[step.requestIndex ?? 0];
         if (!selected || !Number.isInteger(step.requestIndex ?? 0) || !scopes[selected.operation])
           throw new Error("Step unavailable");
