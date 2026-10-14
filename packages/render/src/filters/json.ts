@@ -3,6 +3,7 @@ import { type Liquid, toValue } from "liquidjs";
 import { ImageDirectory, MissingImage } from "../../../data/src/images.js";
 import { liquidObjectKind } from "../../../data/src/objects.js";
 import { LiquidFloat } from "../numbers.js";
+import { TableRowLoop } from "../tablerow-tag.js";
 
 /** Safe inside a script element, matching Shopify's JSON escaping. */
 export function jsonString(value: unknown): string {
@@ -83,7 +84,11 @@ function project(value: Record<string, unknown>, fields: string[]) {
 }
 export function registerJsonFilter(engine: Liquid) {
   engine.registerFilter("json", (input: unknown) => {
-    if (input instanceof MissingImage || input instanceof ImageDirectory)
+    if (
+      input instanceof MissingImage ||
+      input instanceof ImageDirectory ||
+      input instanceof TableRowLoop
+    )
       return jsonString({ error: "json not allowed for this object" });
     const paths = new WeakMap<object, (string | number)[]>();
     const floats: { path: (string | number)[]; text: string }[] = [];

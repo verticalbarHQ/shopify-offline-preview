@@ -234,16 +234,21 @@ export async function renderTheme(
       }
     },
   );
-  registerLoopTrace(engine, async (value, _token, safeRegion, render) => {
-    const info = object(value) ? classicBlocks.get(value) : undefined;
-    if (!info) return render();
-    const entry = node("block", info.type, info.file, info.pointer);
-    return inside(entry, async () => {
-      const body = await render();
-      if (!safeRegion) return body;
-      return `<!--sop:region ${entry.id}-->${body}<!--/sop:region-->`;
-    });
-  });
+  registerLoopTrace(
+    engine,
+    async (value, _token, safeRegion, render) => {
+      const info = object(value) ? classicBlocks.get(value) : undefined;
+      if (!info) return render();
+      const entry = node("block", info.type, info.file, info.pointer);
+      return inside(entry, async () => {
+        const body = await render();
+        if (!safeRegion) return body;
+        return `<!--sop:region ${entry.id}-->${body}<!--/sop:region-->`;
+      });
+    },
+    (error, token) =>
+      liquidError(error, token.file ?? "layout/theme.liquid", token.getPosition()[0] ?? 1),
+  );
   const assetBundles = new ThemeAssetBundles(files, snapshot);
   registerBasicTags(engine);
   registerCycleTag(engine);

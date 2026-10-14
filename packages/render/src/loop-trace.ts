@@ -10,6 +10,7 @@ import {
   Tokenizer,
   type TopLevelToken,
 } from "liquidjs";
+import { registerTableRowTag } from "./tablerow-tag.js";
 
 /** Delegates to public metadata methods so saved references retain live indices. */
 class ForloopView extends Drop {
@@ -65,6 +66,7 @@ export function registerLoopTrace(
     safeRegion: boolean,
     render: () => Promise<string>,
   ) => Promise<string>,
+  onError: (error: unknown, token: TagToken) => string,
 ): void {
   const ranges = new Map<string, { start: number; end: number }[] | null>();
   function safeRegion(token: TagToken): boolean {
@@ -151,5 +153,10 @@ export function registerLoopTrace(
         ];
       }
     },
+  );
+  registerTableRowTag(
+    engine,
+    (value, token, render) => execute(value, token, safeRegion(token), render),
+    onError,
   );
 }

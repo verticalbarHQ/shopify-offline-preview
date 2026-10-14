@@ -366,6 +366,10 @@ and scope restoration.
 The standalone `reversed` keyword is recognized immediately after the collection, before named
 `limit` and `offset` attributes.
 
+`tablerow` emits Shopify's row/cell boundaries and whitespace, exposes live `tablerowloop` metadata,
+and consumes break/continue within the table loop. Empty arrays emit an empty row; nil/false
+collections emit nothing. Cell rendering preserves snippet markup and inspector block ownership.
+
 `pnpm language:check --suite-dir <clean-liquid-spec-checkout>` audits the pinned
 `Shopify/liquid-spec@84bf25e0edbca5f7e530574788b0f875ab331f50` basics inputs through the real SDK
 renderer with isolated snippet bindings. It requires Git and Ruby's standard YAML loader for this
