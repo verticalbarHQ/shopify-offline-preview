@@ -4,6 +4,7 @@ import { test } from "node:test";
 import { benchmarkMatrix, defaultFixture } from "../packages/data/src/fixture.js";
 import {
   createOracleSeedBindingLedger,
+  inspectVerifiedSeedOwnership,
   SeedLedgerError,
 } from "../tools/oracle/seed-binding-ledger.js";
 import { createOracleSeedExecutor } from "../tools/oracle/seed-execution.js";
@@ -276,6 +277,59 @@ test("genuine execution must be recorded in the ledger; fresh source and stable 
     code("unverified-execution"),
   );
 });
+test("current owned observation reuses unchanged source across fixture states without claiming another execution", async () => {
+  const s = setup();
+  await s.ledger.registerEnvironment({ kind: "Location", id: locationId });
+  const execution = await s.executor.executeVerified(s.step);
+  await s.ledger.record(execution);
+  const unchanged = s.plan.states.find(
+      (state) =>
+        state.hash !== s.state.hash &&
+        state.tasks.some(
+          (task) => task.key === s.task.key && task.sourceHash === s.task.sourceHash,
+        ),
+    ),
+    changed = s.plan.states.find((state) =>
+      state.tasks.some((task) => task.key === s.task.key && task.sourceHash !== s.task.sourceHash),
+    );
+  assert.ok(unchanged && changed);
+  const observation = await s.ledger.observeOwnedTask(unchanged.hash, s.task.key),
+    context = inspectVerifiedSeedOwnership(observation),
+    generated = await s.recorder.recordOwned(observation);
+  assert.equal(context.stateHash, unchanged.hash);
+  assert.equal(inspectVerifiedSeedGenerated(generated).stateHash, unchanged.hash);
+  assert.equal(s.writes(), 1);
+  context.task.sourceHash = "altered clone";
+  assert.equal(inspectVerifiedSeedOwnership(observation).task.sourceHash, s.task.sourceHash);
+  await assert.rejects(s.ledger.observeOwnedTask(changed.hash, s.task.key), {
+    code: "scope-mismatch",
+  });
+  await assert.rejects(
+    s.recorder.recordOwned({ kind: "verified-seed-ownership" }),
+    code("unverified-execution"),
+  );
+  await assert.rejects(
+    s.recorder.recordOwned(JSON.parse(JSON.stringify(observation))),
+    code("unverified-execution"),
+  );
+  const other = setup();
+  await assert.rejects(other.recorder.recordOwned(observation), code("unverified-execution"));
+  assert.equal(other.reads(), 0);
+});
+test("owned observations require the same full source and stable generated metadata as execution-based calibration", async () => {
+  for (const failure of ["change", "foreign", "content"] as const) {
+    const s = setup();
+    await s.ledger.registerEnvironment({ kind: "Location", id: locationId });
+    await s.ledger.record(await s.executor.executeVerified(s.step));
+    const observation = await s.ledger.observeOwnedTask(s.state.hash, s.task.key);
+    s.set(failure);
+    await assert.rejects(
+      s.recorder.recordOwned(observation),
+      (error) => error instanceof SeedGeneratedError,
+    );
+    assert.equal(s.writes(), 1);
+  }
+});
 test("case patch remaps variant/cart references, preserves shop inputs and reports incomplete capture dependencies", async () => {
   const s = setup(),
     before = structuredClone(s.snapshot);
@@ -355,6 +409,7 @@ test("old execution loses recorded ownership after a later update and cannot be 
   await s.ledger.registerEnvironment({ kind: "Location", id: locationId });
   const old = await s.executor.executeVerified(s.step);
   await s.ledger.record(old);
+  const observation = await s.ledger.observeOwnedTask(s.state.hash, s.task.key);
   const values = Object.fromEntries(
     s.source.variants.map((v, i) => [
       JSON.stringify(["variant-id", s.source.handle, v.id]),
@@ -376,6 +431,7 @@ test("old execution loses recorded ownership after a later update and cannot be 
     (e) => e instanceof SeedLedgerError && e.code === "unverified-execution",
   );
   await assert.rejects(s.recorder.record(old), code("unverified-execution"));
+  await assert.rejects(s.recorder.recordOwned(observation), code("unverified-execution"));
 });
 test("truncation, duplicate or inconsistent legacy IDs and approximate comments counts are rejected", async () => {
   const s = setup(),

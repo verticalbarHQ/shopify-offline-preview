@@ -34,6 +34,27 @@ import { assertOracleStore, type OracleConfig, oracleConfigSchema } from "./stor
 export interface PreparedSeedCheckpoint {
   readonly kind: "prepared-seed-checkpoint";
 }
+export interface VerifiedSeedOwnership {
+  readonly kind: "verified-seed-ownership";
+}
+export interface SeedOwnershipContext {
+  domain: string;
+  apiVersion: "2026-10";
+  expectedShopId: string;
+  fixtureHash: string;
+  stateHash: string;
+  task: { key: string; sourceHash: string };
+  kind: "task";
+}
+const ownershipObservations = new WeakMap<
+  VerifiedSeedOwnership,
+  { owner: object; entry: Entry; key: string; context: SeedOwnershipContext }
+>();
+export function inspectVerifiedSeedOwnership(receipt: VerifiedSeedOwnership): SeedOwnershipContext {
+  const observation = ownershipObservations.get(receipt);
+  if (!observation) throw new SeedLedgerError("unverified-execution");
+  return structuredClone(observation.context);
+}
 interface RestoredSeedOwnership {
   readonly kind: "restored-seed-ownership";
 }
@@ -82,6 +103,7 @@ export function createOracleSeedBindingLedger(
   if (!/^gid:\/\/shopify\/Shop\/[1-9]\d*$/.test(shopId) || !token.trim() || plan.issues.length)
     throw new SeedLedgerError("scope-mismatch");
   const entries = new Map<string, Entry>(),
+    owner = {},
     staged = new Map<string, VerifiedSeedUpload>(),
     usedUploads = new WeakSet<VerifiedSeedUpload>(),
     used = new WeakSet<VerifiedSeedExecution>();
@@ -132,6 +154,78 @@ export function createOracleSeedBindingLedger(
   const tuple = (values: { name: string; value: string }[]) =>
     JSON.stringify([...values].sort((a, b) => a.name.localeCompare(b.name)));
   return {
+    /** Ownership of a recorded source, including restored roots; writable fields still require fresh source comparison. */
+    async observeOwnedTask(stateHash: string, taskKey: string): Promise<VerifiedSeedOwnership> {
+      if (recording) throw new SeedLedgerError("concurrent-record");
+      const task = plan.states
+        .find((state) => state.hash === stateHash)
+        ?.tasks.find((task) => task.key === taskKey);
+      if (!task) throw new SeedLedgerError("scope-mismatch");
+      const key =
+          task.resource === "article"
+            ? seedBindingKey("article-id", ...task.identity)
+            : seedBindingKey(`${task.resource}-id`, task.identity[0] ?? ""),
+        entry = current(key);
+      if (!entry.proof) throw new SeedLedgerError("unverified-execution");
+      const provenance =
+        entry.proof.kind === "restored-seed-ownership"
+          ? restoredOwnership.get(entry.proof)
+          : (() => {
+              const { context } = inspectVerifiedSeedExecution(entry.proof);
+              return {
+                stateHash: context.stateHash,
+                taskKey: context.task.key,
+                sourceHash: context.task.sourceHash,
+              };
+            })();
+      // An unchanged task may be reused in another fixture state; changed source requires a real update first.
+      if (
+        !provenance ||
+        provenance.taskKey !== taskKey ||
+        provenance.sourceHash !== task.sourceHash
+      )
+        throw new SeedLedgerError("scope-mismatch");
+      try {
+        await check(entry);
+      } catch {
+        throw new SeedLedgerError("read-back-failed");
+      }
+      if (entries.get(key) !== entry) throw new SeedLedgerError("unverified-execution");
+      const receipt: VerifiedSeedOwnership = Object.freeze({ kind: "verified-seed-ownership" });
+      ownershipObservations.set(receipt, {
+        owner,
+        entry,
+        key,
+        context: {
+          domain: pinned.domain,
+          apiVersion: pinned.apiVersion,
+          expectedShopId: shopId,
+          fixtureHash: plan.fixtureHash,
+          stateHash,
+          task: { key: taskKey, sourceHash: task.sourceHash },
+          kind: "task",
+        },
+      });
+      return receipt;
+    },
+    async assertOwned(receipt: VerifiedSeedOwnership): Promise<ExpectedSeedIdentity> {
+      if (recording) throw new SeedLedgerError("concurrent-record");
+      const observation = ownershipObservations.get(receipt);
+      if (
+        !observation ||
+        observation.owner !== owner ||
+        entries.get(observation.key) !== observation.entry
+      )
+        throw new SeedLedgerError("unverified-execution");
+      try {
+        await check(observation.entry);
+      } catch {
+        throw new SeedLedgerError("read-back-failed");
+      }
+      if (recording || entries.get(observation.key) !== observation.entry)
+        throw new SeedLedgerError("unverified-execution");
+      return structuredClone(observation.entry.expected);
+    },
     /** Only recorded opaque proofs can prepare a persistable ownership checkpoint. No staged URLs are retained. */
     checkpoint(): PreparedSeedCheckpoint {
       if (recording) throw new SeedLedgerError("concurrent-record");

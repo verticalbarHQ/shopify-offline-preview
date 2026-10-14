@@ -126,6 +126,10 @@ export async function openOracleSeedDurableRuntime(
           ? ("accepting-steps" as const)
           : ("recovery-required" as const),
     getBinding: runtime.getBinding,
+    recordGenerated: (receipt: VerifiedSeedExecution) =>
+      operation(() => runtime.recordGenerated(receipt)),
+    observeGenerated: (stateHash: string, taskKey: string) =>
+      operation(() => runtime.observeGenerated(stateHash, taskKey)),
     registerEnvironment: (
       expected: Extract<ExpectedSeedIdentity, { kind: "Location" | "Publication" }>,
     ) => operation(() => runtime.registerEnvironment(structuredClone(expected))),

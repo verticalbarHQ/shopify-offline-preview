@@ -3,8 +3,17 @@ import { applyScenario, validateSnapshotReferences } from "../../packages/data/s
 import type { Snapshot } from "../../packages/data/src/schema.js";
 import { snapshotSchema } from "../../packages/data/src/schema.js";
 import { snapshotFingerprint } from "./matrix.js";
-import type { createOracleSeedBindingLedger } from "./seed-binding-ledger.js";
-import { inspectVerifiedSeedExecution, type VerifiedSeedExecution } from "./seed-execution.js";
+import {
+  type createOracleSeedBindingLedger,
+  inspectVerifiedSeedOwnership,
+  type SeedOwnershipContext,
+  type VerifiedSeedOwnership,
+} from "./seed-binding-ledger.js";
+import {
+  inspectVerifiedSeedExecution,
+  type SeedExecutionContext,
+  type VerifiedSeedExecution,
+} from "./seed-execution.js";
 import { buildOracleSeedPlan } from "./seed-plan.js";
 import { seedBindingKey } from "./seed-requests.js";
 import { assertOracleSeedSource, readOracleSeedSource } from "./seed-source.js";
@@ -205,133 +214,147 @@ export function createOracleSeedGeneratedRecorder(
     plan = buildOracleSeedPlan(pinned, snapshot);
   if (plan.issues.length) throw new SeedGeneratedError("invalid-input");
   let busy = false;
+  async function recordObservation(
+    context: SeedOwnershipContext | SeedExecutionContext,
+    assertOwnership: () => ReturnType<typeof ledger.assertOwned>,
+  ): Promise<VerifiedSeedGenerated> {
+    if (busy) throw new SeedGeneratedError("concurrent-record");
+    busy = true;
+    try {
+      const task = plan.states
+        .find((s) => s.hash === context.stateHash)
+        ?.tasks.find((t) => t.key === context.task.key);
+      if (
+        !task ||
+        context.fixtureHash !== plan.fixtureHash ||
+        context.expectedShopId !== shopId ||
+        context.domain !== pinned.domain ||
+        context.apiVersion !== pinned.apiVersion ||
+        task.sourceHash !== context.task.sourceHash ||
+        context.kind !== "task"
+      )
+        throw new SeedGeneratedError("scope-mismatch");
+      const kinds: Partial<Record<typeof task.resource, SeedGeneratedKind>> = {
+          product: "Product",
+          collection: "Collection",
+          page: "Page",
+          blog: "Blog",
+          article: "Article",
+        },
+        kind = kinds[task.resource];
+      if (!kind) throw new SeedGeneratedError("invalid-input");
+      let expected: Awaited<ReturnType<typeof ledger.assertRecorded>>;
+      try {
+        expected = await assertOwnership();
+      } catch {
+        throw new SeedGeneratedError("unverified-execution");
+      }
+      if (expected.kind !== kind) throw new SeedGeneratedError("metadata-mismatch");
+      let before: SeedGeneratedMetadata, after: SeedGeneratedMetadata;
+      try {
+        before = await readOracleSeedGeneratedMetadata(
+          pinned,
+          token,
+          shopId,
+          kind,
+          expected.id,
+          fetcher,
+        );
+        const source = await readOracleSeedSource(
+          pinned,
+          token,
+          shopId,
+          kind,
+          expected.id,
+          kind === "Product" ? ledger.get(seedBindingKey("inventory-location")) : undefined,
+          fetcher,
+        );
+        assertOracleSeedSource(task, source, ledger.get);
+        after = await readOracleSeedGeneratedMetadata(
+          pinned,
+          token,
+          shopId,
+          kind,
+          expected.id,
+          fetcher,
+        );
+      } catch (error) {
+        if (error instanceof SeedGeneratedError) throw error;
+        throw new SeedGeneratedError("read-failed");
+      }
+      if (JSON.stringify(before) !== JSON.stringify(after))
+        throw new SeedGeneratedError("metadata-changed");
+      if (after.handle !== task.identity[task.resource === "article" ? 1 : 0])
+        throw new SeedGeneratedError("metadata-mismatch");
+      if (after.__typename === "Product") {
+        // Use the actual state's source, including overlays; default snapshot variants are not authoritative here.
+        const taskVariants = z
+          .object({
+            variants: z.array(
+              z.object({
+                id: z.string(),
+                optionValues: z.array(z.object({ name: z.string(), value: z.string() })),
+              }),
+            ),
+          })
+          .parse(task.source).variants;
+        if (after.variants.nodes.length !== taskVariants.length)
+          throw new SeedGeneratedError("metadata-mismatch");
+        const tuple = (values: { name: string; value: string }[]) =>
+            JSON.stringify([...values].sort((a, b) => a.name.localeCompare(b.name))),
+          observed = new Map(after.variants.nodes.map((v) => [tuple(v.selectedOptions), v]));
+        if (observed.size !== taskVariants.length)
+          throw new SeedGeneratedError("metadata-mismatch");
+        for (const variant of taskVariants)
+          if (
+            observed.get(tuple(variant.optionValues))?.id !==
+            ledger.get(seedBindingKey("variant-id", after.handle, variant.id))
+          )
+            throw new SeedGeneratedError("metadata-mismatch");
+      }
+      if (
+        after.__typename === "Article" &&
+        after.blog.id !== ledger.get(seedBindingKey("blog-id", task.identity[0] ?? ""))
+      )
+        throw new SeedGeneratedError("metadata-mismatch");
+      try {
+        await assertOwnership();
+      } catch {
+        throw new SeedGeneratedError("unverified-execution");
+      }
+      const output: VerifiedSeedGenerated = Object.freeze({ kind: "verified-seed-generated" });
+      records.set(output, {
+        domain: pinned.domain,
+        shopId,
+        fixtureHash: plan.fixtureHash,
+        stateHash: context.stateHash,
+        taskKey: task.key,
+        sourceHash: task.sourceHash,
+        metadata: after,
+      });
+      return output;
+    } finally {
+      busy = false;
+    }
+  }
   return {
     async record(receipt: VerifiedSeedExecution): Promise<VerifiedSeedGenerated> {
-      if (busy) throw new SeedGeneratedError("concurrent-record");
-      busy = true;
+      let context: SeedExecutionContext;
       try {
-        let record: ReturnType<typeof inspectVerifiedSeedExecution>;
-        try {
-          record = inspectVerifiedSeedExecution(receipt);
-        } catch {
-          throw new SeedGeneratedError("unverified-execution");
-        }
-        const context = record.context,
-          task = plan.states
-            .find((s) => s.hash === context.stateHash)
-            ?.tasks.find((t) => t.key === context.task.key);
-        if (
-          !task ||
-          context.fixtureHash !== plan.fixtureHash ||
-          context.expectedShopId !== shopId ||
-          context.domain !== pinned.domain ||
-          context.apiVersion !== pinned.apiVersion ||
-          task.sourceHash !== context.task.sourceHash ||
-          context.kind !== "task"
-        )
-          throw new SeedGeneratedError("scope-mismatch");
-        const kinds: Partial<Record<typeof task.resource, SeedGeneratedKind>> = {
-            product: "Product",
-            collection: "Collection",
-            page: "Page",
-            blog: "Blog",
-            article: "Article",
-          },
-          kind = kinds[task.resource];
-        if (!kind) throw new SeedGeneratedError("invalid-input");
-        let expected: Awaited<ReturnType<typeof ledger.assertRecorded>>;
-        try {
-          expected = await ledger.assertRecorded(receipt);
-        } catch {
-          throw new SeedGeneratedError("unverified-execution");
-        }
-        if (expected.kind !== kind) throw new SeedGeneratedError("metadata-mismatch");
-        let before: SeedGeneratedMetadata, after: SeedGeneratedMetadata;
-        try {
-          before = await readOracleSeedGeneratedMetadata(
-            pinned,
-            token,
-            shopId,
-            kind,
-            expected.id,
-            fetcher,
-          );
-          const source = await readOracleSeedSource(
-            pinned,
-            token,
-            shopId,
-            kind,
-            expected.id,
-            kind === "Product" ? ledger.get(seedBindingKey("inventory-location")) : undefined,
-            fetcher,
-          );
-          assertOracleSeedSource(task, source, ledger.get);
-          after = await readOracleSeedGeneratedMetadata(
-            pinned,
-            token,
-            shopId,
-            kind,
-            expected.id,
-            fetcher,
-          );
-        } catch (error) {
-          if (error instanceof SeedGeneratedError) throw error;
-          throw new SeedGeneratedError("read-failed");
-        }
-        if (JSON.stringify(before) !== JSON.stringify(after))
-          throw new SeedGeneratedError("metadata-changed");
-        if (after.handle !== task.identity[task.resource === "article" ? 1 : 0])
-          throw new SeedGeneratedError("metadata-mismatch");
-        if (after.__typename === "Product") {
-          // Use the actual state's source, including overlays; default snapshot variants are not authoritative here.
-          const taskVariants = z
-            .object({
-              variants: z.array(
-                z.object({
-                  id: z.string(),
-                  optionValues: z.array(z.object({ name: z.string(), value: z.string() })),
-                }),
-              ),
-            })
-            .parse(task.source).variants;
-          if (after.variants.nodes.length !== taskVariants.length)
-            throw new SeedGeneratedError("metadata-mismatch");
-          const tuple = (values: { name: string; value: string }[]) =>
-              JSON.stringify([...values].sort((a, b) => a.name.localeCompare(b.name))),
-            observed = new Map(after.variants.nodes.map((v) => [tuple(v.selectedOptions), v]));
-          if (observed.size !== taskVariants.length)
-            throw new SeedGeneratedError("metadata-mismatch");
-          for (const variant of taskVariants)
-            if (
-              observed.get(tuple(variant.optionValues))?.id !==
-              ledger.get(seedBindingKey("variant-id", after.handle, variant.id))
-            )
-              throw new SeedGeneratedError("metadata-mismatch");
-        }
-        if (
-          after.__typename === "Article" &&
-          after.blog.id !== ledger.get(seedBindingKey("blog-id", task.identity[0] ?? ""))
-        )
-          throw new SeedGeneratedError("metadata-mismatch");
-        try {
-          await ledger.assertRecorded(receipt);
-        } catch {
-          throw new SeedGeneratedError("unverified-execution");
-        }
-        const output: VerifiedSeedGenerated = Object.freeze({ kind: "verified-seed-generated" });
-        records.set(output, {
-          domain: pinned.domain,
-          shopId,
-          fixtureHash: plan.fixtureHash,
-          stateHash: context.stateHash,
-          taskKey: task.key,
-          sourceHash: task.sourceHash,
-          metadata: after,
-        });
-        return output;
-      } finally {
-        busy = false;
+        context = inspectVerifiedSeedExecution(receipt).context;
+      } catch {
+        throw new SeedGeneratedError("unverified-execution");
       }
+      return recordObservation(context, () => ledger.assertRecorded(receipt));
+    },
+    async recordOwned(receipt: VerifiedSeedOwnership): Promise<VerifiedSeedGenerated> {
+      let context: SeedOwnershipContext;
+      try {
+        context = inspectVerifiedSeedOwnership(receipt);
+      } catch {
+        throw new SeedGeneratedError("unverified-execution");
+      }
+      return recordObservation(context, () => ledger.assertOwned(receipt));
     },
   };
 }

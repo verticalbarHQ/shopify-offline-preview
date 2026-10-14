@@ -9,6 +9,7 @@ import {
   type SeedExecutionStep,
   type VerifiedSeedExecution,
 } from "./seed-execution.js";
+import { createOracleSeedGeneratedRecorder } from "./seed-generated.js";
 import type { ExpectedSeedIdentity } from "./seed-identities.js";
 import type { StoredSeedCheckpoint } from "./seed-journal.js";
 import { createOracleSeedPostconditions } from "./seed-postconditions.js";
@@ -50,6 +51,7 @@ export function createOracleSeedRuntime(
   if (typeof dependencies.authorize !== "function") throw new SeedRuntimeError("invalid-input");
   const fetcher = dependencies.fetcher ?? fetch,
     ledger = createOracleSeedBindingLedger(config, snapshot, shopId, token, images, fetcher),
+    generated = createOracleSeedGeneratedRecorder(config, snapshot, shopId, token, ledger, fetcher),
     verifyResult = createOracleSeedPostconditions(config, snapshot, shopId, token, ledger, images, {
       ...dependencies.completion,
       fetcher,
@@ -79,6 +81,12 @@ export function createOracleSeedRuntime(
   return {
     status: () => (recovery ? ("recovery-required" as const) : ("accepting-steps" as const)),
     getBinding: ledger.get,
+    recordGenerated: (receipt: VerifiedSeedExecution) => operation(() => generated.record(receipt)),
+    observeGenerated: (stateHash: string, taskKey: string) =>
+      operation(async () => {
+        const ownership = await ledger.observeOwnedTask(stateHash, taskKey);
+        return generated.recordOwned(ownership);
+      }),
     checkpoint: () => {
       if (busy) throw new SeedRuntimeError("concurrent-operation");
       if (recovery) throw new SeedRuntimeError("recovery-required");

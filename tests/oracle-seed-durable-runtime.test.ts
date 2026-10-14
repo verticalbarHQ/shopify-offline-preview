@@ -8,6 +8,10 @@ import { snapshotSchema } from "../packages/data/src/schema.js";
 import { backupDigest } from "../tools/oracle/backup-audit.js";
 import { createOracleSeedBindingLedger } from "../tools/oracle/seed-binding-ledger.js";
 import { openOracleSeedDurableRuntime } from "../tools/oracle/seed-durable-runtime.js";
+import {
+  applyOracleSeedGenerated,
+  inspectVerifiedSeedGenerated,
+} from "../tools/oracle/seed-generated.js";
 import { openOracleSeedJournal } from "../tools/oracle/seed-journal.js";
 import { buildOracleSeedPlan } from "../tools/oracle/seed-plan.js";
 import { seedBindingKey } from "../tools/oracle/seed-requests.js";
@@ -40,6 +44,7 @@ async function setup(failure = "", authorize: () => Promise<void> = async () => 
     denied = false,
     drift = "",
     sourceReads = 0,
+    generatedReads = 0,
     driftAt = Infinity;
   const fetcher: typeof fetch = async (_url, init) => {
       calls++;
@@ -88,6 +93,22 @@ async function setup(failure = "", authorize: () => Promise<void> = async () => 
               templateSuffix: source.templateSuffix,
               isPublished: true,
               seo: source.seo,
+            },
+          ],
+        });
+      }
+      if (query.includes("OfflinePreviewSeedGenerated")) {
+        generatedReads++;
+        return reply({
+          shop,
+          nodes: [
+            {
+              __typename: "Page",
+              id,
+              handle:
+                drift === "generated" && generatedReads % 2 === 0
+                  ? "authored changed handle"
+                  : source.handle,
             },
           ],
         });
@@ -196,6 +217,41 @@ test("lost acknowledgement remains pending after restart and prevents every late
     );
     assert.equal(s.calls(), before);
     assert.equal(s.writes(), 1);
+    await runtime.close();
+  } finally {
+    await rm(s.directory, { recursive: true, force: true });
+  }
+});
+
+test("restored ownership produces fresh generated evidence without another write or journal mutation", async () => {
+  const s = await setup();
+  try {
+    let runtime = await s.open();
+    const execution = await runtime.execute(step),
+      live = await runtime.recordGenerated(execution);
+    assert.equal(inspectVerifiedSeedGenerated(live).metadata.id, id);
+    await runtime.close();
+    runtime = await s.open();
+    const before = await readFile(join(s.directory, "seed-run.json"), "utf8"),
+      generated = await runtime.observeGenerated(step.stateHash, step.taskKey),
+      view = inspectVerifiedSeedGenerated(generated),
+      request = plan.requests.find((request) => request.stateHash === step.stateHash);
+    assert.ok(request);
+    const calibrated = applyOracleSeedGenerated(config, snapshot, shopId, request.caseId, [
+      generated,
+    ]);
+    assert.equal(view.metadata.id, id);
+    assert.equal(calibrated.snapshot.pages.find((page) => page.handle === source.handle)?.id, "1");
+    assert.equal(calibrated.captureReady, false);
+    assert.equal(s.writes(), 1);
+    assert.equal(await readFile(join(s.directory, "seed-run.json"), "utf8"), before);
+    for (const drift of ["source", "identity", "generated"]) {
+      s.drift(drift);
+      await assert.rejects(runtime.observeGenerated(step.stateHash, step.taskKey));
+      assert.equal(s.writes(), 1);
+    }
+    s.drift("");
+    await runtime.observeGenerated(step.stateHash, step.taskKey);
     await runtime.close();
   } finally {
     await rm(s.directory, { recursive: true, force: true });
