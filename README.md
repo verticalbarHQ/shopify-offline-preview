@@ -354,6 +354,11 @@ styles, and keep unnamed variable cycles independent per parsed tag. Render call
 includes share their caller's counters. Direct range arguments display their bounds, while array
 arguments concatenate their values. Core language conformance remains under audit.
 
+Quoted Liquid literals retain backslashes without decoding escape sequences. The first matching
+quote ends the literal value; use the opposite quote style to include quotation marks. Public
+tokenizer adapters preserve the original source text and positions for outputs, assignments,
+tag/filter arguments, property keys, multiline Liquid statements and dynamic settings.
+
 Nested loops expose `forloop.parentloop`, including multi-level parent metadata and live saved
 references. Includes share the caller's loop context; isolated render calls start their own root
 loop context. Inspector loop instrumentation preserves these relationships through loop control

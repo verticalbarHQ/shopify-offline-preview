@@ -1,5 +1,6 @@
 import { NodeTypes, toLiquidAST, walk } from "@shopify/liquid-html-parser";
-import { type Liquid, Parser, Token, Tokenizer, TokenKind, type TopLevelToken } from "liquidjs";
+import { type Liquid, Parser, Token, TokenKind, type TopLevelToken } from "liquidjs";
+import { LiteralTokenizer, preserveQuotedOutputs } from "./literal-tokenizer.js";
 import { preserveNumericLiterals } from "./numbers.js";
 
 /** Structural HTML token made from the public Token base; retains original file/line offsets. */
@@ -24,7 +25,7 @@ export function parseLiquid(engine: Liquid, text: string, file: string) {
       if (node.blockEndPosition.start > node.blockStartPosition.end)
         bodies.set(node.blockStartPosition.end, node.blockEndPosition.start);
   });
-  class RawTokenizer extends Tokenizer {
+  class RawTokenizer extends LiteralTokenizer {
     override readTopLevelToken(options: Liquid["options"]): TopLevelToken {
       const end = bodies.get(this.p);
       if (end !== undefined) {
@@ -39,6 +40,7 @@ export function parseLiquid(engine: Liquid, text: string, file: string) {
     engine.options,
   );
   const parsed = new Parser(engine).parseTokens(tokens);
+  preserveQuotedOutputs(engine, parsed);
   preserveNumericLiterals(parsed);
   return parsed;
 }

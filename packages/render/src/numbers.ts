@@ -9,6 +9,7 @@ import {
   toValue,
   Value,
 } from "liquidjs";
+import { LiteralTokenizer } from "./literal-tokenizer.js";
 
 /** Float identity survives assign/filter chains even when its numeric value is integral. */
 export class LiquidFloat extends Number implements Comparable {
@@ -174,7 +175,14 @@ export async function evalNumericValue(
   input: string,
   context?: Context,
 ): Promise<unknown> {
-  const value = new Value(input, engine);
+  const tokenizer = new LiteralTokenizer(
+    input,
+    engine.options.operators,
+    undefined,
+    undefined,
+    engine.options.groupedExpressions,
+  );
+  const value = new Value(tokenizer.readFilteredValue(), engine);
   decorateNumericValue(value);
   return toPromise(value.value(context ?? new Context({}, engine.options, {}, { liquid: engine })));
 }
