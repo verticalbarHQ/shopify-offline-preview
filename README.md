@@ -375,6 +375,10 @@ Keywords followed by a dot or bracket resolve as variable names (for example `bl
 `empty[1]`); their standalone literal meaning is preserved.
 Special literal comparisons treat nil as blank and keep the empty/blank sentinels distinct in
 either operand order, while preserving ordinary value comparisons.
+Plain JSON hashes supplied in snapshots display as `{"key"=>"value"}` in outputs and `echo`.
+Outer arrays concatenate their elements, while arrays inside a hash retain inspected notation.
+The `json` filter keeps its JSON serialization contract, and resource Drops retain their own
+display behavior. A range used as a lookup key does not alias its `start..end` string.
 
 Nested loops expose `forloop.parentloop`, including multi-level parent metadata and live saved
 references. Includes share the caller's loop context; isolated render calls start their own root

@@ -14,7 +14,9 @@ import {
   type TopLevelToken,
   toValue,
   UnlessTag,
+  Value,
 } from "liquidjs";
+import { liquidOutputValue } from "./filters/core-language.js";
 import { prepareRangeArguments, prepareRangeToken, prepareRangeValue } from "./range-values.js";
 
 type ErrorHook = (error: unknown, token: Token) => void;
@@ -73,6 +75,16 @@ class BoundTag extends Tag {
         return;
       }
     }
+    if (original.name === "echo") {
+      for (const argument of original.arguments?.() ?? []) {
+        if (argument instanceof Value) {
+          const value = yield argument.value(context, false);
+          emitter.write(liquidOutputValue(value));
+          break;
+        }
+      }
+      return;
+    }
     return yield this.#original.render(context, emitter);
   }
   *arguments() {
@@ -94,9 +106,10 @@ class BoundTag extends Tag {
   }
 }
 class BoundOutput extends Output {
-  *render(context: Context, emitter: Emitter) {
+  *render(context: Context, emitter: Emitter): Generator<unknown, void, unknown> {
     yield prepareRangeValue(this.value, context);
-    return yield* super.render(context, emitter);
+    const value = yield toValue(yield this.value.value(context, false));
+    emitter.write(liquidOutputValue(value));
   }
 }
 /** Public parser factory hooks bind SDK-owned range tokens before native tag/value evaluation. */

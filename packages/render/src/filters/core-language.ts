@@ -1,4 +1,5 @@
 import { type Liquid, Tokenizer, toValue } from "liquidjs";
+import { isSnapshotHash } from "../json-hashes.js";
 import { LiquidRange } from "../range-values.js";
 
 function textValue(input: unknown): string {
@@ -87,6 +88,17 @@ function inspect(input: unknown, seen = new WeakSet<object>()): string {
   } finally {
     seen.delete(value);
   }
+}
+
+/** Direct output concatenates arrays, but ordinary JSON hashes use Liquid's Ruby notation. */
+export function liquidOutputValue(input: unknown): unknown {
+  const value: unknown = toValue(input);
+  if (Array.isArray(value)) return value.map(liquidOutputValue);
+  if (value !== null && typeof value === "object" && isSnapshotHash(value)) {
+    const prototype: unknown = Object.getPrototypeOf(value);
+    if (prototype === Object.prototype || prototype === null) return inspect(value);
+  }
+  return value;
 }
 
 /** Public filter/operator overrides for reference-confirmed core language differences. */

@@ -1,7 +1,7 @@
 import { NodeTypes, toLiquidAST, walk } from "@shopify/liquid-html-parser";
 import {
   AssignTag,
-  Context,
+  type Context,
   Liquid,
   LiquidError,
   Tag,
@@ -29,10 +29,12 @@ import { ImageUrlInputError } from "./filters/images.js";
 import { registerShopifyFilters } from "./filters/index.js";
 import { fontSetting } from "./fonts.js";
 import { registerIncludeTag } from "./include-tag.js";
+import { registerSnapshotHashes } from "./json-hashes.js";
 import { registerLoopTrace } from "./loop-trace.js";
 import { evalNumericValue } from "./numbers.js";
 import { registerPageMetadata } from "./page-metadata.js";
 import { parseLiquid } from "./parse-liquid.js";
+import { PreviewContext } from "./preview-context.js";
 import { registerRenderTag } from "./render-tag.js";
 import { resolveRoute } from "./routes.js";
 import { registerShopifyTags } from "./shopify-tags.js";
@@ -100,6 +102,7 @@ export async function renderTheme(
     options.scenario,
   );
   validateSnapshotReferences(snapshot);
+  registerSnapshotHashes(snapshot);
   const route = resolveRoute(snapshot, path);
   const diagnostics: Diagnostic[] = [...route.diagnostics];
   const data = new Map<string, Set<string>>();
@@ -650,7 +653,7 @@ export async function renderTheme(
     );
   }
   globals.settings = settings(definitions, settingsConfig, () => globalSettingsContext);
-  globalSettingsContext = new Context({}, engine.options, { globals });
+  globalSettingsContext = new PreviewContext({}, engine.options, { globals });
   Object.defineProperty(globals, "content_for_header", {
     get() {
       diagnostic(
@@ -750,7 +753,7 @@ export async function renderTheme(
       };
       const sectionGlobals = Object.defineProperties({}, Object.getOwnPropertyDescriptors(globals));
       Object.defineProperty(sectionGlobals, "section", { value: sectionData, enumerable: true });
-      const context = new Context({ section: sectionData }, engine.options, {
+      const context = new PreviewContext({ section: sectionData }, engine.options, {
         globals: sectionGlobals,
       });
       sectionContext = context;
@@ -849,9 +852,13 @@ export async function renderTheme(
         if (Object.getOwnPropertyDescriptor(scope, key)?.configurable === false) continue;
         Object.defineProperty(scope, key, { value, enumerable: true, configurable: true });
       }
-      blockContext = new Context({ ...parameters, block: blockData, closest }, engine.options, {
-        globals: scope,
-      });
+      blockContext = new PreviewContext(
+        { ...parameters, block: blockData, closest },
+        engine.options,
+        {
+          globals: scope,
+        },
+      );
       blockOwners.set(blockData, {
         config,
         pointer: entry.settingsPath ?? `${parent.pointer}/blocks/${pointer}`,
@@ -929,7 +936,7 @@ export async function renderTheme(
           return content;
         },
       });
-      return renderFile(file, new Context(globals, engine.options));
+      return renderFile(file, new PreviewContext(globals, engine.options));
     });
   }
   if (object(settingsConfig.blocks)) {
