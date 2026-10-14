@@ -358,6 +358,10 @@ Quoted Liquid literals retain backslashes without decoding escape sequences. The
 quote ends the literal value; use the opposite quote style to include quotation marks. Public
 tokenizer adapters preserve the original source text and positions for outputs, assignments,
 tag/filter arguments, property keys, multiline Liquid statements and dynamic settings.
+Keywords followed by a dot or bracket resolve as variable names (for example `blank.foo` or
+`empty[1]`); their standalone literal meaning is preserved.
+Special literal comparisons treat nil as blank and keep the empty/blank sentinels distinct in
+either operand order, while preserving ordinary value comparisons.
 
 Nested loops expose `forloop.parentloop`, including multi-level parent metadata and live saved
 references. Includes share the caller's loop context; isolated render calls start their own root

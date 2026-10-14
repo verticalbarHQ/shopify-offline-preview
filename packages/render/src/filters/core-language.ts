@@ -1,4 +1,4 @@
-import { type Liquid, toValue } from "liquidjs";
+import { type Liquid, Tokenizer, toValue } from "liquidjs";
 
 function textValue(input: unknown): string {
   const value: unknown = toValue(input);
@@ -89,6 +89,27 @@ function inspect(input: unknown, seen = new WeakSet<object>()): string {
 
 /** Public filter/operator overrides for reference-confirmed core language differences. */
 export function registerCoreLanguage(engine: Liquid): void {
+  const blank = new Tokenizer("blank").readLiteral()?.content;
+  const empty = new Tokenizer("empty").readLiteral()?.content;
+  const nil = new Tokenizer("nil").readLiteral()?.content;
+  if (blank === undefined || empty === undefined || nil === undefined)
+    throw new Error("Pinned LiquidJS literal values unavailable");
+  for (const name of ["==", "!="] as const) {
+    const original = engine.options.operators[name];
+    if (!original) throw new Error("Pinned LiquidJS equality operator unavailable");
+    engine.options.operators[name] = (left, right, context) => {
+      let result: boolean | undefined;
+      if ((left === blank && right === empty) || (left === empty && right === blank))
+        result = false;
+      else if ((left === blank && right === nil) || (left === nil && right === blank))
+        result = true;
+      return result === undefined
+        ? original(left, right, context)
+        : name === "=="
+          ? result
+          : !result;
+    };
+  }
   engine.registerFilter("truncatewords", function (input: unknown, ...options: unknown[]) {
     const value: unknown = toValue(input);
     if (value === null || value === undefined) return null;

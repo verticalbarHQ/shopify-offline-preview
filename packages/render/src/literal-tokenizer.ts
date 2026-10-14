@@ -9,6 +9,7 @@ import {
   TokenKind,
   TypeGuards,
   Value,
+  type ValueToken,
 } from "liquidjs";
 
 /** Shopify takes quoted content literally; backslashes do not escape or decode characters. */
@@ -20,9 +21,29 @@ class LiteralQuotedToken extends Token implements QuotedToken {
     this.content = token.input.slice(token.begin + 1, close);
   }
 }
+class KeywordLookupKey extends Token {
+  readonly content: string;
+  constructor(token: Token) {
+    super(TokenKind.Word, token.input, token.begin, token.end, token.file);
+    this.content = token.getText();
+  }
+}
 
 /** Replaces public tag tokenizers before tag constructors, including the liquid statement group. */
 export class LiteralTokenizer extends Tokenizer {
+  override readValue(): ValueToken | undefined {
+    const token = super.readValue();
+    if (
+      token &&
+      TypeGuards.isPropertyAccessToken(token) &&
+      token.variable &&
+      TypeGuards.isLiteralToken(token.variable)
+    ) {
+      token.props.unshift(new KeywordLookupKey(token.variable));
+      token.variable = undefined;
+    }
+    return token;
+  }
   override readQuoted(): QuotedToken | undefined {
     const token = super.readQuoted();
     return token ? new LiteralQuotedToken(token) : undefined;
