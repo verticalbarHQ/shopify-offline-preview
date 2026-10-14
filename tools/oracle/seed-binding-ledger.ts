@@ -1,5 +1,11 @@
 import { z } from "zod";
 import { type Snapshot, snapshotSchema } from "../../packages/data/src/schema.js";
+import { readOracleIdentity } from "./admin-read.js";
+import {
+  assertSeedCheckpointBindings,
+  type SeedCheckpointData,
+  seedCheckpointSchema,
+} from "./seed-checkpoint-shape.js";
 import { waitOracleSeedCollectionOrder, waitOracleSeedImage } from "./seed-completion.js";
 import {
   inspectVerifiedSeedExecution,
@@ -14,16 +20,37 @@ import {
   readOracleSeedVariants,
   verifyOracleSeedImageBytes,
 } from "./seed-identities.js";
-import { buildOracleSeedPlan } from "./seed-plan.js";
+import { inspectStoredSeedCheckpoint, type StoredSeedCheckpoint } from "./seed-journal.js";
+import { buildOracleSeedPlan, type SeedTask } from "./seed-plan.js";
 import { type SeedValue, seedBindingKey } from "./seed-requests.js";
+import {
+  assertOracleSeedSource,
+  readOracleSeedSource,
+  type SeedSourceKind,
+} from "./seed-source.js";
 import { inspectVerifiedSeedUpload, type VerifiedSeedUpload } from "./seed-upload.js";
-import { type OracleConfig, oracleConfigSchema } from "./store-guard.js";
+import { assertOracleStore, type OracleConfig, oracleConfigSchema } from "./store-guard.js";
+
+export interface PreparedSeedCheckpoint {
+  readonly kind: "prepared-seed-checkpoint";
+}
+interface RestoredSeedOwnership {
+  readonly kind: "restored-seed-ownership";
+}
+type Provenance = NonNullable<SeedCheckpointData["entries"][number]["provenance"]>;
+const preparedCheckpoints = new WeakMap<PreparedSeedCheckpoint, SeedCheckpointData>(),
+  restoredOwnership = new WeakMap<RestoredSeedOwnership, Provenance>();
+export function inspectPreparedSeedCheckpoint(receipt: PreparedSeedCheckpoint): SeedCheckpointData {
+  const data = preparedCheckpoints.get(receipt);
+  if (!data) throw new SeedLedgerError("unverified-execution");
+  return structuredClone(data);
+}
 
 interface Entry {
   value: string;
   expected: ExpectedSeedIdentity;
   originalImage?: { sha256: string; bytes: number };
-  proof: VerifiedSeedExecution | null;
+  proof: VerifiedSeedExecution | RestoredSeedOwnership | null;
 }
 export class SeedLedgerError extends Error {
   constructor(
@@ -34,7 +61,8 @@ export class SeedLedgerError extends Error {
       | "binding-mismatch"
       | "unsupported-step"
       | "read-back-failed"
-      | "concurrent-record",
+      | "concurrent-record"
+      | "restoration-failed",
   ) {
     super(`Oracle seed binding ledger failed: ${code}`);
     this.name = "SeedLedgerError";
@@ -104,6 +132,174 @@ export function createOracleSeedBindingLedger(
   const tuple = (values: { name: string; value: string }[]) =>
     JSON.stringify([...values].sort((a, b) => a.name.localeCompare(b.name)));
   return {
+    /** Only recorded opaque proofs can prepare a persistable ownership checkpoint. No staged URLs are retained. */
+    checkpoint(): PreparedSeedCheckpoint {
+      if (recording) throw new SeedLedgerError("concurrent-record");
+      try {
+        const data = seedCheckpointSchema.parse({
+          version: 1,
+          domain: pinned.domain,
+          apiVersion: pinned.apiVersion,
+          shopId,
+          fixtureHash: plan.fixtureHash,
+          entries: [...entries].map(([key, entry]) => {
+            let provenance: Provenance | null = null;
+            if (entry.proof) {
+              if (entry.proof.kind === "restored-seed-ownership") {
+                const restored = restoredOwnership.get(entry.proof);
+                if (!restored) throw new SeedLedgerError("unverified-execution");
+                provenance = restored;
+              } else {
+                const { context } = inspectVerifiedSeedExecution(entry.proof);
+                provenance = {
+                  stateHash: context.stateHash,
+                  taskKey: context.task.key,
+                  sourceHash: context.task.sourceHash,
+                };
+              }
+            }
+            return {
+              key,
+              value: entry.value,
+              expected: entry.expected,
+              provenance,
+              ...(entry.originalImage ? { originalImage: entry.originalImage } : {}),
+            };
+          }),
+        });
+        assertSeedCheckpointBindings(plan, data, assets);
+        const receipt: PreparedSeedCheckpoint = Object.freeze({ kind: "prepared-seed-checkpoint" });
+        preparedCheckpoints.set(receipt, data);
+        return receipt;
+      } catch (error) {
+        if (error instanceof SeedLedgerError) throw error;
+        throw new SeedLedgerError("binding-mismatch");
+      }
+    },
+    /** Trusted private journal provenance plus fresh API reads restore bindings, never a historical execution receipt. */
+    async restoreCheckpoint(receipt: StoredSeedCheckpoint): Promise<void> {
+      if (recording) throw new SeedLedgerError("concurrent-record");
+      if (entries.size || staged.size) throw new SeedLedgerError("binding-mismatch");
+      recording = true;
+      try {
+        const data = seedCheckpointSchema.parse(inspectStoredSeedCheckpoint(receipt));
+        if (
+          data.domain !== pinned.domain ||
+          data.apiVersion !== pinned.apiVersion ||
+          data.shopId !== shopId ||
+          data.fixtureHash !== plan.fixtureHash
+        )
+          throw new Error();
+        const roots = assertSeedCheckpointBindings(plan, data, assets),
+          additions = new Map<string, Entry>();
+        for (const entry of data.entries) {
+          let proof: RestoredSeedOwnership | null = null;
+          if (entry.provenance) {
+            proof = Object.freeze({ kind: "restored-seed-ownership" });
+            restoredOwnership.set(proof, entry.provenance);
+          }
+          additions.set(entry.key, {
+            value: entry.value,
+            expected: entry.expected,
+            proof,
+            ...(entry.originalImage ? { originalImage: entry.originalImage } : {}),
+          });
+        }
+        const get = (key: string) => {
+            const value = additions.get(key)?.value;
+            if (!value) throw new Error();
+            return value;
+          },
+          guard = async () => {
+            const identity = await readOracleIdentity(pinned, token, async (url, init) => {
+              const response = await fetcher(url, init);
+              if (response.headers.get("x-shopify-api-version") !== pinned.apiVersion)
+                throw new Error();
+              const bytes = await response.arrayBuffer();
+              if (bytes.byteLength > 65536) throw new Error();
+              return new Response(bytes, { status: response.status, headers: response.headers });
+            });
+            assertOracleStore(pinned, identity);
+            if (identity.id !== shopId) throw new Error();
+          },
+          sources = async () => {
+            const kinds: Partial<Record<SeedTask["resource"], SeedSourceKind>> = {
+              product: "Product",
+              collection: "Collection",
+              page: "Page",
+              blog: "Blog",
+              article: "Article",
+              menu: "Menu",
+            };
+            for (const root of roots) {
+              if (root.task.resource === "image") {
+                const source = snapshotSchema.shape.products.element.shape.images.element.parse(
+                    root.task.source,
+                  ),
+                  node = (
+                    await readOracleSeedIdentities(
+                      pinned,
+                      token,
+                      shopId,
+                      "MediaImage",
+                      [root.id],
+                      fetcher,
+                    )
+                  )[0];
+                if (node?.__typename !== "MediaImage" || node.alt !== source.alt) throw new Error();
+              } else {
+                const kind = kinds[root.task.resource];
+                if (!kind) throw new Error();
+                const actual = await readOracleSeedSource(
+                  pinned,
+                  token,
+                  shopId,
+                  kind,
+                  root.id,
+                  kind === "Product" ? get(seedBindingKey("inventory-location")) : undefined,
+                  fetcher,
+                );
+                assertOracleSeedSource(root.task, actual, get);
+                if (root.task.resource === "product" && actual.__typename === "Product") {
+                  const source = snapshotSchema.shape.products.element.parse(root.task.source),
+                    byTuple = new Map(
+                      actual.variants.nodes.map((variant) => [
+                        tuple(variant.selectedOptions),
+                        variant.id,
+                      ]),
+                    );
+                  if (byTuple.size !== source.variants.length) throw new Error();
+                  for (const variant of source.variants) {
+                    if (
+                      byTuple.get(tuple(variant.optionValues)) !==
+                      get(seedBindingKey("variant-id", source.handle, variant.id))
+                    )
+                      throw new Error();
+                  }
+                }
+              }
+            }
+          };
+        await guard();
+        await sources();
+        const checked = new Set<string>();
+        for (const entry of additions.values()) {
+          const key = JSON.stringify([entry.expected, entry.originalImage]);
+          if (!checked.has(key)) {
+            await check(entry);
+            checked.add(key);
+          }
+        }
+        await sources();
+        await guard();
+        // Atomic adoption: any earlier failure leaves this new ledger entirely empty.
+        for (const [key, entry] of additions) entries.set(key, entry);
+      } catch {
+        throw new SeedLedgerError("restoration-failed");
+      } finally {
+        recording = false;
+      }
+    },
     /** Fresh expectation for a recorded fixture resource or an explicitly selected environment binding. */
     async verifyExpected(key: string, requireOwnership = false): Promise<ExpectedSeedIdentity> {
       const entry = current(key);
@@ -176,6 +372,7 @@ export function createOracleSeedBindingLedger(
     async registerEnvironment(
       expected: Extract<ExpectedSeedIdentity, { kind: "Location" | "Publication" }>,
     ) {
+      if (recording) throw new SeedLedgerError("concurrent-record");
       if (expected.kind !== "Location" && expected.kind !== "Publication")
         throw new SeedLedgerError("unsupported-step");
       const copy = structuredClone(expected),
@@ -184,12 +381,15 @@ export function createOracleSeedBindingLedger(
             ? seedBindingKey("inventory-location")
             : seedBindingKey("online-store-publication");
       const entry: Entry = { value: copy.id, expected: copy, proof: null };
+      recording = true;
       try {
         await check(entry);
+        entries.set(key, entry);
       } catch {
         throw new SeedLedgerError("read-back-failed");
+      } finally {
+        recording = false;
       }
-      entries.set(key, entry);
     },
     /** Only a live-process guarded execution receipt followed by actual read-back can add owned bindings. */
     async record(receipt: VerifiedSeedExecution): Promise<void> {
@@ -236,7 +436,12 @@ export function createOracleSeedBindingLedger(
           } catch {
             throw new SeedLedgerError("read-back-failed");
           }
+          const sourceKey = seedBindingKey("collection-source-id", source.handle),
+            priorSource = current(sourceKey);
+          if (!priorSource.proof || priorSource.value !== expected.sourceId)
+            throw new SeedLedgerError("binding-mismatch");
           entries.set(key, { ...before, expected, proof: receipt });
+          entries.set(sourceKey, { ...priorSource, expected, proof: receipt });
           used.add(receipt);
           return;
         }

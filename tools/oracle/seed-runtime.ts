@@ -10,6 +10,7 @@ import {
   type VerifiedSeedExecution,
 } from "./seed-execution.js";
 import type { ExpectedSeedIdentity } from "./seed-identities.js";
+import type { StoredSeedCheckpoint } from "./seed-journal.js";
 import { createOracleSeedPostconditions } from "./seed-postconditions.js";
 import { createOracleSeedUploader, SeedUploadError } from "./seed-upload.js";
 import type { OracleConfig } from "./store-guard.js";
@@ -78,6 +79,20 @@ export function createOracleSeedRuntime(
   return {
     status: () => (recovery ? ("recovery-required" as const) : ("accepting-steps" as const)),
     getBinding: ledger.get,
+    checkpoint: () => {
+      if (busy) throw new SeedRuntimeError("concurrent-operation");
+      if (recovery) throw new SeedRuntimeError("recovery-required");
+      return ledger.checkpoint();
+    },
+    restoreCheckpoint: (receipt: StoredSeedCheckpoint) =>
+      operation(async () => {
+        try {
+          await ledger.restoreCheckpoint(receipt);
+        } catch {
+          recovery = true;
+          throw new SeedRuntimeError("recording-failed");
+        }
+      }),
     registerEnvironment: (
       expected: Extract<ExpectedSeedIdentity, { kind: "Location" | "Publication" }>,
     ) => operation(() => ledger.registerEnvironment(expected)),

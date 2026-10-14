@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { mkdtemp, readFile, realpath, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
 import { defaultFixture } from "../packages/data/src/fixture.js";
 import { snapshotSchema } from "../packages/data/src/schema.js";
+import { inspectPreparedSeedCheckpoint } from "../tools/oracle/seed-binding-ledger.js";
 import { inspectVerifiedSeedExecution } from "../tools/oracle/seed-execution.js";
+import { openOracleSeedJournal, seedJournalFingerprint } from "../tools/oracle/seed-journal.js";
 import { buildOracleSeedPlan } from "../tools/oracle/seed-plan.js";
 import { seedBindingKey } from "../tools/oracle/seed-requests.js";
 import { createOracleSeedRuntime, SeedRuntimeError } from "../tools/oracle/seed-runtime.js";
@@ -252,7 +256,10 @@ function imageSetup(failure = "") {
       const { query, variables } = JSON.parse(String(init?.body)),
         reply = (data: unknown) =>
           Response.json({ data }, { headers: { "x-shopify-api-version": "2026-10" } });
-      if (query.includes("OfflinePreviewSeedGuard"))
+      if (
+        query.includes("OfflinePreviewSeedGuard") ||
+        query.includes("OfflinePreviewOracleIdentity")
+      )
         return reply({
           shop: {
             ...shop,
@@ -295,23 +302,24 @@ function imageSetup(failure = "") {
         fileCreate: { files: [{ id: "gid://shopify/MediaImage/1" }], userErrors: [] },
       });
     },
-    runtime = createOracleSeedRuntime(config, snapshot, shopId, "authored", contracts, [asset], {
-      authorize: async () => {},
-      fetcher,
-      uploadFetcher: async (_url, init) => {
-        assert.equal(init?.headers, undefined);
-        assert.equal(init?.credentials, "omit");
-        events.push("upload");
-        if (failure === "upload") throw new Error("unknown acknowledgement");
-        return new Response(null, { status: 204 });
-      },
-    }),
+    create = () =>
+      createOracleSeedRuntime(config, snapshot, shopId, "authored", contracts, [asset], {
+        authorize: async () => {},
+        fetcher,
+        uploadFetcher: async (_url, init) => {
+          assert.equal(init?.headers, undefined);
+          assert.equal(init?.credentials, "omit");
+          events.push("upload");
+          if (failure === "upload") throw new Error("unknown acknowledgement");
+          return new Response(null, { status: 204 });
+        },
+      }),
     imageStep = {
       ...step,
       taskKey: task.key,
       options: { mode: "create" as const, imageBytes: bytes.length },
     };
-  return { runtime, bytes, imageStep, image, events, target };
+  return { runtime: create(), create, bytes, imageStep, image, events, target };
 }
 test("runtime registers staged bytes only after upload acknowledgement, then verifies original bytes, alt and processed image before binding", async () => {
   const s = imageSetup(),
@@ -340,6 +348,50 @@ test("runtime registers staged bytes only after upload acknowledgement, then ver
   );
   assert.deepEqual(s.events.slice(0, 3), ["stage", "upload", "create"]);
   assert.ok(s.events.filter((e) => e === "original-bytes").length >= 2);
+});
+test("processed image bindings restore only after fresh original-byte and alt verification, without persisting staged upload credentials", async () => {
+  const s = imageSetup(),
+    directory = await realpath(await mkdtemp(join(tmpdir(), "sop-image-checkpoint-")));
+  try {
+    const staged = await s.runtime.execute(s.imageStep);
+    await s.runtime.upload(staged, s.bytes);
+    await s.runtime.execute({
+      ...s.imageStep,
+      requestIndex: 1,
+      bindings: { [seedBindingKey("staged-image-url", s.image.file)]: s.target.resourceUrl },
+    });
+    const prepared = s.runtime.checkpoint(),
+      data = inspectPreparedSeedCheckpoint(prepared);
+    assert.equal(data.entries.length, 2);
+    assert.equal(JSON.stringify(data).includes(s.target.resourceUrl), false);
+    const journal = await openOracleSeedJournal(
+        directory,
+        seedJournalFingerprint("authored image scope"),
+      ),
+      intent = seedJournalFingerprint("authored image completion");
+    await journal.begin(intent);
+    await journal.settle(intent, "verified", prepared);
+    const stored = journal.checkpoint();
+    assert.ok(stored);
+    const restored = s.create(),
+      before = s.events.filter((event) => event === "original-bytes").length;
+    await restored.restoreCheckpoint(stored);
+    assert.equal(
+      restored.getBinding(seedBindingKey("image-id", s.image.file)),
+      "gid://shopify/MediaImage/1",
+    );
+    assert.equal(
+      restored.getBinding(seedBindingKey("image-url", s.image.file)),
+      "https://cdn.shopify.com/image.png",
+    );
+    assert.throws(() => restored.getBinding(seedBindingKey("staged-image-url", s.image.file)));
+    assert.ok(s.events.filter((event) => event === "original-bytes").length > before);
+    assert.equal(s.events.filter((event) => event === "create").length, 1);
+    assert.deepEqual(inspectPreparedSeedCheckpoint(restored.checkpoint()), data);
+    await journal.close();
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 test("invalid staged target, lost upload acknowledgement and mismatched actual image never permit further runtime writes", async () => {
   for (const failure of ["target", "upload", "hash", "alt"]) {

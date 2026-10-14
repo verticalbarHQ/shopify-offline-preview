@@ -4,8 +4,13 @@ import { test } from "node:test";
 import { defaultFixture } from "../packages/data/src/fixture.js";
 import {
   createOracleSeedBindingLedger,
+  inspectPreparedSeedCheckpoint,
   SeedLedgerError,
 } from "../tools/oracle/seed-binding-ledger.js";
+import {
+  assertSeedCheckpointBindings,
+  seedCheckpointSchema,
+} from "../tools/oracle/seed-checkpoint-shape.js";
 import {
   createOracleSeedExecutor,
   inspectVerifiedSeedExecution,
@@ -365,6 +370,36 @@ test("collection job receipt updates ledger order only after fresh complete memb
   await ledger.record(ordered);
   assert.equal(writes, 4);
   assert.equal(ledger.get(seedBindingKey("collection-id", desired.handle)), collectionId);
+  const checkpoint = inspectPreparedSeedCheckpoint(ledger.checkpoint());
+  assert.equal(assertSeedCheckpointBindings(prepared, checkpoint, []).length, 3);
+  for (const corruption of [
+    "variant-parent",
+    "variant-alias",
+    "collection-source",
+    "extra-alias",
+    "provenance",
+  ]) {
+    const changed = structuredClone(checkpoint),
+      variant = changed.entries.find((entry) => entry.expected.kind === "ProductVariant"),
+      collection = changed.entries.find((entry) => entry.expected.kind === "Collection"),
+      root = changed.entries.find((entry) => entry.expected.kind === "Product");
+    assert.ok(variant && collection && root?.provenance);
+    if (corruption === "variant-parent" && variant.expected.kind === "ProductVariant")
+      variant.expected.productId = "gid://shopify/Product/999";
+    if (corruption === "variant-alias")
+      variant.key = seedBindingKey("variant-id", "other", "other");
+    if (corruption === "collection-source" && collection.expected.kind === "Collection")
+      collection.expected.sourceId = "gid://shopify/CollectionConditionsSource/999";
+    if (corruption === "extra-alias")
+      changed.entries.push({
+        ...structuredClone(root),
+        key: seedBindingKey("page-id", "invented"),
+      });
+    if (corruption === "provenance") root.provenance.sourceHash = "0".repeat(64);
+    assert.throws(() =>
+      assertSeedCheckpointBindings(prepared, seedCheckpointSchema.parse(changed), []),
+    );
+  }
   await assert.rejects(ledger.record(ordered), code("unverified-execution"));
   order = [...members].reverse();
   // The committed order proof now rejects changed order even in a later dependency check.

@@ -3,6 +3,21 @@ import { constants } from "node:fs";
 import { lstat, mkdir, open, realpath, rename, unlink } from "node:fs/promises";
 import { isAbsolute, join } from "node:path";
 import { z } from "zod";
+import {
+  inspectPreparedSeedCheckpoint,
+  type PreparedSeedCheckpoint,
+} from "./seed-binding-ledger.js";
+import { type SeedCheckpointData, seedCheckpointSchema } from "./seed-checkpoint-shape.js";
+
+export interface StoredSeedCheckpoint {
+  readonly kind: "stored-seed-checkpoint";
+}
+const storedCheckpoints = new WeakMap<StoredSeedCheckpoint, SeedCheckpointData>();
+export function inspectStoredSeedCheckpoint(receipt: StoredSeedCheckpoint): SeedCheckpointData {
+  const data = storedCheckpoints.get(receipt);
+  if (!data) throw new SeedJournalError("invalid-journal");
+  return structuredClone(data);
+}
 
 const digest = z.string().regex(/^[a-f0-9]{64}$/),
   documentSchema = z.strictObject({
@@ -10,6 +25,7 @@ const digest = z.string().regex(/^[a-f0-9]{64}$/),
     scope: digest,
     completed: z.array(digest).max(20000),
     pending: digest.nullable(),
+    checkpoint: seedCheckpointSchema.optional(),
   });
 type Document = z.infer<typeof documentSchema>;
 const maxBytes = 2 * 1024 * 1024;
@@ -48,8 +64,8 @@ export function seedJournalFingerprint(value: unknown): string {
     .digest("hex");
 }
 
-/** Private local write-ahead suppression only. A stale lock or pending intent is never cleared automatically.
- * Completed hashes prevent replay; they cannot restore bindings or certify actual Shopify state. */
+/** Private local write-ahead state. A stale lock or pending intent is never cleared automatically.
+ * Checkpoints retain prior provenance; restoring bindings still requires fresh source and identity verification. */
 export async function openOracleSeedJournal(directory: string, scope: string) {
   if (!isAbsolute(directory) || !digest.safeParse(scope).success)
     throw new SeedJournalError("invalid-input");
@@ -212,6 +228,15 @@ export async function openOracleSeedJournal(directory: string, scope: string) {
     }
   }
   return {
+    checkpoint(): StoredSeedCheckpoint | undefined {
+      if (closed) throw new SeedJournalError("closed");
+      if (busy) throw new SeedJournalError("concurrent-operation");
+      if (failed || current.pending) throw new SeedJournalError("recovery-required");
+      if (!current.checkpoint?.entries.length) return undefined;
+      const receipt: StoredSeedCheckpoint = Object.freeze({ kind: "stored-seed-checkpoint" });
+      storedCheckpoints.set(receipt, structuredClone(current.checkpoint));
+      return receipt;
+    },
     status: () =>
       closed
         ? ("closed" as const)
@@ -230,7 +255,11 @@ export async function openOracleSeedJournal(directory: string, scope: string) {
         await save({ ...current, pending: intent });
         activeIntent = intent;
       }),
-    settle: (intent: string, outcome: "verified" | "not-dispatched") =>
+    settle: (
+      intent: string,
+      outcome: "verified" | "not-dispatched",
+      checkpoint?: PreparedSeedCheckpoint,
+    ) =>
       operation(async () => {
         if (
           activeIntent !== intent ||
@@ -242,6 +271,9 @@ export async function openOracleSeedJournal(directory: string, scope: string) {
           ...current,
           pending: null,
           completed: outcome === "verified" ? [...current.completed, intent] : current.completed,
+          ...(checkpoint && outcome === "verified"
+            ? { checkpoint: seedCheckpointSchema.parse(inspectPreparedSeedCheckpoint(checkpoint)) }
+            : {}),
         });
         activeIntent = null;
       }),

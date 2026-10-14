@@ -49,8 +49,8 @@ function notDispatched(error: unknown): boolean {
   return false;
 }
 
-/** Restart-safe replay suppression around the in-process runtime. A private journal is mandatory here.
- * Hashes are not ownership proofs: reopening does not restore bindings or permit automatic reconciliation.
+/** Restart-safe replay suppression and verified binding restoration from the same trusted private journal.
+ * Stored bindings require fresh source/identity reads; pending writes never permit automatic reconciliation.
  * Pending operations and stale process locks require separate operator recovery; no erase/reset API exists. */
 export async function openOracleSeedDurableRuntime(
   config: OracleConfig,
@@ -81,6 +81,15 @@ export async function openOracleSeedDurableRuntime(
       images,
     }),
     journal = await openOracleSeedJournal(directory, scope);
+  try {
+    if (journal.status() === "accepting-intents") {
+      const checkpoint = journal.checkpoint();
+      if (checkpoint) await runtime.restoreCheckpoint(checkpoint);
+    }
+  } catch (error) {
+    await journal.close();
+    throw error;
+  }
   let busy = false,
     closed = false;
   async function operation<T>(fn: () => Promise<T>): Promise<T> {
@@ -106,7 +115,7 @@ export async function openOracleSeedDurableRuntime(
       throw error;
     }
     // The runtime has already completed actual readback and binding registration.
-    await journal.settle(intent, "verified");
+    await journal.settle(intent, "verified", runtime.checkpoint());
     return value;
   }
   return {

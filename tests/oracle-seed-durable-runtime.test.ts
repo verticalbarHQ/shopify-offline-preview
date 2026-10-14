@@ -6,7 +6,9 @@ import { test } from "node:test";
 import { defaultFixture } from "../packages/data/src/fixture.js";
 import { snapshotSchema } from "../packages/data/src/schema.js";
 import { backupDigest } from "../tools/oracle/backup-audit.js";
+import { createOracleSeedBindingLedger } from "../tools/oracle/seed-binding-ledger.js";
 import { openOracleSeedDurableRuntime } from "../tools/oracle/seed-durable-runtime.js";
+import { openOracleSeedJournal } from "../tools/oracle/seed-journal.js";
 import { buildOracleSeedPlan } from "../tools/oracle/seed-plan.js";
 import { seedBindingKey } from "../tools/oracle/seed-requests.js";
 
@@ -35,26 +37,32 @@ async function setup(failure = "", authorize: () => Promise<void> = async () => 
   const directory = await realpath(await mkdtemp(join(tmpdir(), "sop-durable-runtime-")));
   let calls = 0,
     writes = 0,
-    denied = false;
+    denied = false,
+    drift = "",
+    sourceReads = 0,
+    driftAt = Infinity;
   const fetcher: typeof fetch = async (_url, init) => {
       calls++;
-      // No API or storage request can happen before the journal reservation reaches disk.
-      assert.match(
-        JSON.parse(await readFile(join(directory, "seed-run.json"), "utf8")).pending,
-        /^[a-f0-9]{64}$/,
-      );
       const { query } = JSON.parse(String(init?.body)),
         shop = { id: shopId, myshopifyDomain: config.domain, plan: { partnerDevelopment: true } },
         reply = (data: unknown) =>
           Response.json({ data }, { headers: { "x-shopify-api-version": "2026-10" } });
-      if (query.includes("OfflinePreviewSeedGuard"))
+      if (query.startsWith("mutation "))
+        assert.match(
+          JSON.parse(await readFile(join(directory, "seed-run.json"), "utf8")).pending,
+          /^[a-f0-9]{64}$/,
+        );
+      if (
+        query.includes("OfflinePreviewSeedGuard") ||
+        query.includes("OfflinePreviewOracleIdentity")
+      )
         return reply({
           shop: {
             ...shop,
             name: "Authored",
             currencyCode: "USD",
             ianaTimezone: "UTC",
-            metafield: { value: "true" },
+            metafield: drift === "guard" ? null : { value: "true" },
           },
           currentAppInstallation: { accessScopes: [{ handle: "write_content" }] },
         });
@@ -63,7 +71,8 @@ async function setup(failure = "", authorize: () => Promise<void> = async () => 
           shop,
           pages: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
         });
-      if (query.includes("OfflinePreviewSeedSource"))
+      if (query.includes("OfflinePreviewSeedSource")) {
+        sourceReads++;
         return reply({
           shop,
           nodes: [
@@ -72,22 +81,34 @@ async function setup(failure = "", authorize: () => Promise<void> = async () => 
               id,
               handle: source.handle,
               title: source.title,
-              body: source.bodyHtml,
+              body:
+                drift === "source" || sourceReads >= driftAt
+                  ? "authored changed body"
+                  : source.bodyHtml,
               templateSuffix: source.templateSuffix,
               isPublished: true,
               seo: source.seo,
             },
           ],
         });
+      }
       if (query.includes("OfflinePreviewSeedIdentities")) {
         if (failure === "settle")
           await writeFile(join(directory, "seed-run.json"), "authored disk substitution");
-        return reply({ shop, nodes: [{ __typename: "Page", id, handle: source.handle }] });
+        return reply({
+          shop,
+          nodes: [
+            { __typename: "Page", id, handle: drift === "identity" ? "changed" : source.handle },
+          ],
+        });
       }
       assert.ok(query.startsWith("mutation "));
       writes++;
       if (failure === "lost") throw new Error("authored lost acknowledgement");
-      return reply({ pageCreate: { page: { id }, userErrors: [] } });
+      return reply({
+        pageCreate: { page: { id }, userErrors: [] },
+        pageUpdate: { page: { id }, userErrors: [] },
+      });
     },
     open = () =>
       openOracleSeedDurableRuntime(
@@ -114,10 +135,15 @@ async function setup(failure = "", authorize: () => Promise<void> = async () => 
     },
     calls: () => calls,
     writes: () => writes,
+    drift: (value: string) => {
+      drift = value;
+      driftAt = value === "source-after" ? sourceReads + 2 : Infinity;
+    },
+    fetcher,
   };
 }
 
-test("verified execution commits only after source and binding checks; reopening suppresses the exact call without inventing restored ownership", async () => {
+test("verified checkpoint restores owned binding only after fresh reads and permits a guarded update without replaying create", async () => {
   const s = await setup();
   try {
     let runtime = await s.open();
@@ -141,7 +167,13 @@ test("verified execution commits only after source and binding checks; reopening
     );
     assert.equal(s.calls(), before);
     assert.equal(s.writes(), 1);
-    assert.throws(() => runtime.getBinding(seedBindingKey("page-id", source.handle)));
+    assert.equal(runtime.getBinding(seedBindingKey("page-id", source.handle)), id);
+    await runtime.execute({
+      ...step,
+      options: { mode: "update" },
+      bindings: { [seedBindingKey("page-id", source.handle)]: id },
+    });
+    assert.equal(s.writes(), 2);
     await runtime.close();
   } finally {
     await rm(s.directory, { recursive: true, force: true });
@@ -165,6 +197,84 @@ test("lost acknowledgement remains pending after restart and prevents every late
     assert.equal(s.calls(), before);
     assert.equal(s.writes(), 1);
     await runtime.close();
+  } finally {
+    await rm(s.directory, { recursive: true, force: true });
+  }
+});
+
+test("checkpoint restoration rejects source, identity, marker and late source drift without adopting any binding or replaying writes", async () => {
+  for (const drift of ["source", "identity", "guard", "source-after"]) {
+    const s = await setup();
+    try {
+      let runtime = await s.open();
+      await runtime.execute(step);
+      await runtime.close();
+      const original = await readFile(join(s.directory, "seed-run.json"), "utf8"),
+        document = JSON.parse(original);
+      s.drift(drift);
+      const journal = await openOracleSeedJournal(s.directory, document.scope),
+        stored = journal.checkpoint();
+      assert.ok(stored);
+      const ledger = createOracleSeedBindingLedger(
+        config,
+        snapshot,
+        shopId,
+        "authored",
+        [],
+        s.fetcher,
+      );
+      await assert.rejects(ledger.restoreCheckpoint(stored), { code: "restoration-failed" });
+      assert.throws(() => ledger.get(seedBindingKey("page-id", source.handle)), {
+        code: "binding-missing",
+      });
+      await journal.close();
+      assert.equal(await readFile(join(s.directory, "seed-run.json"), "utf8"), original);
+      assert.equal(s.writes(), 1);
+      s.drift("");
+      runtime = await s.open();
+      assert.equal(runtime.getBinding(seedBindingKey("page-id", source.handle)), id);
+      await runtime.close();
+    } finally {
+      await rm(s.directory, { recursive: true, force: true });
+    }
+  }
+});
+
+test("plain and serialized checkpoint flags cannot claim restored ownership", async () => {
+  const s = await setup();
+  try {
+    const ledger = createOracleSeedBindingLedger(
+      config,
+      snapshot,
+      shopId,
+      "authored",
+      [],
+      s.fetcher,
+    );
+    await assert.rejects(ledger.restoreCheckpoint({ kind: "stored-seed-checkpoint" }), {
+      code: "restoration-failed",
+    });
+    assert.equal(s.calls(), 0);
+    const runtime = await s.open();
+    await runtime.execute(step);
+    await runtime.close();
+    const document = JSON.parse(await readFile(join(s.directory, "seed-run.json"), "utf8")),
+      journal = await openOracleSeedJournal(s.directory, document.scope),
+      stored = journal.checkpoint();
+    assert.ok(stored);
+    await assert.rejects(ledger.restoreCheckpoint(JSON.parse(JSON.stringify(stored))), {
+      code: "restoration-failed",
+    });
+    const restoring = ledger.restoreCheckpoint(stored);
+    await assert.rejects(
+      ledger.registerEnvironment({ kind: "Location", id: "gid://shopify/Location/1" }),
+      { code: "concurrent-record" },
+    );
+    assert.throws(() => ledger.checkpoint(), { code: "concurrent-record" });
+    await restoring;
+    assert.equal(ledger.get(seedBindingKey("page-id", source.handle)), id);
+    assert.equal(s.writes(), 1);
+    await journal.close();
   } finally {
     await rm(s.directory, { recursive: true, force: true });
   }
