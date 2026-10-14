@@ -18,6 +18,7 @@ import { ImageUrlDrop, imageFilters, namedArgs } from "./images.js";
 import { registerJsonFilter } from "./json.js";
 import { md5 } from "./md5.js";
 import { formatMoney, moneyAmount } from "./money.js";
+import { registerSelectionFilters } from "./selection.js";
 import { registerStructuredDataFilter } from "./structured-data.js";
 import { translateFactory } from "./translations.js";
 
@@ -56,6 +57,7 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
   registerDateFilters(engine, hooks.snapshot, hooks.files, hooks.diagnostic);
   registerEventFilters(engine, hooks.snapshot.shop.currency, hooks.diagnostic);
   registerFontFilters(engine, hooks.diagnostic);
+  registerSelectionFilters(engine);
   registerRangeFilters(engine);
   engine.registerFilter("money_amount", (value) => moneyAmount(toValue(value)));
   engine.registerFilter("handleize", handleize);

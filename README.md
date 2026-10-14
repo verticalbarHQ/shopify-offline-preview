@@ -379,6 +379,10 @@ Plain JSON hashes supplied in snapshots display as `{"key"=>"value"}` in outputs
 Outer arrays concatenate their elements, while arrays inside a hash retain inspected notation.
 The `json` filter keeps its JSON serialization contract, and resource Drops retain their own
 display behavior. A range used as a lookup key does not alias its `start..end` string.
+Selection filters (`where`, `reject`, `find`, `find_index`, `has`) read literal properties
+from each item. They flatten nested input arrays, preserve item order and avoid caller-global
+fallbacks. String items support literal fragment, character-index and range lookups; a nil
+target selects truthy property values. Invalid scalar lookups produce source diagnostics.
 
 Nested loops expose `forloop.parentloop`, including multi-level parent metadata and live saved
 references. Includes share the caller's loop context; isolated render calls start their own root
