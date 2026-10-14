@@ -104,6 +104,18 @@ export function createOracleSeedBindingLedger(
   const tuple = (values: { name: string; value: string }[]) =>
     JSON.stringify([...values].sort((a, b) => a.name.localeCompare(b.name)));
   return {
+    /** Fresh expectation for a recorded fixture resource or an explicitly selected environment binding. */
+    async verifyExpected(key: string, requireOwnership = false): Promise<ExpectedSeedIdentity> {
+      const entry = current(key);
+      if (requireOwnership && !entry.proof) throw new SeedLedgerError("unverified-execution");
+      try {
+        await check(entry);
+      } catch {
+        throw new SeedLedgerError("read-back-failed");
+      }
+      if (entries.get(key) !== entry) throw new SeedLedgerError("unverified-execution");
+      return structuredClone(entry.expected);
+    },
     /** Requires this exact execution to be the current recorded owner of its resource, then rereads identity. */
     async assertRecorded(receipt: VerifiedSeedExecution): Promise<ExpectedSeedIdentity> {
       let record: ReturnType<typeof inspectVerifiedSeedExecution>;

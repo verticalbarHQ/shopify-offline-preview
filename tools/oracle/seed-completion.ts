@@ -239,3 +239,115 @@ export async function waitOracleSeedCollectionOrder(
     return node;
   });
 }
+
+/** Checks one explicit publication, never a total count or display-name guess. This performs no publishing. */
+export async function waitOracleSeedPublication(
+  config: OracleConfig,
+  token: string,
+  shopId: string,
+  resource: Extract<ExpectedSeedIdentity, { kind: "Product" | "Collection" }>,
+  publication: Extract<ExpectedSeedIdentity, { kind: "Publication" }>,
+  dependencies: SeedCompletionDependencies = {},
+): Promise<void> {
+  const wanted = structuredClone(resource),
+    channel = structuredClone(publication);
+  if (
+    !["Product", "Collection"].includes(wanted.kind) ||
+    channel.kind !== "Publication" ||
+    !new RegExp(`^gid://shopify/${wanted.kind}/[1-9]\\d*$`).test(wanted.id) ||
+    !/^gid:\/\/shopify\/Publication\/[1-9]\d*$/.test(channel.id) ||
+    !/^gid:\/\/shopify\/AppCatalog\/[1-9]\d*$/.test(channel.catalogId) ||
+    !/^gid:\/\/shopify\/App\/[1-9]\d*$/.test(channel.appId)
+  )
+    throw new SeedCompletionError("invalid-input");
+  const poll = polling(config, token, shopId, dependencies);
+  await poll.run(async () => {
+    async function identity() {
+      const row = (
+          await readOracleSeedIdentities(
+            poll.pinned,
+            token,
+            shopId,
+            wanted.kind,
+            [wanted.id],
+            poll.fetcher,
+          )
+        )[0],
+        pub = (
+          await readOracleSeedIdentities(
+            poll.pinned,
+            token,
+            shopId,
+            "Publication",
+            [channel.id],
+            poll.fetcher,
+          )
+        )[0];
+      if (!row || !pub) throw new SeedCompletionError("postcondition-mismatch");
+      try {
+        assertOracleSeedIdentity(wanted, row);
+        assertOracleSeedIdentity(channel, pub);
+      } catch {
+        throw new SeedCompletionError("postcondition-mismatch");
+      }
+    }
+    await identity();
+    const response = await poll.fetcher(
+      `https://${poll.pinned.domain}/admin/api/${poll.pinned.apiVersion}/graphql.json`,
+      {
+        method: "POST",
+        redirect: "error",
+        headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": token },
+        body: JSON.stringify({
+          query: `query OfflinePreviewSeedPublication($ids:[ID!]!,$publication:ID!) { shop { id myshopifyDomain plan { partnerDevelopment } } nodes(ids:$ids) { __typename ... on ${wanted.kind} { id handle ${wanted.kind === "Product" ? "status" : ""} publishedOnPublication(publicationId:$publication) } } }`,
+          variables: { ids: [wanted.id], publication: channel.id },
+        }),
+      },
+    );
+    if (!response.ok || response.headers.get("x-shopify-api-version") !== poll.pinned.apiVersion)
+      throw new SeedCompletionError("read-failed");
+    const bytes = await response.arrayBuffer();
+    if (bytes.byteLength > 65536) throw new SeedCompletionError("read-failed");
+    const parsed = z
+      .object({
+        data: z.object({
+          shop: z.object({
+            id: z.string(),
+            myshopifyDomain: z.string(),
+            plan: z.object({ partnerDevelopment: z.boolean() }),
+          }),
+          nodes: z
+            .array(
+              z.object({
+                __typename: z.literal(wanted.kind),
+                id: z.string(),
+                handle: z.string(),
+                status: z.string().optional(),
+                publishedOnPublication: z.boolean(),
+              }),
+            )
+            .length(1),
+        }),
+        errors: z.array(z.unknown()).optional(),
+      })
+      .parse(JSON.parse(new TextDecoder("utf8", { fatal: true }).decode(bytes)));
+    if (parsed.errors?.length) throw new SeedCompletionError("read-failed");
+    if (
+      parsed.data.shop.id !== shopId ||
+      parsed.data.shop.myshopifyDomain !== poll.pinned.domain ||
+      !parsed.data.shop.plan.partnerDevelopment
+    )
+      throw new SeedCompletionError("store-mismatch");
+    const node = parsed.data.nodes[0];
+    if (
+      !node ||
+      node.id !== wanted.id ||
+      node.handle !== wanted.handle ||
+      (wanted.kind === "Product" && node.status !== "ACTIVE")
+    )
+      throw new SeedCompletionError("postcondition-mismatch");
+    if (!node.publishedOnPublication) return undefined;
+    await identity();
+    return true;
+  });
+}

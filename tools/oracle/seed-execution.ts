@@ -8,6 +8,7 @@ import {
   resolveSeedRequest,
   type SeedRequestOptions,
   type SeedRequestTemplate,
+  type SeedValue,
 } from "./seed-requests.js";
 import { validateSeedRequestTemplate } from "./seed-schema.js";
 import {
@@ -134,7 +135,11 @@ export interface SeedExecutionDependencies {
     bindings: Readonly<Record<string, string>>,
   ): Promise<void>;
   /** Reads the server result back and verifies IDs, source equality and any async job completion. */
-  verifyResult(context: SeedExecutionContext, payload: JsonObject): Promise<void>;
+  verifyResult(
+    context: SeedExecutionContext,
+    payload: JsonObject,
+    variables: Readonly<Record<string, SeedValue>>,
+  ): Promise<void>;
   fetcher?: typeof fetch;
   sleep?: (milliseconds: number) => Promise<void>;
 }
@@ -324,7 +329,11 @@ export function createOracleSeedExecutor(
           throw new SeedExecutionError("mutation-outcome-unknown");
         if (payload.userErrors.length) throw new SeedExecutionError("user-errors");
         try {
-          await dependencies.verifyResult(context(), structuredClone(payload));
+          await dependencies.verifyResult(
+            context(),
+            structuredClone(payload),
+            structuredClone(body.variables),
+          );
         } catch {
           throw new SeedExecutionError("postcondition-failed");
         }
