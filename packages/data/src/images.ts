@@ -128,6 +128,7 @@ export class NamedImageDrop extends Drop {
       : new NamedImageDrop(this.#source, this.#path, this.#read, this.#unsupported, true);
   }
   get presentation() {
+    if (this.#preview) return null;
     const point = this.#source.focalPoint;
     if (!point) {
       this.#unsupported("presentation");
@@ -166,6 +167,13 @@ class ImagePresentation extends Drop {
 }
 export class ImageDirectory extends Drop {
   #images: Map<string, NamedImageDrop>;
+  // LiquidJS treats ordinary empty objects as blank and nonempty strings as
+  // one-item collections. An opaque iterable with its own string conversion
+  // stays nonblank while yielding no entries through public Drop coercion.
+  #opaque = {
+    toString: () => "ImagesDrop",
+    *[Symbol.iterator](): Generator<never> {},
+  };
   #supplied: boolean;
   #read: (path: string) => void;
   #unsupported: (property: string) => void;
@@ -186,7 +194,7 @@ export class ImageDirectory extends Drop {
     );
   }
   valueOf() {
-    return this;
+    return this.#opaque;
   }
   toString() {
     return "ImagesDrop";

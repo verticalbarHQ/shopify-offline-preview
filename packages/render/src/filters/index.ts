@@ -11,7 +11,7 @@ import { registerColorFilters } from "./colors.js";
 import { registerDateFilters } from "./dates.js";
 import { registerEventFilters } from "./events.js";
 import { handleize } from "./handle.js";
-import { imageFilters, namedArgs } from "./images.js";
+import { ImageUrlDrop, imageFilters, namedArgs } from "./images.js";
 import { registerJsonFilter } from "./json.js";
 import { md5 } from "./md5.js";
 import { formatMoney, moneyAmount } from "./money.js";
@@ -33,7 +33,13 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
     if (typeof native !== "function") throw new Error(`Pinned LiquidJS ${name} filter unavailable`);
     engine.registerFilter(name, function (input: unknown, ...args: unknown[]) {
       if (input instanceof MissingImage) return name === "default" ? args[0] : 0;
-      if (input instanceof NamedImageDrop && name === "default") return input;
+      if (
+        (input instanceof NamedImageDrop ||
+          input instanceof ImageDirectory ||
+          input instanceof ImageUrlDrop) &&
+        name === "default"
+      )
+        return input;
       if (input instanceof ImageDirectory && name === "size") return 0;
       return native.call(this, input, ...args);
     });
@@ -159,6 +165,7 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
     }
   });
   engine.registerFilter("preload_tag", function (value: unknown, ...args: unknown[]) {
+    if (value instanceof ImageUrlDrop) value = toValue(value);
     if (typeof value !== "string" || !value) throw new Error("preload_tag requires an asset URL");
     const attributes = namedArgs(args);
     if (typeof attributes.as !== "string" || !attributes.as)

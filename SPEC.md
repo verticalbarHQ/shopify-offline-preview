@@ -321,6 +321,9 @@ The library does not implement live-store collection or provider-specific export
 - `collections[]`: handle, title, `descriptionHtml`, image, ordered product handles, sort order,
   `templateSuffix`.
 - `pages[]`, `blogs[]` (each with `articles[]`), `menus[]` (nested link lists), `metaobjects[]`.
+- Optional `images[]`: uploads identified by their original filename, with local file, alt text,
+  dimensions and optional source id/focal-point coordinates. These supply global filename lookups
+  and image picker settings. Product images do not stand in for unspecified uploads.
 - `cart`: lines (variant reference and quantity), note.
 - `filters`: the storefront filter configuration used for collection facets.
 - `scenarios`: named overlays (JSON merge patches over the snapshot).

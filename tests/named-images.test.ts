@@ -199,7 +199,7 @@ test("named image objects, missing drops and picker settings match the browser b
     new URL("../dist/browser.js", import.meta.url).href
   );
   const files = theme(
-    `{% assign picked=section.settings.banner|default:nil %}{{picked.width}}|{{picked.presentation|json}}|{{picked|image_url:width:64|image_tag}}|{{images['absent.png']|default:'fallback'}}|{% if images['absent.png']==blank %}blank{% endif %}|{% for image in images %}wrong{% else %}no-items{% endfor %}{% schema %}{"settings":[{"id":"banner","type":"image_picker"}]}{% endschema %}`,
+    `{% assign picked=section.settings.banner|default:nil %}{{picked.width}}|{{picked.presentation|json}}|{{picked|image_url:width:64|image_tag}}|{{images['absent.png']|default:'fallback'}}|{% if images['absent.png']==blank %}blank{% endif %}|{% for image in images %}wrong{% else %}no-items{% endfor %}|{% if images == blank %}wrong{% else %}nonblank{% endif %}|{{images['own header.png'].preview_image.presentation|json}}|{{images['own header.png'].preview_image|image_url:width:64|default:nil|image_tag}}{% schema %}{"settings":[{"id":"banner","type":"image_picker"}]}{% endschema %}`,
     { banner: "shopify://shop_images/own%20header.png" },
   );
   const options = { snapshot: snapshot(), inspect: true };
@@ -232,4 +232,30 @@ test("the original global-image corpus example replays with explicitly supplied 
     ),
   );
   assert.equal(item.liquid, original.liquid);
+});
+
+test("image directories stay nonblank without enumerating uploads and preview images have no presentation", async () => {
+  const result = await render(
+    `{% if images == blank %}wrong{% else %}not-blank{% endif %}|{% if blank == images %}wrong{% else %}not-blank{% endif %}|{% if images == empty %}wrong{% else %}not-empty{% endif %}|{% if empty == images %}wrong{% else %}not-empty{% endif %}|{% assign directory=images|default:nil %}{{directory['own header.png'].width}}|{% for image in directory %}wrong{% else %}no-items{% endfor %}|{{images['own header.png'].preview_image.presentation|json}}`,
+  );
+  assert.ok(
+    result.html.includes("not-blank|not-blank|not-empty|not-empty|64|no-items|null"),
+    result.html,
+  );
+  assert.deepEqual(result.diagnostics, []);
+});
+
+test("preview image URL results retain their presentation scope through assign and default", async () => {
+  const result = await render(
+    `{% assign root=images['own header.png'] %}{% assign preview_url=root.preview_image|image_url:width:64 %}ROOT={{root|image_url:width:64|image_tag}}|PREVIEW={{preview_url|default:nil|image_tag}}|PRELOAD={{preview_url|preload_tag:as:'image'}}`,
+  );
+  const [root, preview, preload] = result.html.split("|");
+  assert.ok(root?.includes('style="object-position:1.9231% 9.7917%;"'));
+  assert.ok(preview?.includes("<img "));
+  assert.ok(!preview?.includes("object-position"));
+  assert.ok(preload?.includes('href="/sop/images/uploaded/header.png?width=64"'));
+  assert.deepEqual(
+    result.diagnostics.map((diagnostic) => diagnostic.code),
+    ["shopify-server-only"],
+  );
 });

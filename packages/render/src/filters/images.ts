@@ -1,6 +1,23 @@
-import { toValue } from "liquidjs";
-import { focalPointPercent, snapshotImageEntries } from "../../../data/src/images.js";
+import { Drop, toValue } from "liquidjs";
+import {
+  focalPointPercent,
+  NamedImageDrop,
+  snapshotImageEntries,
+} from "../../../data/src/images.js";
 import type { Snapshot } from "../../../data/src/schema.js";
+export class ImageUrlDrop extends Drop {
+  #url: string;
+  constructor(url: string) {
+    super();
+    this.#url = url;
+  }
+  valueOf() {
+    return this.#url;
+  }
+  toString() {
+    return this.#url;
+  }
+}
 export class ImageUrlInputError extends Error {}
 export function namedArgs(args: unknown[]): Record<string, unknown> {
   return Object.fromEntries(
@@ -29,7 +46,7 @@ export function imageFilters(snapshot: Snapshot, read: (path: string) => void = 
     input: unknown,
     args: unknown[],
     unsupported: (message: string) => void,
-  ): string {
+  ): string | ImageUrlDrop {
     let value: unknown = toValue(input);
     if (value && typeof value === "object") {
       const keys = new Set(Reflect.ownKeys(value));
@@ -107,21 +124,27 @@ export function imageFilters(snapshot: Snapshot, read: (path: string) => void = 
       )
     )
       throw new ImageUrlInputError("Region crop requires its complete rectangle");
-    return url.pathname + url.search;
+    const result = url.pathname + url.search;
+    return input instanceof ImageUrlDrop ||
+      (input instanceof NamedImageDrop && input.media_type === null)
+      ? new ImageUrlDrop(result)
+      : result;
   }
   function imageTag(
     input: unknown,
     args: unknown[],
     unsupported: (message: string) => void = () => {},
   ): string {
-    if (typeof input !== "string" || !input.startsWith("/sop/images/"))
+    const presentation = !(input instanceof ImageUrlDrop);
+    const value = toValue(input);
+    if (typeof value !== "string" || !value.startsWith("/sop/images/"))
       throw new Error("image_tag requires a local image_url result");
-    const url = new URL(input, "https://offline.invalid");
+    const url = new URL(value, "https://offline.invalid");
     const image = images.get(decodeURIComponent(url.pathname.slice(12)));
     if (!image) throw new Error("Image input is absent from the local snapshot");
     for (const key of ["file", "alt", "width", "height"]) observe(image.file, key);
     const options = namedArgs(args);
-    if ("filename" in image && !Object.hasOwn(image, "focalPoint"))
+    if (presentation && "filename" in image && !Object.hasOwn(image, "focalPoint"))
       unsupported("Uploaded image presentation metadata is absent from the snapshot.");
     const sourceWidth = Number(url.searchParams.get("crop_width") ?? image.width);
     const sourceHeight = Number(url.searchParams.get("crop_height") ?? image.height);
@@ -137,8 +160,8 @@ export function imageFilters(snapshot: Snapshot, read: (path: string) => void = 
       : requestedWidth
         ? Math.max(1, Math.round((sourceHeight * Number(requestedWidth)) / sourceWidth))
         : sourceHeight;
-    const attributes: Record<string, unknown> = { src: input, alt: image.alt, width, height };
-    if (image.focalPoint) {
+    const attributes: Record<string, unknown> = { src: value, alt: image.alt, width, height };
+    if (presentation && image.focalPoint) {
       observe(image.file, "focalPoint.x");
       observe(image.file, "focalPoint.y");
       attributes.style = `object-position:${focalPointPercent(image.focalPoint.x)} ${focalPointPercent(image.focalPoint.y)};`;
@@ -170,7 +193,7 @@ export function imageFilters(snapshot: Snapshot, read: (path: string) => void = 
       else attributes[key] = value;
     }
     const preload = options.preload
-      ? `<link rel="preload" as="image" href="${escapeHtml(input)}"${attributes.srcset ? ` imagesrcset="${escapeHtml(attributes.srcset)}"` : ""}${attributes.sizes ? ` imagesizes="${escapeHtml(attributes.sizes)}"` : ""}>`
+      ? `<link rel="preload" as="image" href="${escapeHtml(value)}"${attributes.srcset ? ` imagesrcset="${escapeHtml(attributes.srcset)}"` : ""}${attributes.sizes ? ` imagesizes="${escapeHtml(attributes.sizes)}"` : ""}>`
       : "";
     return `${preload}<img ${Object.entries(attributes)
       .map(([key, value]) => `${key}="${escapeHtml(value)}"`)
