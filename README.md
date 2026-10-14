@@ -306,6 +306,16 @@ calibration. The command makes no requests, uploads or mutations and does not au
 The fixture image files must be local PNGs with dimensions matching their snapshot metadata.
 Their exact byte hashes are recorded for later upload and calibration; symlinks are rejected.
 
+`pnpm oracle:seed-requests-prepare --snapshot <snapshot.json> --images <fixture-png-dir>
+--admin-schema <retained-2026-10-input-schema.json>` compiles local create/update request templates
+and validates their input contracts. Private output retains payloads and unresolved dependency
+references; stdout contains counts and status. Real resource IDs, processed image URLs, the inventory
+location and Online Store publication must resolve before a request can be formed. Collection
+membership updates require observed members and an owned source ID; manual ordering uses only
+necessary sequential moves and requires a completed reorder job. This tool has no network transport
+and does not execute mutations or grant authorization. Server behavior and read-back calibration
+remain unverified until the guarded oracle setup runs.
+
 The corpus capture helper uses the same pinned-development-store and unpublished-theme guards as
 page capture, extracts one exact JSON string payload, and requires two identical outputs. Public
 observations contain hashes and provenance, with raw HTML and readable outputs kept private.
