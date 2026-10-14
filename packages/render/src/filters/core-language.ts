@@ -11,7 +11,7 @@ export function registerCoreLanguage(engine: Liquid): void {
   if (!contains) throw new Error("Pinned LiquidJS contains operator unavailable");
   engine.options.operators.contains = (left, right, context) => {
     const value: unknown = toValue(right);
-    if (value === null || value === undefined) return false;
+    if (value === null || value === undefined || value === false) return false;
     return contains(left, right, context);
   };
   const replace = engine.filters.replace;

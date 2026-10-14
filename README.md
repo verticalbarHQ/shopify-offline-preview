@@ -332,7 +332,7 @@ partial file lists, changed bytes and redirects fail capture. Offline replay req
 environment and hash; readable dependency content is excluded from public observations. No app,
 token, upload or store mutation is performed by preparation or these read helpers.
 
-Core language overrides match reference behavior for `contains nil` (always false) and `replace`
+Core language overrides match reference behavior for `contains nil` / `contains false` (always false) and `replace`
 with an empty search string (insertion at every Unicode character boundary, including both ends).
 Ordinary replacement patterns retain the pinned engine's behavior. These fixes do not establish
 complete Liquid language conformance or Shopify oracle coverage.
