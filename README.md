@@ -337,6 +337,12 @@ with an empty search string (insertion at every Unicode character boundary, incl
 Ordinary replacement patterns retain the pinned engine's behavior. These fixes do not establish
 complete Liquid language conformance or Shopify oracle coverage.
 
+`truncatewords` adds an ending only when the input exceeds the word limit. Short and exact-boundary
+strings preserve their original whitespace; truncation splits on ASCII whitespace, keeping
+nonbreaking spaces within words. Counts use integer conversion, including integer string bases
+and separators; float or invalid counts report inline Liquid errors. Nil input stays nil, and an
+explicit nil ending is empty. Arrays and plain hashes use inspected text during filter coercion.
+
 Numeric literals preserve integer/float identity through assignments, nested tags, render arguments
 and dynamic settings. Integer division floors the result; either float operand retains a fractional
 result. Arithmetic keeps float results such as `3.0 | times: 2` as `6.0`, and `json` preserves finite
