@@ -398,3 +398,19 @@ test("the composed runtime owns the cart session, excludes simultaneous seed ope
     { code: "cart-mismatch" },
   );
 });
+
+test("cart changes while awaiting authorization stop the next physical POST before it dispatches", async () => {
+  const f = await fixture(),
+    server = storefront(f);
+  await assert.rejects(
+    f.controller.prepare(f.request.caseId, {
+      passwordCookie: "storefront_digest=authored",
+      fetcher: server.fetcher,
+      authorize: async (context) => {
+        if (context.stage === "add") server.change();
+      },
+    }),
+    { code: "cart-mismatch" },
+  );
+  assert.equal(server.posts(), 1); // Only the earlier, verified note update; no add after the external change.
+});

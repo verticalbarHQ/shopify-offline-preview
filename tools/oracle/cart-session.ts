@@ -320,7 +320,8 @@ export function createOracleCartSessions(
           desired = prepared?.cart;
         if (!prepared || !desired || typeof dependencies.authorize !== "function")
           throw new OracleCartError("invalid-input");
-        const stateHash = prepared.stateHash,
+        const note = desired.note,
+          stateHash = prepared.stateHash,
           state = plan.states.find((state) => state.hash === stateHash);
         if (!state) throw new OracleCartError("invalid-input");
         // Only the password-gate cookie crosses into the newly owned cart session.
@@ -398,6 +399,7 @@ export function createOracleCartSessions(
         )
           throw new OracleCartError("session-not-empty");
         assertCart(initial, [], snapshot.shop.currency, "");
+        let expected = initial;
         async function post(stage: "note" | "add", path: string, payload: unknown) {
           try {
             await dependencies.authorize({ ...observation, stage });
@@ -405,8 +407,14 @@ export function createOracleCartSessions(
             throw new OracleCartError("authorization-denied");
           }
           await verify(stateHash, targets);
+          if (!isDeepStrictEqual(await read(session), expected))
+            throw new OracleCartError("cart-mismatch");
           const response = await request(session, path, payload);
           await bodyText(response); // Bounded, drained response; only fresh GET readback certifies the outcome.
+          const after = await read(session);
+          if (after.token !== initial.token) throw new OracleCartError("cart-mismatch");
+          assertCart(after, stage === "note" ? [] : targets, snapshot.shop.currency, note);
+          expected = after;
         }
         if (desired.note) await post("note", "/cart/update.js", { note: desired.note });
         if (targets.length)
@@ -414,7 +422,7 @@ export function createOracleCartSessions(
             items: targets.map((target) => ({ id: target.variantId, quantity: target.quantity })),
           });
         const actual = await read(session);
-        if (actual.token !== initial.token) throw new OracleCartError("cart-mismatch");
+        if (!isDeepStrictEqual(actual, expected)) throw new OracleCartError("cart-mismatch");
         assertCart(actual, targets, snapshot.shop.currency, desired.note);
         await verify(prepared.stateHash, targets);
         observation.lines = actual.items.map((line) => ({
