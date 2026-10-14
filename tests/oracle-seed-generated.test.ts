@@ -16,6 +16,7 @@ import {
   SeedGeneratedError,
 } from "../tools/oracle/seed-generated.js";
 import { buildOracleSeedPlan } from "../tools/oracle/seed-plan.js";
+import { createOracleSeedStateReader } from "../tools/oracle/seed-state-reader.js";
 
 // Authored GraphQL responses only. Test authorization callbacks are not real owner approval.
 const config = { domain: "authored-demo.myshopify.com", apiVersion: "2026-10" as const },
@@ -254,6 +255,31 @@ test("generated reader is read-only, pins store/version/ID and preserves integer
   if (metadata.__typename !== "Product") throw new Error();
   assert.equal(metadata.legacyResourceId, productLegacy);
   assert.equal(metadata.createdAt, createdAt);
+});
+test("state description verifies the previous complete owned product before declaring variant additions for another state", async () => {
+  const s = setup();
+  await s.ledger.registerEnvironment({ kind: "Location", id: locationId });
+  await s.ledger.record(await s.executor.executeVerified(s.step));
+  const reader = createOracleSeedStateReader(config, s.snapshot, shopId, "authored", s.ledger, {
+      fetcher: s.fetcher,
+    }),
+    changed = s.plan.states.find((state) =>
+      state.tasks.some((task) => task.key === s.task.key && task.sourceHash !== s.task.sourceHash),
+    );
+  assert.ok(changed);
+  const previous = await reader.describe(changed.hash, s.task.key);
+  assert.equal(previous.status, "owned");
+  if (previous.status !== "owned") throw new Error();
+  assert.equal(previous.sourceHash, s.task.sourceHash);
+  assert.deepEqual(
+    previous.variantIds,
+    s.source.variants.map((variant) => variant.id),
+  );
+  await reader.verifyTask(s.state.hash, s.task.key);
+  await assert.rejects(reader.verifyTask(changed.hash, s.task.key), { code: "unverified-task" });
+  s.set("content");
+  await assert.rejects(reader.describe(changed.hash, s.task.key), { code: "source-mismatch" });
+  assert.equal(s.writes(), 1);
 });
 test("genuine execution must be recorded in the ledger; fresh source and stable metadata precede a generated receipt", async () => {
   const s = setup();

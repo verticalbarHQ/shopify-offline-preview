@@ -241,14 +241,15 @@ export async function waitOracleSeedCollectionOrder(
 }
 
 /** Checks one explicit publication, never a total count or display-name guess. This performs no publishing. */
-export async function waitOracleSeedPublication(
+async function observeOracleSeedPublication(
   config: OracleConfig,
   token: string,
   shopId: string,
   resource: Extract<ExpectedSeedIdentity, { kind: "Product" | "Collection" }>,
   publication: Extract<ExpectedSeedIdentity, { kind: "Publication" }>,
-  dependencies: SeedCompletionDependencies = {},
-): Promise<void> {
+  dependencies: SeedCompletionDependencies,
+  wait: boolean,
+): Promise<boolean> {
   const wanted = structuredClone(resource),
     channel = structuredClone(publication);
   if (
@@ -261,7 +262,7 @@ export async function waitOracleSeedPublication(
   )
     throw new SeedCompletionError("invalid-input");
   const poll = polling(config, token, shopId, dependencies);
-  await poll.run(async () => {
+  return poll.run(async () => {
     async function identity() {
       const row = (
           await readOracleSeedIdentities(
@@ -346,8 +347,46 @@ export async function waitOracleSeedPublication(
       (wanted.kind === "Product" && node.status !== "ACTIVE")
     )
       throw new SeedCompletionError("postcondition-mismatch");
-    if (!node.publishedOnPublication) return undefined;
+    if (!node.publishedOnPublication && wait) return undefined;
     await identity();
-    return true;
+    return node.publishedOnPublication;
   });
+}
+
+/** One readonly observation. A verified false flag is distinct from transport/identity failure. */
+export function readOracleSeedPublication(
+  config: OracleConfig,
+  token: string,
+  shopId: string,
+  resource: Extract<ExpectedSeedIdentity, { kind: "Product" | "Collection" }>,
+  publication: Extract<ExpectedSeedIdentity, { kind: "Publication" }>,
+  dependencies: SeedCompletionDependencies = {},
+): Promise<boolean> {
+  return observeOracleSeedPublication(
+    config,
+    token,
+    shopId,
+    resource,
+    publication,
+    dependencies,
+    false,
+  );
+}
+export async function waitOracleSeedPublication(
+  config: OracleConfig,
+  token: string,
+  shopId: string,
+  resource: Extract<ExpectedSeedIdentity, { kind: "Product" | "Collection" }>,
+  publication: Extract<ExpectedSeedIdentity, { kind: "Publication" }>,
+  dependencies: SeedCompletionDependencies = {},
+): Promise<void> {
+  await observeOracleSeedPublication(
+    config,
+    token,
+    shopId,
+    resource,
+    publication,
+    dependencies,
+    true,
+  );
 }

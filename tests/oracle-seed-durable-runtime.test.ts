@@ -45,6 +45,7 @@ async function setup(failure = "", authorize: () => Promise<void> = async () => 
     drift = "",
     sourceReads = 0,
     generatedReads = 0,
+    updateLost = false,
     driftAt = Infinity;
   const fetcher: typeof fetch = async (_url, init) => {
       calls++;
@@ -125,7 +126,8 @@ async function setup(failure = "", authorize: () => Promise<void> = async () => 
       }
       assert.ok(query.startsWith("mutation "));
       writes++;
-      if (failure === "lost") throw new Error("authored lost acknowledgement");
+      if (failure === "lost" || (updateLost && query.includes("pageUpdate")))
+        throw new Error("authored lost acknowledgement");
       return reply({
         pageCreate: { page: { id }, userErrors: [] },
         pageUpdate: { page: { id }, userErrors: [] },
@@ -156,6 +158,9 @@ async function setup(failure = "", authorize: () => Promise<void> = async () => 
     },
     calls: () => calls,
     writes: () => writes,
+    loseUpdate: () => {
+      updateLost = true;
+    },
     drift: (value: string) => {
       drift = value;
       driftAt = value === "source-after" ? sourceReads + 2 : Infinity;
@@ -201,6 +206,71 @@ test("verified checkpoint restores owned binding only after fresh reads and perm
   }
 });
 
+test("causal updates permit returning to a known state after another verified update while suppressing immediate or reopened replay", async () => {
+  const s = await setup();
+  try {
+    let runtime = await s.open();
+    await runtime.execute(step);
+    const update = {
+        ...step,
+        options: { mode: "update" as const },
+        bindings: { [seedBindingKey("page-id", source.handle)]: id },
+      },
+      other = plan.states.find(
+        (state) =>
+          state.hash !== step.stateHash &&
+          state.tasks.some(
+            (candidate) =>
+              candidate.key === step.taskKey && candidate.sourceHash === task.sourceHash,
+          ),
+      );
+    assert.ok(other);
+    await runtime.execute(update);
+    const before = s.calls();
+    await assert.rejects(runtime.execute(update), { code: "duplicate-operation" });
+    assert.equal(s.calls(), before);
+    await runtime.execute({ ...update, stateHash: other.hash });
+    await runtime.execute(update);
+    assert.equal(s.writes(), 4);
+    await runtime.close();
+    runtime = await s.open();
+    const reopenedCalls = s.calls();
+    await assert.rejects(runtime.execute(update), { code: "duplicate-operation" });
+    assert.equal(s.calls(), reopenedCalls);
+    assert.equal(s.writes(), 4);
+    await runtime.close();
+  } finally {
+    await rm(s.directory, { recursive: true, force: true });
+  }
+});
+test("a lost causal update never allows a later state transition to bypass the pending barrier", async () => {
+  const s = await setup();
+  try {
+    let runtime = await s.open();
+    await runtime.execute(step);
+    s.loseUpdate();
+    await assert.rejects(
+      runtime.execute({
+        ...step,
+        options: { mode: "update" },
+        bindings: { [seedBindingKey("page-id", source.handle)]: id },
+      }),
+      { code: "mutation-outcome-unknown" },
+    );
+    await runtime.close();
+    runtime = await s.open();
+    const before = s.calls();
+    await assert.rejects(runtime.describeTask(step.stateHash, step.taskKey), {
+      code: "recovery-required",
+    });
+    await assert.rejects(runtime.execute(step), { code: "recovery-required" });
+    assert.equal(s.calls(), before);
+    assert.equal(s.writes(), 2);
+    await runtime.close();
+  } finally {
+    await rm(s.directory, { recursive: true, force: true });
+  }
+});
 test("lost acknowledgement remains pending after restart and prevents every later network operation", async () => {
   const s = await setup("lost");
   try {
@@ -216,6 +286,34 @@ test("lost acknowledgement remains pending after restart and prevents every late
       { code: "recovery-required" },
     );
     assert.equal(s.calls(), before);
+    assert.equal(s.writes(), 1);
+    await runtime.close();
+  } finally {
+    await rm(s.directory, { recursive: true, force: true });
+  }
+});
+test("real state reader distinguishes absent and verified owned tasks, rejects drift, and cannot certify a partially seeded fixture", async () => {
+  const s = await setup();
+  try {
+    const runtime = await s.open();
+    await runtime.verifyStore();
+    assert.deepEqual(await runtime.describeTask(step.stateHash, step.taskKey), {
+      status: "absent",
+    });
+    await assert.rejects(runtime.verifyTask(step.stateHash, step.taskKey), {
+      code: "unverified-task",
+    });
+    await runtime.execute(step);
+    const description = await runtime.describeTask(step.stateHash, step.taskKey);
+    assert.equal(description.status, "owned");
+    if (description.status !== "owned") throw new Error();
+    assert.equal(description.sourceHash, task.sourceHash);
+    await runtime.verifyTask(step.stateHash, step.taskKey);
+    await assert.rejects(runtime.verifyState(step.stateHash), { code: "unverified-task" });
+    s.drift("source");
+    await assert.rejects(runtime.describeTask(step.stateHash, step.taskKey), {
+      code: "source-mismatch",
+    });
     assert.equal(s.writes(), 1);
     await runtime.close();
   } finally {

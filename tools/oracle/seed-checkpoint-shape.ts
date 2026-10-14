@@ -90,6 +90,7 @@ export const seedCheckpointSchema = z.strictObject({
         key: z.string().min(1).max(4096),
         value: z.union([id, imageUrl]),
         expected,
+        revision: z.string().uuid().nullable().optional(),
         originalImage: z
           .strictObject({
             bytes: z
@@ -131,7 +132,13 @@ export function assertSeedCheckpointBindings(
           : entry.expected.kind === "Publication"
             ? seedBindingKey("online-store-publication")
             : "";
-      if (!key || key !== entry.key || entry.value !== entry.expected.id || entry.originalImage)
+      if (
+        !key ||
+        key !== entry.key ||
+        entry.value !== entry.expected.id ||
+        entry.originalImage ||
+        entry.revision != null
+      )
         throw new Error();
       allowed.set(key, entry);
       continue;
@@ -158,6 +165,7 @@ export function assertSeedCheckpointBindings(
           value,
           expected,
           provenance: entry.provenance,
+          ...(entry.revision !== undefined ? { revision: entry.revision } : {}),
           ...(originalImage ? { originalImage } : {}),
         });
       },

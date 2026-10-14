@@ -13,6 +13,7 @@ import { createOracleSeedGeneratedRecorder } from "./seed-generated.js";
 import type { ExpectedSeedIdentity } from "./seed-identities.js";
 import type { StoredSeedCheckpoint } from "./seed-journal.js";
 import { createOracleSeedPostconditions } from "./seed-postconditions.js";
+import { createOracleSeedStateReader } from "./seed-state-reader.js";
 import { createOracleSeedUploader, SeedUploadError } from "./seed-upload.js";
 import type { OracleConfig } from "./store-guard.js";
 
@@ -52,6 +53,10 @@ export function createOracleSeedRuntime(
   const fetcher = dependencies.fetcher ?? fetch,
     ledger = createOracleSeedBindingLedger(config, snapshot, shopId, token, images, fetcher),
     generated = createOracleSeedGeneratedRecorder(config, snapshot, shopId, token, ledger, fetcher),
+    stateReader = createOracleSeedStateReader(config, snapshot, shopId, token, ledger, {
+      ...dependencies.completion,
+      fetcher,
+    }),
     verifyResult = createOracleSeedPostconditions(config, snapshot, shopId, token, ledger, images, {
       ...dependencies.completion,
       fetcher,
@@ -81,6 +86,14 @@ export function createOracleSeedRuntime(
   return {
     status: () => (recovery ? ("recovery-required" as const) : ("accepting-steps" as const)),
     getBinding: ledger.get,
+    verifyStore: () => operation(() => stateReader.guard()),
+    describeTask: (stateHash: string, taskKey: string) =>
+      operation(() => stateReader.describe(stateHash, taskKey)),
+    verifyTask: (stateHash: string, taskKey: string) =>
+      operation(() => stateReader.verifyTask(stateHash, taskKey)),
+    publicationState: (stateHash: string, taskKey: string) =>
+      operation(() => stateReader.publication(stateHash, taskKey)),
+    verifyState: (stateHash: string) => operation(() => stateReader.verifyState(stateHash)),
     recordGenerated: (receipt: VerifiedSeedExecution) => operation(() => generated.record(receipt)),
     observeGenerated: (stateHash: string, taskKey: string) =>
       operation(async () => {

@@ -26,6 +26,10 @@ const digest = z.string().regex(/^[a-f0-9]{64}$/),
     completed: z.array(digest).max(20000),
     pending: digest.nullable(),
     checkpoint: seedCheckpointSchema.optional(),
+    effects: z
+      .record(digest, z.strictObject({ revision: z.string().uuid() }))
+      .refine((value) => Object.keys(value).length <= 20000)
+      .optional(),
   });
 type Document = z.infer<typeof documentSchema>;
 const maxBytes = 2 * 1024 * 1024;
@@ -103,6 +107,7 @@ export async function openOracleSeedJournal(directory: string, scope: string) {
     busy = false,
     failed = false,
     activeIntent: string | null = null,
+    activeCausal: { wireHash: string; targetKey: string } | null = null,
     current: Document = { version: 1, scope, completed: [], pending: null },
     journalIdentity:
       | { dev: number; ino: number; size: number; mtimeMs: number; ctimeMs: number }
@@ -227,6 +232,42 @@ export async function openOracleSeedJournal(directory: string, scope: string) {
       busy = false;
     }
   }
+  async function reserve(
+    wireHash: string,
+    causal?: { targetKey: string; predecessor: string },
+  ): Promise<string> {
+    if (!digest.safeParse(wireHash).success) throw new SeedJournalError("invalid-input");
+    if (current.pending) throw new SeedJournalError("recovery-required");
+    let intent = wireHash;
+    if (causal) {
+      const entry = current.checkpoint?.entries.find((entry) => entry.key === causal.targetKey);
+      if (
+        !z.string().uuid().safeParse(causal.predecessor).success ||
+        !entry?.provenance ||
+        (entry.revision != null && entry.revision !== causal.predecessor)
+      )
+        throw new SeedJournalError("invalid-input");
+      const effect = current.effects?.[wireHash];
+      if (
+        effect?.revision === causal.predecessor ||
+        (!effect && current.completed.includes(wireHash))
+      )
+        throw new SeedJournalError("duplicate-operation");
+      // Legacy checkpoints have no revision: retain their canonical replay barrier until a new verified write.
+      intent = entry.revision
+        ? seedJournalFingerprint({ wireHash, predecessor: causal.predecessor })
+        : wireHash;
+    }
+    if (current.completed.includes(intent)) throw new SeedJournalError("duplicate-operation");
+    if (current.completed.length >= 20000) {
+      failed = true;
+      throw new SeedJournalError("journal-full");
+    }
+    await save({ ...current, pending: intent });
+    activeIntent = intent;
+    activeCausal = causal ? { wireHash, targetKey: causal.targetKey } : null;
+    return intent;
+  }
   return {
     checkpoint(): StoredSeedCheckpoint | undefined {
       if (closed) throw new SeedJournalError("closed");
@@ -243,18 +284,9 @@ export async function openOracleSeedJournal(directory: string, scope: string) {
         : failed || current.pending
           ? ("recovery-required" as const)
           : ("accepting-intents" as const),
-    begin: (intent: string) =>
-      operation(async () => {
-        if (!digest.safeParse(intent).success) throw new SeedJournalError("invalid-input");
-        if (current.pending) throw new SeedJournalError("recovery-required");
-        if (current.completed.includes(intent)) throw new SeedJournalError("duplicate-operation");
-        if (current.completed.length >= 20000) {
-          failed = true;
-          throw new SeedJournalError("journal-full");
-        }
-        await save({ ...current, pending: intent });
-        activeIntent = intent;
-      }),
+    begin: (intent: string) => operation(() => reserve(intent)),
+    beginExecution: (wireHash: string, targetKey: string, predecessor: string) =>
+      operation(() => reserve(wireHash, { targetKey, predecessor })),
     settle: (
       intent: string,
       outcome: "verified" | "not-dispatched",
@@ -267,15 +299,27 @@ export async function openOracleSeedJournal(directory: string, scope: string) {
           !["verified", "not-dispatched"].includes(outcome)
         )
           throw new SeedJournalError("invalid-input");
+        const data =
+          checkpoint && outcome === "verified"
+            ? seedCheckpointSchema.parse(inspectPreparedSeedCheckpoint(checkpoint))
+            : undefined;
+        let effects = current.effects;
+        if (outcome === "verified" && activeCausal) {
+          const revision = data?.entries.find(
+            (entry) => entry.key === activeCausal?.targetKey,
+          )?.revision;
+          if (!revision) throw new SeedJournalError("invalid-input");
+          effects = { ...effects, [activeCausal.wireHash]: { revision } };
+        }
         await save({
           ...current,
           pending: null,
           completed: outcome === "verified" ? [...current.completed, intent] : current.completed,
-          ...(checkpoint && outcome === "verified"
-            ? { checkpoint: seedCheckpointSchema.parse(inspectPreparedSeedCheckpoint(checkpoint)) }
-            : {}),
+          ...(data ? { checkpoint: data } : {}),
+          ...(effects ? { effects } : {}),
         });
         activeIntent = null;
+        activeCausal = null;
       }),
     close: async () => {
       if (closed) return;

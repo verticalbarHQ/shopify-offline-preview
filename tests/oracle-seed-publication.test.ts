@@ -3,7 +3,11 @@ import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 import { defaultFixture } from "../packages/data/src/fixture.js";
 import { createOracleSeedBindingLedger } from "../tools/oracle/seed-binding-ledger.js";
-import { SeedCompletionError, waitOracleSeedPublication } from "../tools/oracle/seed-completion.js";
+import {
+  readOracleSeedPublication,
+  SeedCompletionError,
+  waitOracleSeedPublication,
+} from "../tools/oracle/seed-completion.js";
 import {
   createOracleSeedExecutor,
   inspectVerifiedSeedExecution,
@@ -13,6 +17,7 @@ import { buildOracleSeedPlan } from "../tools/oracle/seed-plan.js";
 import { createOracleSeedPostconditions } from "../tools/oracle/seed-postconditions.js";
 import { seedBindingKey } from "../tools/oracle/seed-requests.js";
 import { seedAdminSchema } from "../tools/oracle/seed-schema.js";
+import { createOracleSeedStateReader } from "../tools/oracle/seed-state-reader.js";
 
 // Authored test responses. No channel selection, owner approval or live publishing evidence.
 const config = { domain: "authored-demo.myshopify.com", apiVersion: "2026-10" as const },
@@ -96,6 +101,32 @@ test("only the exact selected publication becoming visible completes the bounded
     sleep,
   });
   assert.equal(s.calls(), 2);
+});
+test("one publication observation returns verified false without polling and rejects failures instead of treating them as unpublished", async () => {
+  const s = fetcherFor((call) => ({ publishedOnPublication: call === 2 })),
+    dependencies = {
+      fetcher: s.fetcher,
+      sleep: async () => {
+        throw new Error("one-shot reader must not sleep");
+      },
+    };
+  assert.equal(
+    await readOracleSeedPublication(config, "authored", shopId, product, publication, dependencies),
+    false,
+  );
+  assert.equal(s.calls(), 1);
+  assert.equal(
+    await readOracleSeedPublication(config, "authored", shopId, product, publication, dependencies),
+    true,
+  );
+  await assert.rejects(
+    readOracleSeedPublication(config, "authored", shopId, product, publication, {
+      fetcher: async () => {
+        throw new Error("private transport detail");
+      },
+    }),
+    code("read-failed"),
+  );
 });
 test("draft resource, wrong ID/handle or changed catalog/app cannot masquerade as channel publication", async () => {
   for (const failure of ["draft", "id", "handle", "catalog", "app"]) {
@@ -393,6 +424,12 @@ test("executor postcondition receives isolated copies of the actual sent IDs and
       bindings: { [seedBindingKey("inventory-location")]: locationId },
     };
   await ledger.record(await executor.executeVerified(base));
+  const reader = createOracleSeedStateReader(config, snapshot, shopId, "authored", ledger, {
+    fetcher,
+    sleep,
+    attempts: 1,
+  });
+  assert.equal(await reader.publication(state.hash, task.key), false);
   const step = {
     ...base,
     kind: "publication" as const,

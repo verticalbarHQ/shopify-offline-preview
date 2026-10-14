@@ -1,5 +1,6 @@
 import type { Snapshot } from "../../packages/data/src/schema.js";
 import { backupDigest } from "./backup-audit.js";
+import { inspectPreparedSeedCheckpoint } from "./seed-binding-ledger.js";
 import {
   inspectVerifiedSeedExecution,
   SeedExecutionError,
@@ -13,6 +14,7 @@ import {
   compileSeedStepTemplates,
   resolveSeedRequest,
   type SeedRequestTemplate,
+  seedBindingKey,
 } from "./seed-requests.js";
 import {
   createOracleSeedRuntime,
@@ -104,9 +106,15 @@ export async function openOracleSeedDurableRuntime(
       busy = false;
     }
   }
-  async function write<T>(intent: string, fn: () => Promise<T>): Promise<T> {
+  async function write<T>(
+    wireHash: string,
+    fn: () => Promise<T>,
+    causal?: { targetKey: string; predecessor: string },
+  ): Promise<T> {
     // Durable reservation precedes all authorization/guard/network work. A crash cannot forget it.
-    await journal.begin(intent);
+    const intent = causal
+      ? await journal.beginExecution(wireHash, causal.targetKey, causal.predecessor)
+      : await journal.begin(wireHash);
     let value: T;
     try {
       value = await fn();
@@ -126,6 +134,14 @@ export async function openOracleSeedDurableRuntime(
           ? ("accepting-steps" as const)
           : ("recovery-required" as const),
     getBinding: runtime.getBinding,
+    verifyStore: () => operation(() => runtime.verifyStore()),
+    describeTask: (stateHash: string, taskKey: string) =>
+      operation(() => runtime.describeTask(stateHash, taskKey)),
+    verifyTask: (stateHash: string, taskKey: string) =>
+      operation(() => runtime.verifyTask(stateHash, taskKey)),
+    publicationState: (stateHash: string, taskKey: string) =>
+      operation(() => runtime.publicationState(stateHash, taskKey)),
+    verifyState: (stateHash: string) => operation(() => runtime.verifyState(stateHash)),
     recordGenerated: (receipt: VerifiedSeedExecution) =>
       operation(() => runtime.recordGenerated(receipt)),
     observeGenerated: (stateHash: string, taskKey: string) =>
@@ -166,7 +182,21 @@ export async function openOracleSeedDurableRuntime(
           sourceHash: task.sourceHash,
           request,
         });
-        return write(intent, () => runtime.execute(copy));
+        const targetKey =
+            task.resource === "article"
+              ? seedBindingKey("article-id", ...task.identity)
+              : seedBindingKey(`${task.resource}-id`, task.identity[0] ?? ""),
+          previous =
+            copy.kind === "task" && copy.options.mode === "create"
+              ? undefined
+              : inspectPreparedSeedCheckpoint(runtime.checkpoint()).entries.find(
+                  (entry) => entry.key === targetKey,
+                );
+        return write(
+          intent,
+          () => runtime.execute(copy),
+          previous?.revision ? { targetKey, predecessor: previous.revision } : undefined,
+        );
       }),
     upload: (receipt: VerifiedSeedExecution, bytes: Uint8Array) =>
       operation(async () => {

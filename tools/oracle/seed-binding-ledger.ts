@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { type Snapshot, snapshotSchema } from "../../packages/data/src/schema.js";
 import { readOracleIdentity } from "./admin-read.js";
@@ -72,6 +73,15 @@ interface Entry {
   expected: ExpectedSeedIdentity;
   originalImage?: { sha256: string; bytes: number };
   proof: VerifiedSeedExecution | RestoredSeedOwnership | null;
+}
+const ownershipRevisions = new WeakMap<NonNullable<Entry["proof"]>, string>();
+function ownershipRevision(proof: NonNullable<Entry["proof"]>): string {
+  let revision = ownershipRevisions.get(proof);
+  if (!revision) {
+    revision = randomUUID();
+    ownershipRevisions.set(proof, revision);
+  }
+  return revision;
 }
 export class SeedLedgerError extends Error {
   constructor(
@@ -257,6 +267,7 @@ export function createOracleSeedBindingLedger(
               value: entry.value,
               expected: entry.expected,
               provenance,
+              revision: entry.proof ? ownershipRevision(entry.proof) : null,
               ...(entry.originalImage ? { originalImage: entry.originalImage } : {}),
             };
           }),
@@ -285,12 +296,17 @@ export function createOracleSeedBindingLedger(
         )
           throw new Error();
         const roots = assertSeedCheckpointBindings(plan, data, assets),
-          additions = new Map<string, Entry>();
+          additions = new Map<string, Entry>(),
+          legacyRevisions = new Map<string, string>();
         for (const entry of data.entries) {
           let proof: RestoredSeedOwnership | null = null;
           if (entry.provenance) {
             proof = Object.freeze({ kind: "restored-seed-ownership" });
             restoredOwnership.set(proof, entry.provenance);
+            const key = JSON.stringify(entry.provenance),
+              revision = entry.revision ?? legacyRevisions.get(key) ?? randomUUID();
+            legacyRevisions.set(key, revision);
+            ownershipRevisions.set(proof, revision);
           }
           additions.set(entry.key, {
             value: entry.value,
