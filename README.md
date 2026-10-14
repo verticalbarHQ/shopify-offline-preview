@@ -224,7 +224,9 @@ The static benchmark check verifies deterministic coverage output, valid result 
 or missing-reference errors. Static object inference follows assignment order, restores loop bindings,
 and includes types carried between iterations and across branches. Documented `default` and array
 filters retain their source types; unknown filter results and untyped caller inputs keep coverage
-incomplete. This inference does not mark any feature oracle-verified. The initial rendering check compares repeat runs and Node/browser builds
+incomplete. Conditions on menu link `type`, search result `object_type` and `media_type` refine
+resource properties in their branches, including short-circuit conditions. Reassignment and loop
+shadowing discard stale refinements. This inference does not mark any feature oracle-verified. The initial rendering check compares repeat runs and Node/browser builds
 across all 36 cases while reporting remaining errors and unsupported features. The browser smoke
 command starts a loopback-only verification page for those same cases. These checks do **not** assert
 Shopify render parity and do not waive acceptance gates. `oracle:offline-check` instruments temporary

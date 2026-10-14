@@ -15,6 +15,7 @@ import {
 import { parseThemeJson, type ThemeFileSystem, themePath } from "../../theme/src/index.js";
 import type { CheckResult, Diagnostic, Feature } from "./contracts.js";
 import { variableEnvironments } from "./type-environments.js";
+import { lookupKey } from "./type-facts.js";
 
 export { type CheckResult, checkSchema } from "./contracts.js";
 
@@ -109,7 +110,7 @@ function lookupTypes(expression: LiquidExpression, symbols: Map<string, Set<stri
   let types =
     symbols.get(expression.name) ??
     (objectNames.has(expression.name) ? new Set([expression.name]) : new Set(["?"]));
-  for (const lookup of expression.lookups) {
+  for (const [index, lookup] of expression.lookups.entries()) {
     const next = new Set<string>();
     for (const type of types) {
       if (type === "?") next.add("?");
@@ -126,7 +127,8 @@ function lookupTypes(expression: LiquidExpression, symbols: Map<string, Set<stri
       // Shopify resource dictionaries use handles, not documented fixed properties.
       if (Object.hasOwn(dictionaries, type) && dictionaries[type]) next.add(dictionaries[type]);
     }
-    types = next;
+    const fact = lookupKey(expression, index + 1);
+    types = (fact ? symbols.get(fact) : undefined) ?? next;
   }
   return types;
 }
@@ -187,7 +189,7 @@ function scanLiquid(text: string, file: string): Scan {
           );
         }
         let types = initial;
-        for (const lookup of node.lookups) {
+        for (const [index, lookup] of node.lookups.entries()) {
           const next = new Set<string>();
           for (const type of types) {
             if (type === "?") {
@@ -233,10 +235,12 @@ function scanLiquid(text: string, file: string): Scan {
               );
             }
           }
+          const key = lookupKey(node, index + 1);
+          const resolved = (key ? environments.get(node)?.get(key) : undefined) ?? next;
           if (
-            !next.size &&
+            !resolved.size &&
             types.size &&
-            ![...types].every((type) => ["string", "number", "boolean"].includes(type))
+            ![...types].every((type) => ["string", "number", "boolean", "nil"].includes(type))
           ) {
             result.complete = false;
             result.diagnostics.push(
@@ -248,7 +252,7 @@ function scanLiquid(text: string, file: string): Scan {
               ),
             );
           }
-          types = next;
+          types = resolved;
         }
       }
       if (node.type === NodeTypes.LiquidRawTag && node.name === "schema") {

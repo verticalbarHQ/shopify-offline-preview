@@ -241,3 +241,154 @@ test("loop else assignments do not pollute the body or preserve overwritten entr
     !features.some((feature) => ["variant.products", "collection.price"].includes(feature.name)),
   );
 });
+
+test("link type guards narrow direct and assigned resource properties through if and elsif", async () => {
+  const files = theme();
+  files["sections/header.liquid"] = `{% for entry in linklists.main.links %}
+{% if entry.type == 'collection_link' and show %}{{entry.object.products_count}}{% assign selected=entry.object %}{{selected.products}}
+{% elsif 'product_link' == entry.type %}{{entry.object.price}}{% else %}{{entry.object.title}}{% endif %}{% endfor %}`;
+  const result = await checkTheme(new MemoryThemeFileSystem(files));
+  const names = new Set(
+    result.pages[0]?.features
+      .filter((feature) => feature.occurrences.some((o) => o.file === "sections/header.liquid"))
+      .map((feature) => feature.name),
+  );
+  assert.ok(names.has("collection.products_count"));
+  assert.ok(names.has("collection.products"));
+  assert.ok(names.has("product.price"));
+  for (const name of [
+    "article.products",
+    "blog.products",
+    "page.products",
+    "policy.products",
+    "product.products",
+    "collection.price",
+    "article.price",
+  ])
+    assert.ok(!names.has(name), name);
+});
+
+test("unless and not-equal link guards retain all paths outside their condition", async () => {
+  const files = theme();
+  files["sections/header.liquid"] = `{% for entry in linklists.main.links %}
+{% unless entry.type != 'collection_link' %}{{entry.object.products}}{% endunless %}
+{% if entry.type == 'collection_link' or show %}{{entry.object.products}}{% endif %}{% endfor %}`;
+  const result = await checkTheme(new MemoryThemeFileSystem(files));
+  const product = result.pages[0]?.features.find((feature) => feature.name === "product.products");
+  assert.ok(product?.occurrences.some((o) => o.file === "sections/header.liquid" && o.line === 3));
+  assert.ok(!product?.occurrences.some((o) => o.file === "sections/header.liquid" && o.line === 2));
+});
+
+test("media case branches resolve image and external video subtype fields independently", async () => {
+  const files = theme();
+  files["sections/header.liquid"] = `{% for item in product.media %}{% case item.media_type %}
+{% when 'image' %}{{item.aspect_ratio}}{{item.src}}
+{% when 'external_video' %}{{item.host}}{{item.external_id}}
+{% when 'video' %}{{item.sources}}{% else %}{{item.id}}{% endcase %}{% endfor %}`;
+  const features = (await checkTheme(new MemoryThemeFileSystem(files))).pages[0]?.features ?? [];
+  for (const name of [
+    "image.aspect_ratio",
+    "image.src",
+    "external_video.host",
+    "external_video.external_id",
+    "video.sources",
+  ])
+    assert.ok(
+      features.some((feature) => feature.name === name),
+      name,
+    );
+  for (const name of ["video.host", "video.external_id", "media.src", "model.host"])
+    assert.ok(!features.some((feature) => feature.name === name), name);
+});
+
+test("search object type guards narrow known union members without trusting arbitrary caller objects", async () => {
+  const files = theme();
+  files["sections/header.liquid"] =
+    `{% for item in search.results %}{% if item.object_type == 'product' %}{{item.price}}{% elsif item.object_type == 'article' %}{{item.author}}{% else %}{{item.title}}{% endif %}{% endfor %}
+{% assign uncertain=caller_input | default: product %}{% if uncertain.object_type == 'product' %}{{uncertain.price}}{% endif %}`;
+  const result = await checkTheme(new MemoryThemeFileSystem(files));
+  const features = result.pages[0]?.features ?? [];
+  for (const name of ["product.price", "article.author", "page.title"])
+    assert.ok(features.some((feature) => feature.name === name));
+  for (const name of ["article.price", "page.price", "page.author", "product.author"])
+    assert.ok(!features.some((feature) => feature.name === name));
+  assert.equal(result.summary.complete, false);
+  assert.ok(
+    result.diagnostics.some(
+      (diagnostic) =>
+        diagnostic.code === "unresolved-object" && diagnostic.message.includes("uncertain"),
+    ),
+  );
+});
+
+test("path refinements expire after reassignment and loop shadowing restores only the outer facts", async () => {
+  const files = theme();
+  files["sections/header.liquid"] =
+    `{% for entry in linklists.main.links %}{% if entry.type == 'collection_link' %}
+{{entry.object.products}}
+{% for entry in linklists.footer.links %}{{entry.object.products}}{% endfor %}
+{{entry.object.products}}
+{% assign entry=linklists.footer.links.first %}{{entry.object.products}}
+{% endif %}{{entry.object.products}}{% endfor %}`;
+  const features = (await checkTheme(new MemoryThemeFileSystem(files))).pages[0]?.features ?? [];
+  const bad =
+    features
+      .find((feature) => feature.name === "article.products")
+      ?.occurrences.filter((o) => o.file === "sections/header.liquid")
+      .map((o) => o.line) ?? [];
+  assert.ok(!bad.includes(2));
+  assert.ok(bad.includes(3));
+  assert.ok(!bad.includes(4));
+  assert.ok(bad.includes(5));
+  assert.ok(bad.includes(6));
+});
+
+test("short-circuit conditions use the preceding guard while the guard itself retains its entry types", async () => {
+  const files = theme();
+  files["sections/header.liquid"] =
+    `{% for item in search.results %}{% if item.object_type == 'product' and item.price > 0 %}{{item.vendor}}{% endif %}{% endfor %}
+{% for entry in linklists.main.links %}{% if entry.type != 'collection_link' or entry.object.products_count > 0 %}{{entry.title}}{% endif %}{% endfor %}`;
+  const result = await checkTheme(new MemoryThemeFileSystem(files));
+  const features = result.pages[0]?.features ?? [];
+  for (const name of [
+    "product.price",
+    "product.vendor",
+    "collection.products_count",
+    "article.object_type",
+    "page.object_type",
+  ])
+    assert.ok(
+      features.some((feature) => feature.name === name),
+      name,
+    );
+  for (const name of [
+    "article.price",
+    "page.price",
+    "article.products_count",
+    "product.products_count",
+  ])
+    assert.ok(!features.some((feature) => feature.name === name), name);
+});
+
+test("conditional resource refinements are byte-identical in Node and the browser build", async () => {
+  const files = theme();
+  files["sections/header.liquid"] =
+    `{% for entry in linklists.main.links %}{% if entry.type == 'collection_link' %}{{entry.object.products}}{% elsif entry.type == 'product_link' %}{{entry.object.price}}{% endif %}{% endfor %}{% for item in product.media %}{% case item.media_type %}{% when 'image' %}{{item.src}}{% when 'video' %}{{item.sources}}{% endcase %}{% endfor %}`;
+  const browser: typeof import("../packages/check/src/browser.js") = await import(
+    new URL("../dist/browser.js", import.meta.url).href
+  );
+  assert.equal(
+    JSON.stringify(await browser.checkTheme(new browser.MemoryThemeFileSystem(files))),
+    JSON.stringify(await checkTheme(new MemoryThemeFileSystem(files))),
+  );
+});
+
+test("a merchant product type string cannot be mistaken for a menu link discriminator", async () => {
+  const files = theme();
+  files["sections/header.liquid"] =
+    `{% if request.design_mode %}{% assign entry=linklists.main.links.first %}{% else %}{% assign entry=product %}{% endif %}{% if entry.type == 'collection_link' %}{{entry.object.products}}{% endif %}`;
+  const result = await checkTheme(new MemoryThemeFileSystem(files));
+  const features = result.pages[0]?.features ?? [];
+  assert.ok(features.some((feature) => feature.name === "product.object" && !feature.known));
+  assert.ok(features.some((feature) => feature.name === "article.products"));
+});
