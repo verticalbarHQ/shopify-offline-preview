@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { defaultFixture } from "../../packages/data/src/fixture.js";
 import { snapshotSchema } from "../../packages/data/src/schema.js";
 import { backupDigest } from "../../tools/oracle/backup-audit.js";
 import { captureContextKey, captureContextSource } from "../../tools/oracle/capture-context.js";
-import { prepareNativeImageProbe } from "../../tools/oracle/image-native.js";
+import {
+  type NativeImagePayload,
+  prepareNativeImageProbe,
+} from "../../tools/oracle/image-native.js";
 import { buildOracleSeedPlan } from "../../tools/oracle/seed-plan.js";
 import { config, locationId, shopId } from "./seed-product.js";
 
@@ -21,65 +25,68 @@ export const allContracts: unknown = JSON.parse(
     "utf8",
   ),
 );
-/** Compact contract fixture only. This is NOT the locked release fixture or a substitute for its real Shopify matrix. */
-export function compactCaseStore(options: { genericImages?: boolean } = {}) {
+/** Authored HTTP model only. Even full release inputs do not make its responses real Shopify evidence. */
+function authoredCaseStore(options: { genericImages?: boolean; fullFixture?: boolean } = {}) {
   const snapshot = defaultFixture();
-  snapshot.products = snapshot.products.slice(0, 2);
-  for (const product of snapshot.products) {
-    const variant = product.variants[0];
-    assert.ok(variant);
-    product.images = [];
-    product.options = [{ name: "Title", values: ["Default Title"] }];
-    product.variants = [
+  if (!options.fullFixture) {
+    snapshot.products = snapshot.products.slice(0, 2);
+    for (const product of snapshot.products) {
+      const variant = product.variants[0];
+      assert.ok(variant);
+      product.images = [];
+      product.options = [{ name: "Title", values: ["Default Title"] }];
+      product.variants = [
+        {
+          ...variant,
+          image: null,
+          available: true,
+          optionValues: [{ name: "Title", value: "Default Title" }],
+        },
+      ];
+    }
+    snapshot.collections = snapshot.collections.slice(0, 1);
+    for (const collection of snapshot.collections) {
+      if (!options.genericImages) collection.image = null;
+      collection.products = snapshot.products.map((product) => product.handle);
+      collection.sortOrder = "manual";
+    }
+    snapshot.pages = snapshot.pages.slice(0, 1);
+    snapshot.blogs = snapshot.blogs.filter((blog) => blog.handle === "news");
+    for (const blog of snapshot.blogs) {
+      blog.articles = blog.articles.slice(0, 1);
+      for (const article of blog.articles) if (!options.genericImages) article.image = null;
+    }
+    snapshot.menus = [
       {
-        ...variant,
-        image: null,
-        available: true,
-        optionValues: [{ name: "Title", value: "Default Title" }],
+        handle: "main-menu",
+        title: "Main menu",
+        links: [{ title: "Home", url: "/", type: "http_link", resourceHandle: null, links: [] }],
       },
     ];
+    snapshot.images = [];
+    snapshot.metaobjects = [];
+    snapshot.filters = [];
+    snapshot.cart = { lines: [], note: "", taxesIncluded: false, dutiesIncluded: false };
+    for (const name of Object.keys(snapshot.scenarios)) snapshot.scenarios[name] = {};
+    snapshot.scenarios["with-items"] = {
+      cart: {
+        lines: snapshot.products.map((product) => ({
+          productHandle: product.handle,
+          variantId: product.variants[0]?.id ?? "",
+          quantity: 1,
+        })),
+        note: "Authored case note",
+      },
+    };
   }
-  snapshot.collections = snapshot.collections.slice(0, 1);
-  for (const collection of snapshot.collections) {
-    if (!options.genericImages) collection.image = null;
-    collection.products = snapshot.products.map((product) => product.handle);
-    collection.sortOrder = "manual";
-  }
-  snapshot.pages = snapshot.pages.slice(0, 1);
-  snapshot.blogs = snapshot.blogs.filter((blog) => blog.handle === "news");
-  for (const blog of snapshot.blogs) {
-    blog.articles = blog.articles.slice(0, 1);
-    for (const article of blog.articles) if (!options.genericImages) article.image = null;
-  }
-  snapshot.menus = [
-    {
-      handle: "main-menu",
-      title: "Main menu",
-      links: [{ title: "Home", url: "/", type: "http_link", resourceHandle: null, links: [] }],
-    },
-  ];
-  snapshot.images = [];
-  snapshot.metaobjects = [];
-  snapshot.filters = [];
-  snapshot.cart = { lines: [], note: "", taxesIncluded: false, dutiesIncluded: false };
-  for (const name of Object.keys(snapshot.scenarios)) snapshot.scenarios[name] = {};
-  snapshot.scenarios["with-items"] = {
-    cart: {
-      lines: snapshot.products.map((product) => ({
-        productHandle: product.handle,
-        variantId: product.variants[0]?.id ?? "",
-        quantity: 1,
-      })),
-      note: "Authored case note",
-    },
-  };
   const plan = buildOracleSeedPlan(config, snapshot),
     state = plan.states[0];
   assert.ok(state);
   assert.deepEqual(plan.issues, []);
-  assert.equal(plan.states.length, 1);
-  const tasks = state.tasks,
-    ids = new Map(
+  assert.equal(plan.states.length, options.fullFixture ? 7 : 1);
+  const tasks = [...state.tasks];
+  let desiredTasks = state.tasks;
+  const ids = new Map(
       tasks.map((task, index) => [
         task.key,
         `gid://shopify/${task.resource === "image" ? "MediaImage" : `${task.resource[0]?.toUpperCase()}${task.resource.slice(1)}`}/${100 + index}`,
@@ -87,14 +94,35 @@ export function compactCaseStore(options: { genericImages?: boolean } = {}) {
     ),
     created = new Set<string>(),
     published = new Set<string>(),
+    mutations = new Map<string, number>(),
     variants = new Map<string, { id: string; parent: string; index: number }>();
-  const imageBytes = new Uint8Array([1, 2, 3]),
+  const imageBytes = new Map(
+      tasks
+        .filter((task) => task.resource === "image")
+        .map((task) => {
+          const file = task.identity[0];
+          assert.ok(file);
+          return [
+            file,
+            options.fullFixture
+              ? new Uint8Array(
+                  readFileSync(new URL(`../../fixtures/default/images/${file}`, import.meta.url)),
+                )
+              : new Uint8Array([1, 2, 3]),
+          ] as const;
+        }),
+    ),
+    bytesFor = (file: string) => {
+      const bytes = imageBytes.get(file);
+      assert.ok(bytes);
+      return bytes;
+    },
     assets = tasks
       .filter((task) => task.resource === "image")
       .map((task) => ({
         file: task.identity[0] ?? "",
-        bytes: imageBytes.length,
-        sha256: backupDigest(imageBytes),
+        bytes: bytesFor(task.identity[0] ?? "").length,
+        sha256: backupDigest(bytesFor(task.identity[0] ?? "")),
       })),
     imageUrl = (file: string) => `https://cdn.shopify.com/s/files/1/files/${file}?v=1`,
     adminImage = (image: (typeof snapshot.collections)[number]["image"]) =>
@@ -106,7 +134,7 @@ export function compactCaseStore(options: { genericImages?: boolean } = {}) {
             height: image.height,
           }
         : null;
-  assert.equal(assets.length, options.genericImages ? 1 : 0);
+  assert.equal(assets.length, options.fullFixture ? 16 : options.genericImages ? 1 : 0);
   for (const task of tasks)
     if (task.resource === "product") {
       const p = snapshotSchema.shape.products.element.parse(task.source),
@@ -119,6 +147,15 @@ export function compactCaseStore(options: { genericImages?: boolean } = {}) {
           index,
         });
     }
+  let nextVariantId = 1000 + variants.size;
+  const order = new Map<string, string[]>();
+  const imageId = (file: string) => {
+    const task = tasks.find((task) => task.resource === "image" && task.identity[0] === file);
+    assert.ok(task);
+    const id = ids.get(task.key);
+    assert.ok(id);
+    return id;
+  };
   const suffix = (id: string) => id.slice(id.lastIndexOf("/") + 1),
     pi = { hasNextPage: false, endCursor: null },
     shop = {
@@ -189,8 +226,8 @@ export function compactCaseStore(options: { genericImages?: boolean } = {}) {
         fileStatus: "READY",
         image: { url: imageUrl(image.file), width: image.width, height: image.height },
         originalSource: {
-          url: "https://cdn.shopify.com/original.png",
-          fileSize: imageBytes.length,
+          url: `https://cdn.shopify.com/original/${image.file}`,
+          fileSize: bytesFor(image.file).length,
         },
       };
     }
@@ -217,7 +254,13 @@ export function compactCaseStore(options: { genericImages?: boolean } = {}) {
           position: index + 1,
           optionValues: option.values.map((name) => ({ name })),
         })),
-        media: { nodes: [], pageInfo: pi },
+        media: {
+          nodes: p.images.map((image) => ({
+            ...node(imageId(image.file)),
+            image: adminImage(image),
+          })),
+          pageInfo: pi,
+        },
         variants: {
           nodes: p.variants.map((source, index) => {
             const actual = variants.get(source.id);
@@ -238,7 +281,12 @@ export function compactCaseStore(options: { genericImages?: boolean } = {}) {
                 nodes: source.barcode ? [{ value: source.barcode, type: null }] : [],
                 pageInfo: pi,
               },
-              media: { nodes: [], pageInfo: pi },
+              media: {
+                nodes: source.image
+                  ? [{ __typename: "MediaImage", id: imageId(source.image) }]
+                  : [],
+                pageInfo: pi,
+              },
               inventoryItem: {
                 id: `gid://shopify/InventoryItem/${suffix(actual.id)}`,
                 sku: source.sku,
@@ -259,7 +307,7 @@ export function compactCaseStore(options: { genericImages?: boolean } = {}) {
     }
     if (task.resource === "collection") {
       const c = snapshotSchema.shape.collections.element.parse(task.source),
-        members = c.products.map((handle) => {
+        members = (order.get(task.key) ?? c.products).map((handle) => {
           const p = tasks.find(
             (task) => task.resource === "product" && task.identity[0] === handle,
           );
@@ -349,9 +397,16 @@ export function compactCaseStore(options: { genericImages?: boolean } = {}) {
         title: m.title,
         items: m.links.map((link) => ({
           title: link.title,
-          type: "HTTP",
-          url: link.url,
-          resourceId: null,
+          type:
+            link.type === "http_link"
+              ? "HTTP"
+              : link.type === "collection_link"
+                ? "COLLECTION"
+                : "PAGE",
+          url: link.type === "http_link" ? link.url : null,
+          resourceId: link.resourceHandle
+            ? ids.get(tasks.find((task) => task.identity[0] === link.resourceHandle)?.key ?? "")
+            : null,
           items: [],
         })),
       };
@@ -362,7 +417,12 @@ export function compactCaseStore(options: { genericImages?: boolean } = {}) {
     Response.json({ data }, { headers: { "x-shopify-api-version": "2026-10" } });
   const fetcher: typeof fetch = async (_url, init) => {
     reads++;
-    if (init?.method === "GET") return new Response(imageBytes);
+    if (init?.method === "GET") {
+      const path = new URL(String(_url)).pathname,
+        file = path.split("/").at(-1);
+      assert.ok(file && path === `/original/${file}`);
+      return new Response(bytesFor(file).slice());
+    }
     const body = JSON.parse(String(init?.body)),
       q = String(body.query),
       v = body.variables ?? {};
@@ -414,6 +474,7 @@ export function compactCaseStore(options: { genericImages?: boolean } = {}) {
       if (v.blog) data.blog = { id: v.blog, articles: data.articles };
       return reply(data);
     }
+    if (q.includes("OfflinePreviewSeedJob")) return reply({ shop, job: { id: v.id, done: true } });
     if (q.includes("OfflinePreviewSeedVariants")) {
       const p = node(v.id);
       return reply({ shop, product: p });
@@ -435,6 +496,9 @@ export function compactCaseStore(options: { genericImages?: boolean } = {}) {
       return reply({ shop, nodes: v.ids.map((id: string) => node(id)) });
     assert.ok(q.startsWith("mutation "));
     writes++;
+    const operationName = /\{\s*(\w+)\(/.exec(q)?.[1];
+    assert.ok(operationName);
+    mutations.set(operationName, (mutations.get(operationName) ?? 0) + 1);
     if (q.includes("stagedUploadsCreate"))
       return reply({
         stagedUploadsCreate: {
@@ -449,7 +513,9 @@ export function compactCaseStore(options: { genericImages?: boolean } = {}) {
         },
       });
     if (q.includes("fileCreate")) {
-      const task = tasks.find((task) => task.resource === "image");
+      const task = tasks.find(
+        (task) => task.resource === "image" && task.identity[0] === v.files[0].filename,
+      );
       assert.ok(task);
       const id = ids.get(task.key);
       assert.ok(id);
@@ -460,18 +526,38 @@ export function compactCaseStore(options: { genericImages?: boolean } = {}) {
       published.add(v.id);
       return reply({ publishablePublish: { publishable: { id: v.id }, userErrors: [] } });
     }
+    if (q.includes("collectionReorderProducts")) {
+      const task = getTask(v.id),
+        current = order.get(task.key);
+      assert.ok(current);
+      for (const move of v.moves) {
+        const product = getTask(move.id),
+          handle = product.identity[0];
+        assert.ok(handle);
+        const from = current.indexOf(handle);
+        assert.ok(from >= 0);
+        current.splice(from, 1);
+        current.splice(Number(move.newPosition), 0, handle);
+      }
+      return reply({
+        collectionReorderProducts: { job: { id: "gid://shopify/Job/1" }, userErrors: [] },
+      });
+    }
     const operation = [
       "productSet",
       "collectionCreate",
+      "collectionUpdate",
       "pageCreate",
       "blogCreate",
       "articleCreate",
+      "articleUpdate",
       "menuCreate",
     ].find((operation) => q.includes(`${operation}(`));
     assert.ok(operation, q);
-    const kind = operation === "productSet" ? "product" : operation.replace(/Create$/, "");
+    const kind =
+      operation === "productSet" ? "product" : operation.replace(/(?:Create|Update)$/, "");
     const payload = v[kind] ?? v.input ?? v;
-    const task = tasks.find(
+    const task = desiredTasks.find(
       (task) => task.resource === kind && task.identity.at(-1) === payload.handle,
     );
     assert.ok(task, operation);
@@ -492,6 +578,64 @@ export function compactCaseStore(options: { genericImages?: boolean } = {}) {
     }
     const id = ids.get(task.key);
     assert.ok(id);
+    if (kind === "product") {
+      const product = snapshotSchema.shape.products.element.parse(task.source);
+      assert.deepEqual(v.identifier, created.has(id) ? { id } : { handle: product.handle });
+      assert.equal(payload.title, product.title);
+      assert.equal(payload.descriptionHtml, product.descriptionHtml);
+      assert.deepEqual(
+        payload.files,
+        product.images.map((image) => ({ id: imageId(image.file), alt: image.alt })),
+      );
+      assert.equal(payload.variants.length, product.variants.length);
+      for (const [sourceId, variant] of variants)
+        if (variant.parent === id && !product.variants.some((source) => source.id === sourceId))
+          variants.delete(sourceId);
+      for (const [index, source] of product.variants.entries()) {
+        const sent = payload.variants[index],
+          previous = variants.get(source.id);
+        if (created.has(id) && previous) assert.equal(sent.id, previous.id);
+        else assert.equal(sent.id, undefined);
+        assert.equal(sent.price, source.price);
+        assert.equal(sent.inventoryQuantities[0].quantity, source.inventoryQuantity);
+        assert.deepEqual(sent.file, source.image ? { id: imageId(source.image) } : null);
+        assert.deepEqual(
+          sent.optionValues,
+          source.optionValues.map((option) => ({ optionName: option.name, name: option.value })),
+        );
+        variants.set(source.id, {
+          id: previous?.id ?? `gid://shopify/ProductVariant/${nextVariantId++}`,
+          parent: id,
+          index,
+        });
+      }
+    }
+    if (kind === "collection") {
+      const collection = snapshotSchema.shape.collections.element.parse(task.source),
+        current = [...(order.get(task.key) ?? [])];
+      if (created.has(id)) {
+        const inclusion = payload.sourcesToUpdate[0].condition.inclusion;
+        assert.equal(payload.id, id);
+        for (const selection of inclusion.selectionsToRemove) {
+          const handle = getTask(selection.productId).identity[0];
+          assert.ok(handle && current.includes(handle));
+          current.splice(current.indexOf(handle), 1);
+        }
+        for (const selection of inclusion.selectionsToAdd) {
+          const handle = getTask(selection.productId).identity[0];
+          assert.ok(handle && !current.includes(handle));
+          current.push(handle);
+        }
+      } else
+        for (const selection of payload.sources[0].source.inclusion.selections) {
+          const handle = getTask(selection.productId).identity[0];
+          assert.ok(handle);
+          current.push(handle);
+        }
+      assert.deepEqual([...current].sort(), [...collection.products].sort());
+      order.set(task.key, options.fullFixture ? current.reverse() : current);
+    }
+    tasks[tasks.findIndex((current) => current.key === task.key)] = task;
     created.add(id);
     return reply({ [operation]: { [kind]: { id }, userErrors: [] } });
   };
@@ -531,41 +675,79 @@ export function compactCaseStore(options: { genericImages?: boolean } = {}) {
             : kind === "article"
               ? snapshotSchema.shape.blogs.element.shape.articles.element.parse(task.source).image
               : null,
-        probe = prepareNativeImageProbe(kind),
-        value = {
-          shopId: "1",
-          permanentDomain: config.domain,
-          kind,
-          parentId: suffix(id),
-          handle: task.identity.at(-1),
-          images: genericImage
-            ? [
-                {
-                  src: nativeImageDrift
-                    ? "https://cdn.shopify.com/s/files/1/files/foreign.png?v=1"
-                    : imageUrl(genericImage.file),
-                  alt: genericImage.alt,
-                  width: genericImage.width,
-                  height: genericImage.height,
-                  id: "7001",
-                  position: null,
-                  productId: null,
-                  mediaType: null,
-                  attached: null,
-                  variants: null,
-                  preview: null,
-                },
-              ]
-            : [],
-          media: [],
-          variants: product
-            ? product.variants.map((source) => ({
-                id: suffix(variants.get(source.id)?.id ?? ""),
-                imageId: null,
-                mediaId: null,
-              }))
-            : [],
+        probe = prepareNativeImageProbe(kind);
+      function nativeImage(image: {
+        file: string;
+        alt: string | null;
+        width: number;
+        height: number;
+      }) {
+        return {
+          src: nativeImageDrift
+            ? "https://cdn.shopify.com/s/files/1/files/foreign.png?v=1"
+            : imageUrl(image.file),
+          alt: image.alt,
+          width: image.width,
+          height: image.height,
+          id: null,
+          position: null,
+          productId: null,
+          mediaType: null,
+          attached: null,
+          variants: null,
         };
+      }
+      const classic = product
+        ? product.images.map((image, index) => {
+            const attached = product.variants
+              .filter((variant) => variant.image === image.file)
+              .map((variant) => {
+                const actual = variants.get(variant.id);
+                assert.ok(actual);
+                return suffix(actual.id);
+              });
+            return {
+              ...nativeImage(image),
+              id: `${suffix(id)}00${index + 1}`,
+              position: index + 1,
+              productId: suffix(id),
+              attached: attached.length > 0,
+              variants: attached,
+              preview: null,
+            };
+          })
+        : genericImage
+          ? [{ ...nativeImage(genericImage), id: "7001", preview: null }]
+          : [];
+      const value: NativeImagePayload = {
+        shopId: "1",
+        permanentDomain: config.domain,
+        kind,
+        parentId: suffix(id),
+        handle: task.identity.at(-1) ?? "",
+        images: classic,
+        media: product
+          ? product.images.map((image, index) => ({
+              ...nativeImage(image),
+              id: suffix(imageId(image.file)),
+              position: index + 1,
+              mediaType: "image",
+              preview: nativeImage(image),
+            }))
+          : [],
+        variants: product
+          ? product.variants.map((source) => {
+              const actual = variants.get(source.id);
+              assert.ok(actual);
+              const imageIndex = product.images.findIndex((image) => image.file === source.image);
+              return {
+                id: suffix(actual.id),
+                imageId: imageIndex < 0 ? null : (classic[imageIndex]?.id ?? null),
+                mediaId: source.image ? suffix(imageId(source.image)) : null,
+              };
+            })
+          : [],
+      };
       return new Response(
         `<script id="${probe.key}" type="application/json">${JSON.stringify(Buffer.from(JSON.stringify(value)).toString("base64"))}</script>`,
         { headers: { "content-type": "text/html" } },
@@ -707,10 +889,17 @@ export function compactCaseStore(options: { genericImages?: boolean } = {}) {
     snapshot,
     plan,
     state,
+    selectState: (hash: string) => {
+      const state = plan.states.find((state) => state.hash === hash);
+      assert.ok(state);
+      desiredTasks = state.tasks;
+    },
+    variantIds: () => new Map([...variants].map(([key, value]) => [key, value.id])),
+    mutationCounts: () => new Map(mutations),
     assets,
     readImage: async (file: string) => {
       assert.ok(assets.some((asset) => asset.file === file));
-      return imageBytes.slice();
+      return bytesFor(file).slice();
     },
     fetcher,
     imageDependencies,
@@ -741,4 +930,13 @@ export function compactCaseStore(options: { genericImages?: boolean } = {}) {
       nativeImageDrift = false;
     },
   };
+}
+
+/** Small authored fixture; not the locked release data or Shopify evidence. */
+export function compactCaseStore(options: { genericImages?: boolean } = {}) {
+  return authoredCaseStore(options);
+}
+/** Unmodified locked fixture, with all store responses still authored HTTP mocks. */
+export function fullFixtureStore() {
+  return authoredCaseStore({ fullFixture: true });
 }
