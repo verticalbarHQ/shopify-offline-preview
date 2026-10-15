@@ -413,7 +413,16 @@ Environment location/publication choices are verified separately and do not gran
 Durable provenance recovery, platform-default menu bootstrap, staged-upload receipts, full source
 calibration and live authorization integration remain unfinished; no live seeding CLI is provided.
 
-The corpus capture helper uses the same pinned-development-store and unpublished-theme guards as
+`captureSeededCorpusCase` uses the same complete before/after state checks as benchmark capture.
+It accepts only an opaque pinned corpus source, binds its alternate view to the exact base resource
+and query, and checks the full uploaded corpus inventory. Its required context snippet reads the
+Native clock and cart from the captured response. `inspectCorpusCapture` derives provenance and
+hashes from that receipt; `saveVerifiedCorpusCapture` saves its calibrated snapshot next to the
+private raw responses and outputs. `replayCorpusCapture` uses that exact snapshot and source.
+Corpus receipts cannot mint benchmark goldens. Resource literals inside the original examples
+still require explicit calibration; successful capture alone does not prove those literals exist.
+
+The lower-level corpus capture helper uses the same pinned-development-store and unpublished-theme guards as
 page capture, extracts one exact JSON string payload, and requires two identical outputs. Public
 observations contain hashes and provenance, with raw HTML and readable outputs kept private.
 Observations are not automatically converted into registered implementation evidence. Native

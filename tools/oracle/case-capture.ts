@@ -16,6 +16,8 @@ import {
   type OracleCartDependencies,
   type VerifiedOracleCart,
 } from "./cart-session.js";
+import { type CorpusFiles, corpusFilesFingerprint } from "./corpus-environment.js";
+import { inspectPreparedCorpusRequest, type PreparedCorpusRequest } from "./corpus-request.js";
 import {
   applyOracleNativeImages,
   inspectVerifiedNativeImages,
@@ -90,13 +92,14 @@ function digest(html: string) {
   return createHash("sha256").update(html).digest("hex");
 }
 /** All inspectors require genuine in-memory receipts. This certifies assembled capture data, never theme parity or publication. */
-export function assembleOracleCase(
+function assembleCaseData(
   configValue: OracleConfig,
   originalValue: Snapshot,
   shopId: string,
   caseId: string,
   evidence: CaseEvidence,
-): VerifiedOracleCase {
+  capturePath?: string,
+): CaseRecord {
   const config = oracleConfigSchema.parse(configValue),
     original = snapshotSchema.parse(originalValue),
     plan = buildOracleSeedPlan(config, original),
@@ -171,7 +174,7 @@ export function assembleOracleCase(
       contextRecord = inspectVerifiedCaptureContext(evidence.context);
     if (
       cartRecord.path !== request.path ||
-      contextRecord.requestPath !== request.path ||
+      contextRecord.requestPath !== (capturePath ?? request.path) ||
       contextRecord.domain !== config.domain ||
       contextRecord.shopId !== shopId ||
       contextRecord.contexts[0].locale !== shop.shop.locale ||
@@ -191,12 +194,11 @@ export function assembleOracleCase(
       context = applyOracleCaptureContext(cart.snapshot, evidence.context),
       snapshot = context.snapshot;
     // The exact same request's summary and private section text are retained, not a caller's replacement summary.
-    const receipt: VerifiedOracleCase = Object.freeze({ kind: "verified-oracle-case" });
-    cases.set(receipt, {
+    return {
       domain: config.domain,
       shopId,
       caseId,
-      path: request.path,
+      path: capturePath ?? request.path,
       sourceScenario: request.scenario,
       stateHash: state.hash,
       baseFixtureHash: plan.fixtureHash,
@@ -206,14 +208,47 @@ export function assembleOracleCase(
       snapshot,
       capture,
       ...(contextRecord.theme ? { theme: contextRecord.theme } : {}),
-    });
-    return receipt;
+    };
   } catch (error) {
     if (error instanceof OracleCaseError) throw error;
     throw new OracleCaseError("incomplete-evidence");
   }
 }
+export function assembleOracleCase(
+  config: OracleConfig,
+  original: Snapshot,
+  shopId: string,
+  caseId: string,
+  evidence: CaseEvidence,
+): VerifiedOracleCase {
+  const record = assembleCaseData(config, original, shopId, caseId, evidence),
+    receipt: VerifiedOracleCase = Object.freeze({ kind: "verified-oracle-case" });
+  cases.set(receipt, record);
+  return receipt;
+}
+export interface VerifiedOracleCorpusCase {
+  readonly kind: "verified-oracle-corpus-case";
+}
+const corpusCases = new WeakMap<
+  VerifiedOracleCorpusCase,
+  Omit<CaseRecord, "theme"> & { request: ReturnType<typeof inspectPreparedCorpusRequest> }
+>();
+export function inspectVerifiedOracleCorpusCase(receipt: VerifiedOracleCorpusCase) {
+  const record = corpusCases.get(receipt);
+  if (!record) throw new OracleCaseError("unverified-case");
+  return structuredClone(record);
+}
+export interface CorpusCaseAdapters
+  extends Omit<ContextCaptureDependencies, "fetcher" | "verifyThemeFiles"> {
+  readAllThemeFiles(themeId: string): Promise<CorpusFiles>;
+}
 export interface OracleCasePort {
+  captureCartCorpusContext?(
+    receipt: VerifiedOracleCart,
+    request: PreparedCorpusRequest,
+    input: Omit<CaptureInput, "config" | "path" | "cookie">,
+    dependencies: Omit<ContextCaptureDependencies, "fetcher">,
+  ): Promise<{ capture: CapturedPage; context: VerifiedCaptureContext }>;
   verifyState(hash: string): Promise<VerifiedSeedState>;
   observeGenerated(hash: string, key: string): Promise<VerifiedSeedGenerated>;
   observeImages(hash: string, key: string): Promise<VerifiedNativeImages>;
@@ -250,57 +285,124 @@ export function createOracleCaseCapturer(
     }
     return { generated, images };
   }
+  async function runCapture<Result>(
+    caseId: string,
+    inputValue: Omit<CaptureInput, "config" | "path" | "cookie">,
+    cart: OracleCartDependencies,
+    adapters: Omit<ContextCaptureDependencies, "fetcher">,
+    finish: (evidence: CaseEvidence) => Result,
+    target?: PreparedCorpusRequest,
+  ): Promise<Result> {
+    if (busy) throw new OracleCaseError("concurrent-operation");
+    const request = plan.requests.find((request) => request.caseId === caseId);
+    if (!request) throw new OracleCaseError("invalid-case");
+    const input = structuredClone(inputValue);
+    busy = true;
+    try {
+      const before = await port.verifyState(request.stateHash),
+        scope = inspectVerifiedSeedState(before),
+        expectedShop = applyScenario(original, request.scenario).shop;
+      if (
+        scope.domain !== config.domain ||
+        scope.shopId !== shopId ||
+        scope.fixtureHash !== plan.fixtureHash ||
+        scope.stateHash !== request.stateHash
+      )
+        throw new OracleCaseError("invalid-scope");
+      const shop = await port.verifyShop(expectedShop),
+        shopScope = inspectVerifiedOracleShopSettings(shop);
+      if (
+        shopScope.domain !== config.domain ||
+        shopScope.shopId !== shopId ||
+        !isDeepStrictEqual(shopScope.shop, expectedShop)
+      )
+        throw new OracleCaseError("invalid-scope");
+      const first = await collect(request.stateHash),
+        session = await port.prepareCart(caseId, cart),
+        captured = target
+          ? await port.captureCartCorpusContext?.(session, target, input, adapters)
+          : await port.captureCartContext(session, input, adapters),
+        last = await collect(request.stateHash),
+        shopAfter = await port.verifyShop(applyScenario(original, request.scenario).shop),
+        after = await port.verifyState(request.stateHash);
+      if (!captured) throw new OracleCaseError("incomplete-evidence");
+      return finish({
+        before,
+        after,
+        ...first,
+        generatedAfter: last.generated,
+        imagesAfter: last.images,
+        shop,
+        shopAfter,
+        cart: session,
+        ...captured,
+      });
+    } finally {
+      busy = false;
+    }
+  }
   return {
-    async capture(
+    capture: (
       caseId: string,
-      inputValue: Omit<CaptureInput, "config" | "path" | "cookie">,
+      input: Omit<CaptureInput, "config" | "path" | "cookie">,
       cart: OracleCartDependencies,
       adapters: Omit<ContextCaptureDependencies, "fetcher">,
-    ): Promise<VerifiedOracleCase> {
-      if (busy) throw new OracleCaseError("concurrent-operation");
-      const request = plan.requests.find((request) => request.caseId === caseId);
-      if (!request) throw new OracleCaseError("invalid-case");
-      const input = structuredClone(inputValue);
-      busy = true;
-      try {
-        const before = await port.verifyState(request.stateHash),
-          scope = inspectVerifiedSeedState(before),
-          expectedShop = applyScenario(original, request.scenario).shop;
-        if (
-          scope.domain !== config.domain ||
-          scope.shopId !== shopId ||
-          scope.fixtureHash !== plan.fixtureHash ||
-          scope.stateHash !== request.stateHash
-        )
-          throw new OracleCaseError("invalid-scope");
-        const shop = await port.verifyShop(expectedShop),
-          shopScope = inspectVerifiedOracleShopSettings(shop);
-        if (
-          shopScope.domain !== config.domain ||
-          shopScope.shopId !== shopId ||
-          !isDeepStrictEqual(shopScope.shop, expectedShop)
-        )
-          throw new OracleCaseError("invalid-scope");
-        const first = await collect(request.stateHash),
-          session = await port.prepareCart(caseId, cart),
-          captured = await port.captureCartContext(session, input, adapters),
-          last = await collect(request.stateHash),
-          shopAfter = await port.verifyShop(applyScenario(original, request.scenario).shop),
-          after = await port.verifyState(request.stateHash);
-        return assembleOracleCase(config, original, shopId, caseId, {
-          before,
-          after,
-          ...first,
-          generatedAfter: last.generated,
-          imagesAfter: last.images,
-          shop,
-          shopAfter,
-          cart: session,
-          ...captured,
-        });
-      } finally {
-        busy = false;
-      }
+    ) =>
+      runCapture(caseId, input, cart, adapters, (evidence) =>
+        assembleOracleCase(config, original, shopId, caseId, evidence),
+      ),
+    captureCorpus: (
+      target: PreparedCorpusRequest,
+      input: Omit<CaptureInput, "config" | "path" | "cookie">,
+      cart: OracleCartDependencies,
+      adapters: CorpusCaseAdapters,
+    ): Promise<VerifiedOracleCorpusCase> => {
+      const scope = inspectPreparedCorpusRequest(target),
+        base = plan.requests.find((request) => request.caseId === scope.baseCaseId);
+      if (
+        !base ||
+        scope.domain !== config.domain ||
+        scope.shopId !== shopId ||
+        scope.fixtureHash !== plan.fixtureHash ||
+        scope.stateHash !== base.stateHash ||
+        scope.basePath !== base.path ||
+        typeof port.captureCartCorpusContext !== "function" ||
+        typeof adapters.readAllThemeFiles !== "function"
+      )
+        throw new OracleCaseError("invalid-scope");
+      const pinnedInput = structuredClone(input);
+      const bound = {
+        ...adapters,
+        verifyThemeFiles: async () => {
+          if (
+            corpusFilesFingerprint(await adapters.readAllThemeFiles(pinnedInput.previewThemeId)) !==
+            scope.filesHash
+          )
+            throw new OracleCaseError("invalid-scope");
+        },
+      };
+      return runCapture(
+        scope.baseCaseId,
+        pinnedInput,
+        cart,
+        bound,
+        (evidence) => {
+          const { theme: _theme, ...record } = assembleCaseData(
+              config,
+              original,
+              shopId,
+              scope.baseCaseId,
+              evidence,
+              scope.capturePath,
+            ),
+            receipt: VerifiedOracleCorpusCase = Object.freeze({
+              kind: "verified-oracle-corpus-case",
+            });
+          corpusCases.set(receipt, { ...record, request: scope });
+          return receipt;
+        },
+        target,
+      );
     },
   };
 }

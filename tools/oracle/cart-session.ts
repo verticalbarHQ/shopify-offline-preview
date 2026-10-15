@@ -7,6 +7,7 @@ import { type Snapshot, snapshotSchema } from "../../packages/data/src/schema.js
 import { oracleThemeSchema } from "./admin-read.js";
 import { type CaptureDependencies, type CaptureInput, captureOraclePage } from "./capture.js";
 import { type ContextCaptureDependencies, captureOracleContextPage } from "./capture-context.js";
+import { inspectPreparedCorpusRequest, type PreparedCorpusRequest } from "./corpus-request.js";
 import type { createOracleSeedBindingLedger } from "./seed-binding-ledger.js";
 import { buildOracleSeedPlan } from "./seed-plan.js";
 import { seedBindingKey } from "./seed-requests.js";
@@ -333,11 +334,24 @@ export function createOracleCartSessions(
         verifyThemeFiles: NonNullable<CaptureDependencies["verifyThemeFiles"]>;
       },
     ) => Promise<T>,
+    corpus?: PreparedCorpusRequest,
   ): Promise<T> {
     const session = sessions.get(receipt);
     if (!session?.valid || !session.cart || session.owner !== owner)
       throw new OracleCartError("session-invalid");
     try {
+      const target = corpus ? inspectPreparedCorpusRequest(corpus) : null;
+      if (
+        target &&
+        (target.domain !== config.domain ||
+          target.shopId !== shopId ||
+          target.fixtureHash !== plan.fixtureHash ||
+          target.stateHash !== session.observation.stateHash ||
+          target.baseCaseId !== session.observation.caseId ||
+          target.basePath !== session.observation.path)
+      )
+        throw new OracleCartError("scope-mismatch");
+      const capturePath = target?.capturePath ?? session.observation.path;
       if (typeof dependencies.verifyThemeFiles !== "function")
         throw new OracleCartError("invalid-input");
       const checkTheme = async (_theme?: unknown, challenge?: string) => {
@@ -355,7 +369,7 @@ export function createOracleCartSessions(
       if (!isDeepStrictEqual(await read(session), session.cart))
         throw new OracleCartError("cart-mismatch");
       const capture = await perform(
-        { ...input, config, path: session.observation.path, cookie: cookieHeader(session) },
+        { ...input, config, path: capturePath, cookie: cookieHeader(session) },
         {
           ...dependencies,
           verifyThemeFiles: checkTheme,
@@ -367,7 +381,7 @@ export function createOracleCartSessions(
           fetcher: async (url, init) => {
             if (init?.method !== "GET") throw new OracleCartError("scope-mismatch");
             const target = new URL(String(url));
-            const expected = new URL(session.observation.path, `https://${config.domain}`);
+            const expected = new URL(capturePath, `https://${config.domain}`);
             expected.searchParams.set("preview_theme_id", input.previewThemeId);
             if (target.href !== expected.href) throw new OracleCartError("scope-mismatch");
             const response = await request(
@@ -533,6 +547,25 @@ export function createOracleCartSessions(
             ...adapters,
             readCaptureContextSource: dependencies.readCaptureContextSource,
           }),
+        ),
+      ),
+    captureCorpusContext: (
+      receipt: VerifiedOracleCart,
+      request: PreparedCorpusRequest,
+      input: Omit<CaptureInput, "config" | "path" | "cookie">,
+      dependencies: Omit<ContextCaptureDependencies, "fetcher">,
+    ) =>
+      operation(() =>
+        captureSession(
+          receipt,
+          input,
+          dependencies,
+          (request, adapters) =>
+            captureOracleContextPage(request, shopId, {
+              ...adapters,
+              readCaptureContextSource: dependencies.readCaptureContextSource,
+            }),
+          request,
         ),
       ),
   };

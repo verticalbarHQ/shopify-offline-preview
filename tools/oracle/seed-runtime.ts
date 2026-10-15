@@ -97,6 +97,8 @@ export function createOracleSeedRuntime(
       operation(() => carts.capture(...args)),
     captureCartContext: (...args: Parameters<typeof carts.captureContext>) =>
       operation(() => carts.captureContext(...args)),
+    captureCartCorpusContext: (...args: Parameters<typeof carts.captureCorpusContext>) =>
+      operation(() => carts.captureCorpusContext(...args)),
     verifyStore: () => operation(() => stateReader.guard()),
     describeTask: (stateHash: string, taskKey: string) =>
       operation(() => stateReader.describe(stateHash, taskKey)),

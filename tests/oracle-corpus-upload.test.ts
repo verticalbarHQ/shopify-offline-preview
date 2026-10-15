@@ -44,7 +44,7 @@ test("pinned filter preparation binds full inputs, requests and files without al
     generated.filter((input) => input.kind === "filters"),
   );
   const files = readPreparedFilterCorpusFiles(prepared);
-  assert.equal(Object.keys(files).length, 709);
+  assert.equal(Object.keys(files).length, 710);
   assert.equal(corpusFilesFingerprint(files), info.filesHash);
   const item = info.cases[0];
   assert.ok(item);

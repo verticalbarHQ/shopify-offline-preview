@@ -6,6 +6,11 @@ import { type DefaultTreeAdapterTypes, parse } from "parse5";
 import { z } from "zod";
 import { type CaptureDependencies, type CaptureInput, captureOracleHtmlPair } from "./capture.js";
 import {
+  captureContextKey,
+  captureContextSnippet,
+  captureContextSource,
+} from "./capture-context.js";
+import {
   type CorpusEnvironment,
   type CorpusFiles,
   corpusDependencyFiles,
@@ -34,6 +39,7 @@ export interface PreparedCorpusCase extends CorpusInput {
   preparedInputHash: string;
   transformation: "decode-html-entities";
   harnessHash: string;
+  captureContext?: true;
 }
 function localPath(path: string): URL {
   if (!path.startsWith("/") || path.startsWith("//") || /[\\\r\n\0#]/.test(path))
@@ -64,6 +70,7 @@ export function prepareCorpus(
   inputs: readonly unknown[],
   pathMap: Readonly<Record<string, string>>,
   environment: CorpusEnvironment = emptyCorpusEnvironment,
+  options: { captureContext?: boolean } = {},
 ): { cases: PreparedCorpusCase[]; files: CorpusFiles } {
   const baseFiles: CorpusFiles = {
     "layout/theme.liquid":
@@ -74,6 +81,11 @@ export function prepareCorpus(
     "config/settings_data.json": '{"current":{}}',
   };
   Object.assign(baseFiles, corpusDependencyFiles(environment));
+  if (options.captureContext) {
+    baseFiles[captureContextSnippet] = captureContextSource;
+    for (const path of ["layout/theme.liquid", "layout/sop-corpus.liquid"])
+      baseFiles[path] = `${baseFiles[path]}{% render '${captureContextKey}' %}`;
+  }
   const files: CorpusFiles = { ...baseFiles };
   const cases: PreparedCorpusCase[] = [];
   const seen = new Set<string>();
@@ -102,6 +114,7 @@ export function prepareCorpus(
       originalInputHash: hash(input.liquid),
       preparedInputHash: hash(decodeHTML(input.liquid)),
       transformation: "decode-html-entities" as const,
+      ...(options.captureContext ? { captureContext: true as const } : {}),
     };
     if (Object.hasOwn(files, item.snippet)) throw new Error("Corpus file identity collision");
     const caseFiles: CorpusFiles = {};
@@ -129,7 +142,9 @@ export function assertPreparedCorpusCase(
     path: item.path,
     liquid: item.liquid,
   };
-  const prepared = prepareCorpus([original], { [item.path]: item.fixturePath }, environment);
+  const prepared = prepareCorpus([original], { [item.path]: item.fixturePath }, environment, {
+    captureContext: item.captureContext === true,
+  });
   const expected = prepared.cases[0];
   if (
     !expected ||

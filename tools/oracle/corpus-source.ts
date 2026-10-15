@@ -92,7 +92,7 @@ export async function preparePinnedFilterCorpus(
     }
   let prepared: ReturnType<typeof prepareCorpus>;
   try {
-    prepared = prepareCorpus(inputs, mapping, environment);
+    prepared = prepareCorpus(inputs, mapping, environment, { captureContext: true });
   } catch {
     throw new CorpusSourceError("invalid-input");
   }
