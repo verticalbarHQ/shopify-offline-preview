@@ -62,7 +62,7 @@ const theme = {
 };
 const metadata = { specCommit: "a".repeat(40), fixtureHash: snapshotFingerprint(defaultFixture()) };
 function payload(id: string) {
-  return `<script id="${id}" type="application/json">${JSON.stringify(svg).replaceAll("<", "\\u003c")}</script>`;
+  return `<script id="${id}" type="application/json">${JSON.stringify(Buffer.from(svg).toString("base64"))}</script>`;
 }
 
 test("corpus dependencies preserve original input and bind assets, settings, locales and binary bytes", async () => {
@@ -70,7 +70,10 @@ test("corpus dependencies preserve original input and bind assets, settings, loc
   assert.equal(item.liquid, input.liquid);
   assert.equal(item.harnessHash, corpusFilesFingerprint(files));
   const result = await renderTheme(new MemoryThemeFileSystem(files), item.requestPath);
-  assert.deepEqual(result.diagnostics, []);
+  assert.deepEqual(
+    result.diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.file]),
+    [["shopify-server-only", "layout/sop-corpus.liquid"]],
+  );
   assert.equal(extractCorpusOutput(result.html, item, environment), svg);
   const reversed = { files: [...environment.files].reverse() };
   assert.equal(prepared(reversed).item.harnessHash, item.harnessHash);
@@ -270,6 +273,9 @@ test("settings and locale dependencies actually supply the case execution contex
   const item = result.cases[0];
   assert.ok(item);
   const rendered = await renderTheme(new MemoryThemeFileSystem(result.files), item.requestPath);
-  assert.deepEqual(rendered.diagnostics, []);
+  assert.deepEqual(
+    rendered.diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.file]),
+    [["shopify-server-only", "layout/sop-corpus.liquid"]],
+  );
   assert.equal(extractCorpusOutput(rendered.html, item, environment), "Own label|Own translation");
 });

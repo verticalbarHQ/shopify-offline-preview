@@ -2,8 +2,12 @@ import { mkdir, mkdtemp, readFile, realpath, rename, rm, writeFile } from "node:
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { z } from "zod";
-import { prepareCorpus } from "./corpus.js";
 import { corpusEnvironmentSchema, emptyCorpusEnvironment } from "./corpus-environment.js";
+import {
+  inspectPreparedFilterCorpus,
+  preparePinnedFilterCorpus,
+  readPreparedFilterCorpusFiles,
+} from "./corpus-source.js";
 
 const args = process.argv.slice(2);
 let file: string | undefined;
@@ -28,38 +32,21 @@ if (environmentFile) {
   }
 }
 const mapping = z.record(z.string(), z.string()).parse(JSON.parse(await readFile(file, "utf8")));
-const source = z
-  .array(
-    z.object({
-      name: z.string(),
-      examples: z.array(z.object({ raw_liquid: z.string(), path: z.string() })).optional(),
-    }),
-  )
-  .parse(JSON.parse(await readFile("vendor/theme-liquid-docs/filters.json", "utf8")));
-const available = [];
-const unavailable = [];
-for (const filter of source)
-  for (const [index, example] of (filter.examples ?? []).entries()) {
-    const item = {
-      id: `filters/${filter.name}/${index}`,
-      kind: "filters",
-      name: filter.name,
-      path: example.path,
-      liquid: example.raw_liquid,
-    };
-    if (item.liquid.trim()) available.push(item);
-    else
-      unavailable.push({ id: item.id, reason: "Upstream example has no executable Liquid input" });
-  }
-const prepared = prepareCorpus(available, mapping, environment);
+const receipt = await preparePinnedFilterCorpus(mapping, environment),
+  prepared = inspectPreparedFilterCorpus(receipt),
+  unavailable = prepared.unavailable,
+  files = readPreparedFilterCorpusFiles(receipt);
 const directory = await mkdtemp(join(tmpdir(), "sop-oracle-corpus-"));
-for (const [path, contents] of Object.entries(prepared.files)) {
+for (const [path, contents] of Object.entries(files)) {
   await mkdir(dirname(join(directory, path)), { recursive: true, mode: 0o700 });
   await writeFile(join(directory, path), contents, { mode: 0o600 });
 }
 const manifest = {
   schemaVersion: "1.0",
-  spec: JSON.parse(await readFile("upstream.json", "utf8")),
+  spec: prepared.spec,
+  sourceHash: prepared.sourceHash,
+  filesHash: prepared.filesHash,
+  manifestHash: prepared.manifestHash,
   directory,
   environment,
   cases: prepared.cases,

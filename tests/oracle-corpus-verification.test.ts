@@ -47,6 +47,7 @@ test("corpus verification binds the exact input, fixture, spec pin and request w
   assert.equal(verified.pass, true);
   assert.equal(verified.outputEqual, true);
   assert.deepEqual(verified.diagnosticCodes, []);
+  assert.deepEqual(verified.harnessDiagnosticCodes, ["shopify-server-only"]);
   assert.ok(!JSON.stringify(verified).includes("own input"));
   const mismatch = await verifyCorpusObservation(
     item,
@@ -99,6 +100,7 @@ test("matching error and unsupported output hashes do not pass corpus conformanc
     ['{{ "product-1" | placeholder_svg_tag }}', "/", "missing-resource"],
     ['{{ "" | metafield_tag }}', "/", "not-implemented"],
     ["{{ nil | image_url }}", "/", "liquid-error"],
+    ["{{ content_for_header }}", "/", "shopify-server-only"],
   ]) {
     const { item, observation, context } = await sample(liquid, path);
     const result = await verifyCorpusObservation(item, observation, context);

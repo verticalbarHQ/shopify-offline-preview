@@ -374,6 +374,18 @@ include Shopify's required header/layout objects, and the CLI staging directory 
 theme folders. These probes contain expressions rather than expected fixture identities. Their file
 verifier returns no benchmark receipt, so a probe upload cannot certify a pinned theme or a golden.
 
+`preparePinnedFilterCorpus` binds the full filter input set to the vendored spec commit and generated
+source hash, plus the explicit fixture paths and dependency files. The preparation CLI records those
+hashes with its private manifest. `openOracleFilterCorpusUploader` accepts the in-memory preparation
+receipt and uses the same guarded upload lane; serialized flags cannot authorize a source. A source
+receipt establishes neither fixture calibration nor Shopify conformance.
+
+Corpus output travels as canonical UTF-8 Base64 inside the generated HTML payload, preserving closing
+script tags and Unicode without changing the upstream example. Both layouts include the required
+Shopify header. Offline verification reports the exact generated layout's header omission separately
+as `harnessDiagnosticCodes`; server omissions, errors and unsupported behavior inside the example
+remain conformance blockers. Output hashes always refer to the decoded captured output.
+
 The seeding transport in `tools/oracle/seed-execution.ts` accepts only steps compiled from its
 validated fixture matrix. It requires trusted authorization, dependency ownership verification and
 read-back verification callbacks. Each attempt rechecks the pinned shop ID/domain, development-store

@@ -25,7 +25,8 @@ function fixture() {
   return { ...result, item };
 }
 function payload(id: string, value: unknown) {
-  return `<script id="${id}" type="application/json">${JSON.stringify(value).replaceAll("<", "\\u003c")}</script>`;
+  const encoded = typeof value === "string" ? Buffer.from(value).toString("base64") : value;
+  return `<script id="${id}" type="application/json">${JSON.stringify(encoded)}</script>`;
 }
 
 test("corpus preparation preserves original inputs and records decoded source and explicit context mapping", async () => {
@@ -42,7 +43,10 @@ test("corpus preparation preserves original inputs and records decoded source an
     item.payloadId,
   );
   const result = await renderTheme(new MemoryThemeFileSystem(files), item.requestPath);
-  assert.deepEqual(result.diagnostics, []);
+  assert.deepEqual(
+    result.diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.file]),
+    [["shopify-server-only", "layout/sop-corpus.liquid"]],
+  );
   assert.equal(extractCorpusOutput(result.html, item), "&lt;/script&gt;&amp;");
   assert.deepEqual(prepareCorpus([original], mapping), { cases: [item], files });
 });
@@ -69,6 +73,19 @@ test("corpus extraction requires the exact unique string payload and withholds m
     extractCorpusOutput(payload(item.payloadId, "<b>Native output</b>"), item),
     "<b>Native output</b>",
   );
+  assert.equal(
+    extractCorpusOutput(payload(item.payloadId, "</script>한글 😀"), item),
+    "</script>한글 😀",
+  );
+  for (const encoded of ["%%", "/w=="])
+    assert.throws(
+      () =>
+        extractCorpusOutput(
+          `<script id="${item.payloadId}" type="application/json">${JSON.stringify(encoded)}</script>`,
+          item,
+        ),
+      /canonical UTF-8 Base64/,
+    );
   assert.throws(() => extractCorpusOutput("<p>Password gate</p>", item), /Exactly one/);
   assert.throws(
     () => extractCorpusOutput(payload(item.payloadId, "a") + payload(item.payloadId, "a"), item),

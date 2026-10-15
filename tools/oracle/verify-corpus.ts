@@ -37,12 +37,23 @@ export async function verifyCorpusObservation(
   const output = extractCorpusOutput(result.html, item, environment);
   const outputHash = createHash("sha256").update(output).digest("hex");
   const outputBytes = Buffer.byteLength(output);
+  // The exact reconstructed harness must emit Shopify's required header outside the compared payload.
+  // Report its known omission separately; an identical diagnostic in the example still blocks conformance.
+  const harnessDiagnostics = result.diagnostics.filter(
+    (diagnostic) =>
+      diagnostic.code === "shopify-server-only" &&
+      diagnostic.severity === "info" &&
+      diagnostic.file === "layout/sop-corpus.liquid" &&
+      diagnostic.line === 1 &&
+      diagnostic.message === "Shopify's content_for_header scripts are omitted.",
+  );
   // Equal hashes alone cannot turn an error, unsupported filter, server omission or
   // missing resource into a successful conformance case.
   const blockers = result.diagnostics.filter(
     (diagnostic) =>
-      diagnostic.severity === "error" ||
-      ["not-implemented", "missing-resource", "shopify-server-only"].includes(diagnostic.code),
+      !harnessDiagnostics.includes(diagnostic) &&
+      (diagnostic.severity === "error" ||
+        ["not-implemented", "missing-resource", "shopify-server-only"].includes(diagnostic.code)),
   );
   const outputEqual =
     outputHash === observation.outputHash && outputBytes === observation.outputBytes;
@@ -52,6 +63,9 @@ export async function verifyCorpusObservation(
     outputHash,
     outputBytes,
     diagnosticCodes: [...new Set(blockers.map((diagnostic) => diagnostic.code))].sort(),
+    harnessDiagnosticCodes: [
+      ...new Set(harnessDiagnostics.map((diagnostic) => diagnostic.code)),
+    ].sort(),
     pass: outputEqual && blockers.length === 0,
   };
 }

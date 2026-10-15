@@ -69,7 +69,7 @@ export function prepareCorpus(
     "layout/theme.liquid":
       "<!doctype html><html><head>{{content_for_header}}</head><body>{{content_for_layout}}</body></html>",
     "layout/sop-corpus.liquid":
-      "<!doctype html><html><head></head><body>{{content_for_layout}}</body></html>",
+      "<!doctype html><html><head>{{content_for_header}}</head><body>{{content_for_layout}}</body></html>",
     "config/settings_schema.json": "[]",
     "config/settings_data.json": '{"current":{}}',
   };
@@ -107,7 +107,7 @@ export function prepareCorpus(
     const caseFiles: CorpusFiles = {};
     caseFiles[item.snippet] = item.liquidSource;
     caseFiles[item.section] =
-      `{% capture sop_corpus_output %}{% render '${key}' %}{% endcapture %}<script id="${key}" type="application/json">{{sop_corpus_output | json}}</script>`;
+      `{% capture sop_corpus_output %}{% render '${key}' %}{% endcapture %}<script id="${key}" type="application/json">{{sop_corpus_output | base64_encode | json}}</script>`;
     caseFiles[item.template] = JSON.stringify({
       layout: "sop-corpus",
       sections: { main: { type: key } },
@@ -171,7 +171,14 @@ export function extractCorpusOutput(
   }
   if (typeof output !== "string")
     throw new Error("Corpus payload must contain a captured output string");
-  return output;
+  try {
+    if (output.length > 12 * 1024 * 1024) throw new Error();
+    const bytes = Buffer.from(output, "base64");
+    if (bytes.length > 8 * 1024 * 1024 || bytes.toString("base64") !== output) throw new Error();
+    return new TextDecoder("utf8", { fatal: true }).decode(bytes);
+  } catch {
+    throw new Error("Corpus payload must contain canonical UTF-8 Base64");
+  }
 }
 export const corpusObservationSchema = z.strictObject({
   schemaVersion: z.literal("1.0"),

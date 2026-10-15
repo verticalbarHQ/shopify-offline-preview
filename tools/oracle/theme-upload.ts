@@ -12,6 +12,11 @@ import {
   readComparisonThemeFiles,
 } from "./benchmark-theme.js";
 import { type CorpusFiles, corpusFilesFingerprint } from "./corpus-environment.js";
+import {
+  inspectPreparedFilterCorpus,
+  type PreparedFilterCorpus,
+  readPreparedFilterCorpusFiles,
+} from "./corpus-source.js";
 import { type PreparedNativeImageProbe, prepareNativeImageProbe } from "./image-native.js";
 import { openOracleSeedJournal, seedJournalFingerprint } from "./seed-journal.js";
 import {
@@ -83,7 +88,28 @@ interface UploadIdentity {
 export interface NativeImageProbeUploadContext extends UploadIdentity {
   probe: PreparedNativeImageProbe["kind"];
 }
+export interface FilterCorpusUploadContext extends UploadIdentity {
+  corpus: "filters";
+  specCommit: string;
+  sourceHash: string;
+  manifestHash: string;
+  cases: number;
+}
 type FileReader = (id: string) => Promise<CorpusFiles>;
+
+function createFileVerifier(id: string, filesHash: string, reader: FileReader) {
+  return async (input: OracleTheme): Promise<void> => {
+    const theme = oracleThemeSchema.parse(input);
+    if (
+      theme.id !== `gid://shopify/OnlineStoreTheme/${id}` ||
+      theme.role !== "UNPUBLISHED" ||
+      theme.processing ||
+      theme.processingFailed ||
+      corpusFilesFingerprint(await reader(id)) !== filesHash
+    )
+      throw new ThemeUploadError("upload-unverified");
+  };
+}
 
 /** Prepared benchmark copies alone can return opaque benchmark proofs. Opening performs no upload. */
 export async function openOracleBenchmarkUploader(
@@ -154,17 +180,51 @@ export async function openOracleNativeImageProbeUploader(
       },
       name: `SOP-native-image-${kind}-${probe.harnessHash.slice(0, 12)}`,
       readFiles: async () => structuredClone(probe.files),
-      createVerifier: (id: string, reader: FileReader) => async (input: OracleTheme) => {
-        const theme = oracleThemeSchema.parse(input);
-        if (
-          theme.id !== `gid://shopify/OnlineStoreTheme/${id}` ||
-          theme.role !== "UNPUBLISHED" ||
-          theme.processing ||
-          theme.processingFailed ||
-          corpusFilesFingerprint(await reader(id)) !== probe.harnessHash
-        )
-          throw new ThemeUploadError("upload-unverified");
+      createVerifier: (id: string, reader: FileReader) =>
+        createFileVerifier(id, probe.harnessHash, reader),
+    },
+    dependencies,
+  );
+}
+
+/** Only a source-verified in-memory pinned corpus can reach this upload lane; a serialized manifest is not authority. */
+export async function openOracleFilterCorpusUploader(
+  inputConfig: OracleConfig,
+  shopId: string,
+  prepared: PreparedFilterCorpus,
+  directory: string,
+  dependencies: ThemeUploadDependencies<FilterCorpusUploadContext>,
+) {
+  const config = oracleConfigSchema.parse(inputConfig),
+    info = inspectPreparedFilterCorpus(prepared);
+  return openThemeUploader(
+    config,
+    shopId,
+    directory,
+    {
+      context: {
+        domain: config.domain,
+        shopId,
+        filesHash: info.filesHash,
+        corpus: "filters",
+        specCommit: info.spec.commit,
+        sourceHash: info.sourceHash,
+        manifestHash: info.manifestHash,
+        cases: info.cases.length,
       },
+      scope: {
+        version: 1,
+        operation: "unpublished-filter-corpus-upload",
+        config,
+        shopId,
+        spec: info.spec,
+        filesHash: info.filesHash,
+        manifestHash: info.manifestHash,
+      },
+      name: `SOP-filter-corpus-${info.manifestHash.slice(0, 16)}`,
+      readFiles: async () => readPreparedFilterCorpusFiles(prepared),
+      createVerifier: (id: string, reader: FileReader) =>
+        createFileVerifier(id, info.filesHash, reader),
     },
     dependencies,
   );
