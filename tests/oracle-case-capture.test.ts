@@ -22,8 +22,8 @@ import {
 } from "./helpers/case-store.js";
 
 // Entirely authored API/storefront responses. Real opaque runtime receipts, but NO live Shopify writes, approvals or goldens.
-async function harness() {
-  const store = compactCaseStore(),
+async function harness(genericImages = false) {
+  const store = compactCaseStore({ genericImages }),
     directory = await realpath(await mkdtemp(join(tmpdir(), "sop-case-journal-")));
   try {
     const driver = await openOracleSeedStateDriver(
@@ -32,14 +32,13 @@ async function harness() {
       shopId,
       "authored",
       allContracts,
-      [],
+      store.assets,
       directory,
       {
         authorize: async () => {},
         fetcher: store.fetcher,
-        readImage: async () => {
-          throw new Error("No authored images");
-        },
+        readImage: store.readImage,
+        uploadFetcher: async () => new Response(null, { status: 204 }),
         location: { kind: "Location", id: locationId },
         publication,
       },
@@ -70,6 +69,54 @@ async function harness() {
   }
 }
 const captureInput = { previewThemeId: "7", summaryOptions: { sectionTypes: { main: "main" } } };
+test("nonempty collection and article images retain owned upload and Native image identity through complete case assembly", async () => {
+  const h = await harness(true);
+  try {
+    assert.equal(h.store.assets.length, 1); // One authored original shared by both parents.
+    const before = h.store.counts().writes,
+      cart = h.store.cartTransport(),
+      receipt = await h.driver.captureSeededCase(
+        h.store.plan.requests[0]?.caseId ?? "",
+        captureInput,
+        {
+          cart: {
+            passwordCookie: "_shopify_essential=authored",
+            fetcher: cart.transport,
+            authorize: async () => {},
+          },
+          capture: h.store.captureAdapters,
+          shop: h.store.shop,
+          imageProbes: h.images,
+        },
+      ),
+      snapshot = inspectVerifiedOracleCase(receipt).snapshot;
+    const collection = snapshot.collections[0],
+      article = snapshot.blogs[0]?.articles[0];
+    assert.ok(collection?.image && article?.image);
+    for (const image of [collection.image, article.image]) {
+      assert.equal(image.file, h.store.assets[0]?.file);
+      assert.equal(image.id, "7001");
+    }
+    assert.equal(h.store.counts().writes, before);
+    assert.equal(cart.posts(), 0);
+    h.store.changeNativeImage();
+    await assert.rejects(
+      h.driver.captureSeededCase(h.store.plan.requests[0]?.caseId ?? "", captureInput, {
+        cart: {
+          passwordCookie: "_shopify_essential=authored",
+          fetcher: h.store.cartTransport().transport,
+          authorize: async () => {},
+        },
+        capture: h.store.captureAdapters,
+        shop: h.store.shop,
+        imageProbes: h.images,
+      }),
+    );
+    assert.equal(h.store.counts().writes, before);
+  } finally {
+    await h.close();
+  }
+});
 test("production driver composes real owned state, generated/image/shop/cart/clock receipts for every request of a compact contract fixture", async () => {
   const h = await harness();
   try {

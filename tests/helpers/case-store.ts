@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { defaultFixture } from "../../packages/data/src/fixture.js";
 import { snapshotSchema } from "../../packages/data/src/schema.js";
+import { backupDigest } from "../../tools/oracle/backup-audit.js";
 import { captureContextKey, captureContextSource } from "../../tools/oracle/capture-context.js";
 import { prepareNativeImageProbe } from "../../tools/oracle/image-native.js";
 import { buildOracleSeedPlan } from "../../tools/oracle/seed-plan.js";
@@ -21,7 +22,7 @@ export const allContracts: unknown = JSON.parse(
   ),
 );
 /** Compact contract fixture only. This is NOT the locked release fixture or a substitute for its real Shopify matrix. */
-export function compactCaseStore() {
+export function compactCaseStore(options: { genericImages?: boolean } = {}) {
   const snapshot = defaultFixture();
   snapshot.products = snapshot.products.slice(0, 2);
   for (const product of snapshot.products) {
@@ -40,7 +41,7 @@ export function compactCaseStore() {
   }
   snapshot.collections = snapshot.collections.slice(0, 1);
   for (const collection of snapshot.collections) {
-    collection.image = null;
+    if (!options.genericImages) collection.image = null;
     collection.products = snapshot.products.map((product) => product.handle);
     collection.sortOrder = "manual";
   }
@@ -48,7 +49,7 @@ export function compactCaseStore() {
   snapshot.blogs = snapshot.blogs.filter((blog) => blog.handle === "news");
   for (const blog of snapshot.blogs) {
     blog.articles = blog.articles.slice(0, 1);
-    for (const article of blog.articles) article.image = null;
+    for (const article of blog.articles) if (!options.genericImages) article.image = null;
   }
   snapshot.menus = [
     {
@@ -81,12 +82,31 @@ export function compactCaseStore() {
     ids = new Map(
       tasks.map((task, index) => [
         task.key,
-        `gid://shopify/${task.resource[0]?.toUpperCase()}${task.resource.slice(1)}/${100 + index}`,
+        `gid://shopify/${task.resource === "image" ? "MediaImage" : `${task.resource[0]?.toUpperCase()}${task.resource.slice(1)}`}/${100 + index}`,
       ]),
     ),
     created = new Set<string>(),
     published = new Set<string>(),
     variants = new Map<string, { id: string; parent: string; index: number }>();
+  const imageBytes = new Uint8Array([1, 2, 3]),
+    assets = tasks
+      .filter((task) => task.resource === "image")
+      .map((task) => ({
+        file: task.identity[0] ?? "",
+        bytes: imageBytes.length,
+        sha256: backupDigest(imageBytes),
+      })),
+    imageUrl = (file: string) => `https://cdn.shopify.com/s/files/1/files/${file}?v=1`,
+    adminImage = (image: (typeof snapshot.collections)[number]["image"]) =>
+      image
+        ? {
+            url: imageUrl(image.file),
+            altText: image.alt,
+            width: image.width,
+            height: image.height,
+          }
+        : null;
+  assert.equal(assets.length, options.genericImages ? 1 : 0);
   for (const task of tasks)
     if (task.resource === "product") {
       const p = snapshotSchema.shape.products.element.parse(task.source),
@@ -122,7 +142,8 @@ export function compactCaseStore() {
     reads = 0,
     gets = 0,
     drift = false,
-    generatedDrift = false;
+    generatedDrift = false,
+    nativeImageDrift = false;
   function getTask(id: string) {
     const task = tasks.find((task) => ids.get(task.key) === id);
     assert.ok(task, `Unknown authored ID ${id}`);
@@ -159,6 +180,20 @@ export function compactCaseStore() {
         __typename: task.resource[0]?.toUpperCase() + task.resource.slice(1),
       },
       date = "2026-10-15T00:00:00Z";
+    if (task.resource === "image") {
+      const image = snapshotSchema.shape.products.element.shape.images.element.parse(task.source);
+      return {
+        __typename: "MediaImage",
+        id,
+        alt: image.alt,
+        fileStatus: "READY",
+        image: { url: imageUrl(image.file), width: image.width, height: image.height },
+        originalSource: {
+          url: "https://cdn.shopify.com/original.png",
+          fileSize: imageBytes.length,
+        },
+      };
+    }
     if (task.resource === "product") {
       const p = snapshotSchema.shape.products.element.parse(task.source);
       return {
@@ -237,7 +272,7 @@ export function compactCaseStore() {
         descriptionHtml: c.descriptionHtml,
         templateSuffix: c.templateSuffix,
         sortOrder: "MANUAL",
-        image: null,
+        image: adminImage(c.image),
         seo: seo(c.seo),
         legacyResourceId: suffix(id),
         products: { nodes: members, pageInfo: pi },
@@ -300,7 +335,7 @@ export function compactCaseStore() {
         isPublished: true,
         tags: a.tags,
         blog: { id: ids.get(blogTask.key), handle: task.identity[0] },
-        image: null,
+        image: adminImage(a.image),
         seo: seo(a.seo),
         createdAt: date,
         updatedAt: date,
@@ -327,6 +362,7 @@ export function compactCaseStore() {
     Response.json({ data }, { headers: { "x-shopify-api-version": "2026-10" } });
   const fetcher: typeof fetch = async (_url, init) => {
     reads++;
+    if (init?.method === "GET") return new Response(imageBytes);
     const body = JSON.parse(String(init?.body)),
       q = String(body.query),
       v = body.variables ?? {};
@@ -399,6 +435,27 @@ export function compactCaseStore() {
       return reply({ shop, nodes: v.ids.map((id: string) => node(id)) });
     assert.ok(q.startsWith("mutation "));
     writes++;
+    if (q.includes("stagedUploadsCreate"))
+      return reply({
+        stagedUploadsCreate: {
+          stagedTargets: [
+            {
+              url: "https://shopify-staged-uploads.storage.googleapis.com/",
+              resourceUrl: "https://shopify-staged-uploads.storage.googleapis.com/tmp/authored.png",
+              parameters: [{ name: "key", value: "tmp/authored.png" }],
+            },
+          ],
+          userErrors: [],
+        },
+      });
+    if (q.includes("fileCreate")) {
+      const task = tasks.find((task) => task.resource === "image");
+      assert.ok(task);
+      const id = ids.get(task.key);
+      assert.ok(id);
+      created.add(id);
+      return reply({ fileCreate: { files: [{ id }], userErrors: [] } });
+    }
     if (q.includes("publishablePublish")) {
       published.add(v.id);
       return reply({ publishablePublish: { publishable: { id: v.id }, userErrors: [] } });
@@ -418,6 +475,21 @@ export function compactCaseStore() {
       (task) => task.resource === kind && task.identity.at(-1) === payload.handle,
     );
     assert.ok(task, operation);
+    if (kind === "collection" || kind === "article") {
+      const image =
+        kind === "collection"
+          ? snapshotSchema.shape.collections.element.parse(task.source).image
+          : snapshotSchema.shape.blogs.element.shape.articles.element.parse(task.source).image;
+      assert.deepEqual(
+        payload.image,
+        image
+          ? {
+              [kind === "collection" ? "src" : "url"]: imageUrl(image.file),
+              altText: image.alt,
+            }
+          : null,
+      );
+    }
     const id = ids.get(task.key);
     assert.ok(id);
     created.add(id);
@@ -453,6 +525,12 @@ export function compactCaseStore() {
       assert.ok(id);
       const product =
           kind === "product" ? snapshotSchema.shape.products.element.parse(task.source) : null,
+        genericImage =
+          kind === "collection"
+            ? snapshotSchema.shape.collections.element.parse(task.source).image
+            : kind === "article"
+              ? snapshotSchema.shape.blogs.element.shape.articles.element.parse(task.source).image
+              : null,
         probe = prepareNativeImageProbe(kind),
         value = {
           shopId: "1",
@@ -460,7 +538,25 @@ export function compactCaseStore() {
           kind,
           parentId: suffix(id),
           handle: task.identity.at(-1),
-          images: [],
+          images: genericImage
+            ? [
+                {
+                  src: nativeImageDrift
+                    ? "https://cdn.shopify.com/s/files/1/files/foreign.png?v=1"
+                    : imageUrl(genericImage.file),
+                  alt: genericImage.alt,
+                  width: genericImage.width,
+                  height: genericImage.height,
+                  id: "7001",
+                  position: null,
+                  productId: null,
+                  mediaType: null,
+                  attached: null,
+                  variants: null,
+                  preview: null,
+                },
+              ]
+            : [],
           media: [],
           variants: product
             ? product.variants.map((source) => ({
@@ -611,6 +707,11 @@ export function compactCaseStore() {
     snapshot,
     plan,
     state,
+    assets,
+    readImage: async (file: string) => {
+      assert.ok(assets.some((asset) => asset.file === file));
+      return imageBytes.slice();
+    },
     fetcher,
     imageDependencies,
     captureAdapters,
@@ -631,9 +732,13 @@ export function compactCaseStore() {
     changeGenerated: () => {
       generatedDrift = true;
     },
+    changeNativeImage: () => {
+      nativeImageDrift = true;
+    },
     reset: () => {
       drift = false;
       generatedDrift = false;
+      nativeImageDrift = false;
     },
   };
 }
