@@ -358,6 +358,16 @@ only assembled case receipts carrying this theme evidence and emits hashes rathe
 owner-only permissions. The parity loader checks their exact inventory, scope, capture clock and
 fingerprints against the public goldens before rendering.
 
+`openOracleBenchmarkUploader` in `tools/oracle/theme-upload.ts` connects a prepared copy to an
+unpublished CLI push. A mandatory authorization callback must establish backup/restoration,
+the owner-confirmed manual first wipe and upload approval. It checks the pinned development store
+and marker, stages only recognized theme files in a private directory, and runs the CLI without
+interactive authentication or inherited theme flags. It then checks the returned theme's role,
+complete uploaded bytes and store identity before recording private metadata. The returned file
+verifier supplies fresh capture checks. Its separate private journal prevents another CLI invocation
+after success or an uncertain dispatched outcome, including after reopen; unresolved outcomes require
+operator inspection. Opening it performs no upload, and it never publishes or deletes a theme.
+
 The seeding transport in `tools/oracle/seed-execution.ts` accepts only steps compiled from its
 validated fixture matrix. It requires trusted authorization, dependency ownership verification and
 read-back verification callbacks. Each attempt rechecks the pinned shop ID/domain, development-store
