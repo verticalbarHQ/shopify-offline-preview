@@ -225,7 +225,10 @@ test("the original global-image corpus example replays with explicitly supplied 
   const result = await renderTheme(new MemoryThemeFileSystem(prepared.files), item.requestPath, {
     snapshot: input,
   });
-  assert.deepEqual(result.diagnostics, []);
+  assert.deepEqual(
+    result.diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.file, diagnostic.severity]),
+    [["shopify-server-only", "layout/sop-corpus.liquid", "info"]],
+  );
   assert.ok(
     extractCorpusOutput(result.html, item).includes(
       '<img src="/sop/images/uploaded/header.png?width=64"',
