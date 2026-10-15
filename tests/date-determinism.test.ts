@@ -47,7 +47,26 @@ test("fractional timezone offsets preserve local time and default datetime uses 
 test("explicit empty or nil date formats preserve input text and time tag instant", async () => {
   await output(
     "{{'2020-06-15 14:30:45'|date:''}}|{{'2020-06-15 14:30:45'|date:nil}}|{{'2020-06-15 14:30:45'|time_tag:''}}|{{'2020-06-15 14:30:45'|time_tag:nil}}|{{'Today'|date:'%Y'}}|{{'NOW'|date:'%Y'}}",
-    '2020-06-15 14:30:45|2020-06-15 14:30:45|<time datetime="2020-06-15T18:30:45Z">2020-06-15 14:30:45</time>|<time datetime="2020-06-15T18:30:45Z">2020-06-15 14:30:45</time>|Today|NOW',
+    '2020-06-15 14:30:45|2020-06-15 14:30:45|<time datetime="2020-06-15T18:30:45Z">2020-06-15 14:30:45</time>|<time datetime="2020-06-15T18:30:45Z">2020-06-15 14:30:45</time>|2026|2026',
+  );
+});
+test("case-insensitive current-date keywords use the snapshot instant in the shop zone", async () => {
+  // Shopify Liquid Utils.to_date downcases strings before matching now/today.
+  const snapshot = defaultFixture();
+  snapshot.meta.now = "2001-01-01T00:00:00Z";
+  snapshot.shop.timezone = "America/New_York";
+  const keywords = ["now", "NOW", "nOw", "today", "Today", "ToDaY"],
+    source =
+      keywords.map((word) => `{{'${word}'|date:'%Y-%m-%d %H:%M %z'}}`).join("|") +
+      "|{{'TODAY'|time_tag:'%Y-%m-%d'}}|{{' ToDay'|date:'%Y'}}|{{'NOW '|date:'%Y'}}",
+    result = await renderTheme(new MemoryThemeFileSystem(files(source)), "/", { snapshot });
+  assert.deepEqual(result.diagnostics, []);
+  assert.ok(
+    result.html.includes(
+      Array(6).fill("2000-12-31 19:00 -0500").join("|") +
+        '|<time datetime="2001-01-01T00:00:00Z">2000-12-31</time>| ToDay|NOW ',
+    ),
+    result.html,
   );
 });
 test("date rendering is independent of the host process timezone", () => {
@@ -74,7 +93,7 @@ test("date parsing, DST and formatting match in Node and browser", async () => {
   const snapshot = defaultFixture();
   snapshot.shop.timezone = "America/New_York";
   const input = files(
-    "{{'2020-03-08 02:30:00'|time_tag:'%Y-%m-%d %H:%M %z'}}|{{'2020-11-01 01:30:00'|date:'%H:%M %z'}}|{{'2020-06-15 14:30:45'|date:nil}}",
+    "{{'2020-03-08 02:30:00'|time_tag:'%Y-%m-%d %H:%M %z'}}|{{'2020-11-01 01:30:00'|date:'%H:%M %z'}}|{{'2020-06-15 14:30:45'|date:nil}}|{{'Now'|date:'%Y-%m-%d %H:%M'}}|{{'TODAY'|time_tag:'%Y-%m-%d'}}",
   );
   const options = { inspect: true, snapshot };
   assert.deepEqual(

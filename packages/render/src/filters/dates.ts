@@ -115,7 +115,8 @@ export function registerDateFilters(
   for (const name of ["date", "time_tag"])
     engine.registerFilter(name, function (input: unknown, ...args: unknown[]) {
       const value = toValue(input),
-        source = value === "now" || value === "today" ? snapshot.meta.now : value;
+        keyword = typeof value === "string" ? value.toLowerCase() : null,
+        source = keyword === "now" || keyword === "today" ? snapshot.meta.now : value;
       const date = instant(source, formatter);
       if (!date) return String(value ?? "");
       const options = namedArgs(args);
