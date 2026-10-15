@@ -245,7 +245,7 @@ test("fresh full uploaded inventory, context bytes and source receipts are requi
   }
 });
 
-test("authored escape and Native-clock date replay while nonempty-cart unsupported behavior still blocks", async () => {
+test("authored escape, Native-clock date and nonempty-cart outputs replay against their own calibrated snapshots", async () => {
   const h = await harness();
   try {
     const date = info.cases.find((item) => item.id === "filters/date/1"),
@@ -271,10 +271,7 @@ test("authored escape and Native-clock date replay while nonempty-cart unsupport
         h.options((epoch) => payload(example.item.payloadId, example.output(epoch))),
       );
       const replay = await replayCorpusCapture(source, receipt);
-      if (example.item === plural) {
-        assert.equal(replay.pass, false);
-        assert.ok(replay.diagnosticCodes.includes("not-implemented"));
-      } else assert.equal(replay.pass, true, JSON.stringify(replay));
+      assert.equal(replay.pass, true, JSON.stringify(replay));
       assert.deepEqual(replay.harnessDiagnosticCodes, ["shopify-server-only"]);
       if (example.base === "14-cart-with-items")
         assert.equal(inspectCorpusCapture(source, receipt).snapshot.cart.lines.length, 2);

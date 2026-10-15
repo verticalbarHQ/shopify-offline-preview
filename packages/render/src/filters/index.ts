@@ -64,6 +64,14 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
   });
   registerSelectionFilters(engine);
   registerRangeFilters(engine);
+  engine.registerFilter("pluralize", (input: unknown, ...labels: unknown[]) => {
+    if (labels.length !== 2)
+      throw new Error(`wrong number of arguments (given ${labels.length + 1}, expected 3)`);
+    const value: unknown = toValue(input);
+    return labels[
+      (typeof value === "number" || value instanceof Number) && Number(value) === 1 ? 0 : 1
+    ];
+  });
   engine.registerFilter("money_amount", (value) => moneyAmount(toValue(value)));
   engine.registerFilter("handleize", handleize);
   for (const name of ["payment_button", "payment_terms"])

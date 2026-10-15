@@ -437,6 +437,10 @@ The helper returns hashes and diagnostic codes without readable output. A succes
 alone does not populate the implementation registry or prove coverage of other filters, tags or
 object properties in the same example.
 
+`pluralize` selects the supplied singular label only for numeric one, including `1.0`.
+It preserves the selected value and requires both labels; numeric strings select the plural label.
+This follows the English selection rule and does not translate or generate plural forms.
+
 Collection link filters (`url_for_type`, `url_for_vendor`, `link_to_type`, `link_to_vendor`,
 `within`, `sort_by`) generate catalog URLs and anchors from snapshot values. They retain existing
 URL queries and fragments, escape HTML attributes, and preserve label markup. `within` accepts a
