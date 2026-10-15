@@ -215,6 +215,18 @@ try {
     ),
     { status: 501, body: { error: "not available offline" } },
   );
+  assert.deepEqual(
+    await frame(
+      `(async()=>{const url=new URL(window.location.href);url.searchParams.set('section_id','header');const response=await fetch(url);return {status:response.status,body:await response.json()};})()`,
+    ),
+    { status: 501, body: { error: "not available offline" } },
+  );
+  assert.deepEqual(
+    await frame(
+      `new Promise(resolve=>{const url=new URL(window.location.href);url.searchParams.set('sections','header,footer');const x=new XMLHttpRequest();x.open('GET',url);x.onload=()=>resolve({status:x.status,body:JSON.parse(x.responseText)});x.send();})`,
+    ),
+    { status: 501, body: { error: "not available offline" } },
+  );
   await parent(
     `(async()=>{await (${wait})(()=>document.querySelector('#runtime [data-code="blocked-endpoint"]'));document.querySelector('#device').value='390';document.querySelector('#device').dispatchEvent(new Event('change'));document.querySelector('.tree-node[data-kind="section"]').click();await (${wait})(()=>document.querySelector('#source').textContent.includes('{{shop.name}}'));return true;})()`,
   );
@@ -374,6 +386,7 @@ try {
     themeBlockHoverAndSource: true,
     mobileWidth: 390,
     fetchAndXhr501: true,
+    srcdocSectionRequests501: true,
     designMode: true,
     noUploads: true,
     invalidSnapshotClearsPreview: true,
