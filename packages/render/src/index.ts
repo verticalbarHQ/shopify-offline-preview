@@ -571,6 +571,20 @@ export async function renderTheme(
         result[key] = imageSetting(raw, key);
         continue;
       }
+      if (["collection_list", "product_list"].includes(definition.type)) {
+        const dictionary =
+          globals[definition.type === "collection_list" ? "collections" : "all_products"];
+        result[key] = (Array.isArray(raw) ? raw : []).flatMap((handle) => {
+          if (typeof handle === "string" && object(dictionary) && Object.hasOwn(dictionary, handle))
+            return [Reflect.get(dictionary, handle)];
+          diagnostic(
+            "missing-resource",
+            `Setting ${key} references a resource absent from the snapshot.`,
+          );
+          return [];
+        });
+        continue;
+      }
       const resource = {
         product: "all_products",
         collection: "collections",
@@ -593,14 +607,7 @@ export async function renderTheme(
             `Setting ${key} references a resource absent from the snapshot.`,
           );
       } else if (
-        [
-          "video",
-          "video_url",
-          "product_list",
-          "collection_list",
-          "metaobject",
-          "metaobject_list",
-        ].includes(definition.type)
+        ["video", "video_url", "metaobject", "metaobject_list"].includes(definition.type)
       ) {
         result[key] = null;
         if (raw)
