@@ -118,3 +118,39 @@ test("served browser view is isolated from core output and injects scripts befor
   assert.match(html, /inspector\.test/);
   assert.ok(!html.includes('src="/sop/bridge.js"'));
 });
+
+test("preview rewrites resources inside nested and declarative shadow templates", async () => {
+  const files = {
+    "layout/theme.liquid": strToU8("<html><head></head><body>{{content_for_layout}}</body></html>"),
+    "templates/index.json": strToU8('{"sections":{"main":{"type":"main"}},"order":["main"]}'),
+    "sections/main.liquid": strToU8(
+      `<div><template shadowrootmode="open"><link rel="stylesheet" href="/sop/assets/shadow.css"><img src="/sop/images/hero.svg" srcset="/sop/images/hero.svg 1x"><template><style>.hero{background:url('/sop/images/hero.svg')}</style><script src="/sop/assets/shadow.js"></script></template></template></div>`,
+    ),
+    "assets/shadow.css": strToU8("ul{display:flex;list-style:none}"),
+    "assets/shadow.js": strToU8("window.shadowScriptLoaded=true"),
+  };
+  const images = { "hero.svg": strToU8('<svg xmlns="http://www.w3.org/2000/svg"/>') };
+  const snapshot = defaultFixture();
+  const result = await renderTheme(new MemoryThemeFileSystem(files), "/", { snapshot });
+  const original = result.html;
+  const html = await playgroundPreview(
+    result,
+    snapshot,
+    files,
+    images,
+    "window.bridgeRan=true;",
+    false,
+    "shadow",
+    "https://inspector.test",
+  );
+  assert.equal(result.html, original);
+  assert.match(
+    html,
+    /<template shadowrootmode="open"><link rel="stylesheet" href="data:text\/css;base64,/,
+  );
+  assert.match(html, /<img src="data:image\/svg\+xml;base64,/);
+  assert.match(html, /srcset="data:image\/svg\+xml;base64,[^"]+ 1x"/);
+  assert.match(html, /<template><style>\.hero\{background:url\("data:image\/svg\+xml;base64,/);
+  assert.match(html, /<script src="data:text\/javascript;base64,/);
+  assert.ok(!html.includes('href="/sop/assets/shadow.css"'));
+});

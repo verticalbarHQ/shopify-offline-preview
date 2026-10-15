@@ -38,6 +38,8 @@ export async function playgroundPreview(
   function walk(node: Tree.Node) {
     if ("tagName" in node) elements.push(node);
     if ("childNodes" in node) node.childNodes.forEach(walk);
+    // parse5 keeps template descendants in a separate fragment, including shadow roots.
+    if ("content" in node) walk(node.content);
   }
   walk(doc);
   const head = elements.find((e) => e.tagName === "head");
