@@ -1,5 +1,9 @@
 import { type Snapshot, snapshotSchema } from "../../packages/data/src/schema.js";
 import { backupDigest } from "./backup-audit.js";
+import type { CaptureInput } from "./capture.js";
+import type { ContextCaptureDependencies } from "./capture-context.js";
+import type { OracleCartDependencies } from "./cart-session.js";
+import { createOracleCaseCapturer } from "./case-capture.js";
 import type { NativeImageDependencies } from "./image-native.js";
 import { openOracleSeedDurableRuntime } from "./seed-durable-runtime.js";
 import type { SeedExecutionStep, VerifiedSeedExecution } from "./seed-execution.js";
@@ -22,6 +26,10 @@ import {
   type VerifiedSeedState,
 } from "./seed-state-reader.js";
 import type { VerifiedSeedUpload } from "./seed-upload.js";
+import {
+  createOracleShopSettingsVerifier,
+  type ShopSettingsDependencies,
+} from "./shop-settings.js";
 import { type OracleConfig, oracleConfigSchema } from "./store-guard.js";
 
 export class SeedDriverError extends Error {
@@ -393,6 +401,54 @@ export async function openOracleSeedStateDriver(
         exclusive(() => runtime.captureCart(...args)),
       captureCartContext: (...args: Parameters<typeof runtime.captureCartContext>) =>
         exclusive(() => runtime.captureCartContext(...args)),
+      captureSeededCase: (
+        caseId: string,
+        input: Omit<CaptureInput, "config" | "path" | "cookie">,
+        options: {
+          cart: OracleCartDependencies;
+          capture: Omit<ContextCaptureDependencies, "fetcher">;
+          shop: Omit<ShopSettingsDependencies, "fetcher">;
+          imageProbes: Record<
+            "product" | "collection" | "article",
+            { themeId: string; cookie: string; dependencies: NativeImageDependencies }
+          >;
+        },
+      ) =>
+        exclusive(async () => {
+          const plan = buildOracleSeedPlan(config, snapshot),
+            capturer = createOracleCaseCapturer(config, snapshot, shopId, {
+              verifyState: runtime.verifyState,
+              observeGenerated: runtime.observeGenerated,
+              prepareCart: runtime.prepareCart,
+              captureCartContext: runtime.captureCartContext,
+              verifyShop: (expected) =>
+                createOracleShopSettingsVerifier(config, expected, shopId, token, {
+                  ...options.shop,
+                  fetcher: dependencies.fetcher ?? fetch,
+                })(),
+              observeImages: (hash, key) => {
+                const task = plan.states
+                  .find((state) => state.hash === hash)
+                  ?.tasks.find((task) => task.key === key);
+                if (
+                  !task ||
+                  (task.resource !== "product" &&
+                    task.resource !== "collection" &&
+                    task.resource !== "article")
+                )
+                  throw new SeedDriverError("verification-failed");
+                const probe = options.imageProbes[task.resource];
+                return runtime.observeNativeImages(
+                  hash,
+                  key,
+                  probe.themeId,
+                  probe.cookie,
+                  probe.dependencies,
+                );
+              },
+            });
+          return capturer.capture(caseId, input, options.cart, options.capture);
+        }),
       close: () => exclusive(() => driver.close()),
     };
   } catch (error) {

@@ -2,7 +2,7 @@ import { isDeepStrictEqual } from "node:util";
 import { type Node as JsonNode, type ParseError, parseTree } from "jsonc-parser";
 import { z } from "zod";
 import { liquidPrice } from "../../packages/data/src/objects.js";
-import { validateSnapshotReferences } from "../../packages/data/src/scenarios.js";
+import { applyScenario, validateSnapshotReferences } from "../../packages/data/src/scenarios.js";
 import { type Snapshot, snapshotSchema } from "../../packages/data/src/schema.js";
 import { oracleThemeSchema } from "./admin-read.js";
 import { type CaptureDependencies, type CaptureInput, captureOraclePage } from "./capture.js";
@@ -77,6 +77,7 @@ export interface OracleCartContext {
   shopId: string;
   fixtureHash: string;
   caseId: string;
+  path: string;
   stateHash: string;
   stage: "note" | "add";
 }
@@ -97,6 +98,7 @@ interface CartObservation {
   fixtureHash: string;
   stateHash: string;
   caseId: string;
+  path: string;
   lines: { productHandle: string; variantId: string; quantity: number; key: string }[];
   note: string | null;
 }
@@ -115,7 +117,7 @@ export function inspectVerifiedOracleCart(receipt: VerifiedOracleCart): CartObse
   if (!session?.valid) throw new OracleCartError("session-invalid");
   return structuredClone(session.observation);
 }
-async function bodyText(response: Response): Promise<string> {
+async function bodyText(response: Response, limit = 2 * 1024 * 1024): Promise<string> {
   const reader = response.body?.getReader(),
     decoder = new TextDecoder("utf8", { fatal: true });
   if (!reader) throw new OracleCartError("request-failed");
@@ -126,7 +128,7 @@ async function bodyText(response: Response): Promise<string> {
       const chunk = await reader.read();
       if (chunk.done) break;
       size += chunk.value.byteLength;
-      if (size > 2 * 1024 * 1024) throw new OracleCartError("request-failed");
+      if (size > limit) throw new OracleCartError("request-failed");
       text += decoder.decode(chunk.value, { stream: true });
     }
     return text + decoder.decode();
@@ -280,11 +282,18 @@ export function createOracleCartSessions(
         throw new OracleCartError("scope-mismatch");
     }
   }
-  async function request(session: Session, path: string, payload?: unknown): Promise<Response> {
+  async function request(
+    session: Session,
+    path: string,
+    payload?: unknown,
+    html = false,
+  ): Promise<Response> {
     const url = new URL(path, `https://${config.domain}`);
     if (
       url.origin !== `https://${config.domain}` ||
-      !["/cart.js", "/cart/update.js", "/cart/add.js", "/cart"].includes(url.pathname)
+      (html
+        ? payload !== undefined
+        : !["/cart.js", "/cart/update.js", "/cart/add.js"].includes(url.pathname))
     )
       throw new OracleCartError("scope-mismatch");
     const response = await session.fetcher(url, {
@@ -294,7 +303,7 @@ export function createOracleCartSessions(
       signal: AbortSignal.timeout(30000),
       headers: {
         Cookie: cookieHeader(session),
-        Accept: url.pathname === "/cart" ? "text/html" : "application/json",
+        Accept: html ? "text/html" : "application/json",
         ...(payload === undefined ? {} : { "Content-Type": "application/json" }),
       },
       ...(payload === undefined ? {} : { body: JSON.stringify(payload) }),
@@ -346,7 +355,7 @@ export function createOracleCartSessions(
       if (!isDeepStrictEqual(await read(session), session.cart))
         throw new OracleCartError("cart-mismatch");
       const capture = await perform(
-        { ...input, config, path: "/cart", cookie: cookieHeader(session) },
+        { ...input, config, path: session.observation.path, cookie: cookieHeader(session) },
         {
           ...dependencies,
           verifyThemeFiles: checkTheme,
@@ -358,10 +367,16 @@ export function createOracleCartSessions(
           fetcher: async (url, init) => {
             if (init?.method !== "GET") throw new OracleCartError("scope-mismatch");
             const target = new URL(String(url));
-            if (target.origin !== `https://${config.domain}` || target.pathname !== "/cart")
-              throw new OracleCartError("scope-mismatch");
-            const response = await request(session, target.pathname + target.search),
-              text = await bodyText(response);
+            const expected = new URL(session.observation.path, `https://${config.domain}`);
+            expected.searchParams.set("preview_theme_id", input.previewThemeId);
+            if (target.href !== expected.href) throw new OracleCartError("scope-mismatch");
+            const response = await request(
+                session,
+                target.pathname + target.search,
+                undefined,
+                true,
+              ),
+              text = await bodyText(response, 4 * 1024 * 1024);
             return new Response(text, { status: response.status, headers: response.headers });
           },
         },
@@ -380,7 +395,9 @@ export function createOracleCartSessions(
     prepare: (caseId: string, dependencies: OracleCartDependencies): Promise<VerifiedOracleCart> =>
       operation(async () => {
         const prepared = plan.requests.find((request) => request.caseId === caseId),
-          desired = prepared?.cart;
+          desired = prepared
+            ? (prepared.cart ?? applyScenario(snapshot, prepared.scenario).cart)
+            : null;
         if (!prepared || !desired || typeof dependencies.authorize !== "function")
           throw new OracleCartError("invalid-input");
         const note = desired.note,
@@ -435,6 +452,7 @@ export function createOracleCartSessions(
             fixtureHash: plan.fixtureHash,
             stateHash: prepared.stateHash,
             caseId,
+            path: prepared.path,
             lines: [],
             note: desired.note,
           },
@@ -536,7 +554,7 @@ export function applyOracleCart(
     session = sessions.get(receipt);
   if (
     plan.issues.length ||
-    !request?.cart ||
+    !request ||
     !session ||
     observed.domain !== config.domain ||
     observed.shopId !== shopId ||

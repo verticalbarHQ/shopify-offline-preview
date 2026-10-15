@@ -111,9 +111,12 @@ interface Observation {
   domain: string;
   shopId: string;
   path: string;
+  requestPath: string;
   previewThemeId: string;
   snippetHash: string;
   rawHashes: readonly string[];
+  summaryHash: string;
+  sectionTextHash: string;
   contexts: readonly [NativeCaptureContext, NativeCaptureContext];
 }
 const observations = new WeakMap<VerifiedCaptureContext, Observation>();
@@ -223,11 +226,16 @@ export async function captureOracleContextPage(
     domain: input.config.domain,
     shopId,
     path: expectedPath,
+    requestPath: input.path,
     previewThemeId: input.previewThemeId,
     snippetHash: captureContextHash,
     rawHashes: capture.privateRawHtml.map((html) =>
       createHash("sha256").update(html).digest("hex"),
     ),
+    summaryHash: createHash("sha256").update(JSON.stringify(capture.publicSummary)).digest("hex"),
+    sectionTextHash: createHash("sha256")
+      .update(JSON.stringify(capture.privateSectionText))
+      .digest("hex"),
     contexts: [first, second],
   });
   return {

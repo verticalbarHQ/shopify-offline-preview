@@ -340,6 +340,13 @@ non-clock context across both captures. Calibrated snapshots use the first obser
 the captured section text remains subject to the ordinary stability check. Applying this context
 still requires separate resource, image and complete-case evidence.
 
+`captureSeededCase` on the internal state driver captures an already owned fixture state. It reads
+the complete state, shop settings, generated fields and Native image views on both sides of the
+isolated session capture, then assembles the calibrated snapshot and HTML as an opaque receipt.
+The receipt retains separate base-fixture and case-snapshot hashes, the original request (including
+pagination/search parameters), and raw-response hashes. Theme-pin verification, offline parity,
+full matrix coverage and release freshness remain separate gates.
+
 The seeding transport in `tools/oracle/seed-execution.ts` accepts only steps compiled from its
 validated fixture matrix. It requires trusted authorization, dependency ownership verification and
 read-back verification callbacks. Each attempt rechecks the pinned shop ID/domain, development-store
