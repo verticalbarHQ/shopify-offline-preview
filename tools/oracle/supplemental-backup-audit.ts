@@ -2,6 +2,7 @@ import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 import { backupDigest, backupDirectory, backupFile } from "./backup-audit.js";
+import { auditReadBackup, type ReadBackupKind, readBackupKind } from "./read-backup-audit.js";
 import { type OracleConfig, oracleConfigSchema } from "./store-guard.js";
 
 const count = z.number().int().nonnegative();
@@ -59,10 +60,12 @@ const json = (bytes: Uint8Array): unknown =>
 /** Local bytes and coverage only; a manifest cannot prove remote capture or restoration. */
 export async function auditSupplementalBackup(
   config: OracleConfig,
-  kind: "collections" | "product-media",
+  kind: "collections" | "product-media" | ReadBackupKind,
   archive: string,
 ) {
   oracleConfigSchema.parse(config);
+  const readKind = readBackupKind.safeParse(kind);
+  if (readKind.success) return auditReadBackup(config, readKind.data, archive);
   const root = await backupDirectory(archive);
   const manifestBytes = await backupFile(root, "manifest.json");
   const raw = json(manifestBytes);

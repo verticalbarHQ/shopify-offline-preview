@@ -302,11 +302,17 @@ payloads. Exit 2 means integrity or scope findings, and exit 3 means invalid/ina
 Even exit 0 does not establish complete store coverage, successful restoration, fresh store
 identity or action-time owner approval. This utility makes no Shopify requests or mutations.
 
-`pnpm oracle:supplemental-backup-audit --kind collections|product-media --archive <archive-dir>`
-checks supplemental collection membership exports or original product-image archives. It verifies
-hashes, counts, duplicate references, nested pagination and image-file inventory. Reports contain
-counts and hashes; exit codes follow `oracle:backup-audit`. Remote capture stability and restoration
-remain separate evidence, even when the local archive passes.
+`pnpm oracle:supplemental-backup-audit --kind <kind> --archive <archive-dir>` checks existing
+supplemental exports. Kinds are `collections`, `product-media`, `content`, `inventory`, and
+`collection-sources`. All check hashes, counts, duplicate references and the declared file inventory.
+Inventory checks every declared quantity state and the parameterized inventory-level owner ID.
+Content checks article/blog links, content metafield owners and metaobject definition references.
+Collection sources check nested pagination and condition fields against their archived contracts.
+These are local structure checks, not proof that an export captured every remote field or page.
+Reports contain counts and hashes; exit codes follow `oracle:backup-audit`. Complete store coverage,
+remote capture stability, successful restoration and wipe authorization remain separate evidence,
+even when the local archive passes. This development utility makes no Shopify requests and is not
+a store importer for the SDK.
 
 `pnpm oracle:seed-prepare --snapshot <snapshot.json> --images <fixture-png-dir>` prepares a local desired-state plan for the
 entire 18-request benchmark matrix. It groups identical persistent states, keeps session carts
