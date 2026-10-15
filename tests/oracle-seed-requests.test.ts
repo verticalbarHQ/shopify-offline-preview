@@ -114,6 +114,7 @@ test("collection creation uses current sources and updates calculate additions a
   assert.equal(create.variableTypes.collection, "CollectionCreateInput!");
   const source = object(object(array(object(create.variables.collection).sources)[0]).source);
   assert.equal(source.targetType, "PRODUCTS");
+  assert.equal(Object.hasOwn(source, "position"), false);
   assert.equal(array(object(source.inclusion).selections).length, 40);
   assert.throws(
     () => compileSeedTask(task("collection"), { mode: "update" }),

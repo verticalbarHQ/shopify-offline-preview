@@ -335,7 +335,6 @@ export function compileSeedTask(
           source: {
             title: "SOP fixture membership",
             targetType: "PRODUCTS",
-            position: 0,
             inclusion: { selections: select(c.products) },
           },
         },

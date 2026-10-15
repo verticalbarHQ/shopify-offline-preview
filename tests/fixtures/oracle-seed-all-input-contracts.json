@@ -665,15 +665,6 @@
             "ofType": null
           },
           "defaultValue": "PRODUCTS"
-        },
-        {
-          "name": "position",
-          "type": {
-            "kind": "SCALAR",
-            "name": "Int",
-            "ofType": null
-          },
-          "defaultValue": null
         }
       ],
       "enumValues": null
