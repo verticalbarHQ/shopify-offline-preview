@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { chmod, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, readdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -14,8 +14,13 @@ import {
   readComparisonThemeFiles,
 } from "../tools/oracle/benchmark-theme.js";
 import { readCaseSnapshots, savePrivateCaseArchive } from "../tools/oracle/case-archive.js";
-import { inspectVerifiedOracleCase } from "../tools/oracle/case-capture.js";
+import {
+  inspectVerifiedOracleCase,
+  type VerifiedOracleCase,
+} from "../tools/oracle/case-capture.js";
 import { compareGoldenCase } from "../tools/oracle/compare-case.js";
+import { corpusFilesFingerprint } from "../tools/oracle/corpus-environment.js";
+import { validateGoldenMatrix } from "../tools/oracle/matrix.js";
 import { openOracleSeedStateDriver } from "../tools/oracle/seed-state-driver.js";
 import { authoredBenchmark } from "./helpers/benchmark-archive.js";
 import {
@@ -28,8 +33,8 @@ import {
 } from "./helpers/case-store.js";
 
 // All HTTP/tarball payloads are authored mocks. No real golden is written or Shopify verification claimed.
-async function harness() {
-  const prepared = await authoredBenchmark(),
+async function harness(name: "dawn" | "horizon" = "dawn") {
+  const prepared = await authoredBenchmark(name),
     info = inspectPreparedBenchmarkTheme(prepared),
     files = await readComparisonThemeFiles(info.path),
     store = compactCaseStore(),
@@ -72,12 +77,13 @@ async function harness() {
         previewThemeId: "7",
         summaryOptions: { sectionTypes: { "template--N__main": "main" } },
       };
-    async function capture(prove = true) {
+    async function capture(prove = true, caseId = "14-cart-with-items", epoch?: string) {
       const server = store.cartTransport({
         text: (epoch) => `1 ${epoch}`,
         sectionId: "template--123__main",
+        ...(epoch === undefined ? {} : { epoch }),
       });
-      return driver.captureSeededCase("14-cart-with-items", input, {
+      return driver.captureSeededCase(caseId, input, {
         cart: {
           passwordCookie: "_shopify_essential=authored",
           fetcher: server.transport,
@@ -269,4 +275,58 @@ test("source preparation refuses HTTP errors, redirected and malformed archives"
     preparePinnedBenchmarkTheme("dawn", async () => new Response("not a gzip archive")),
     { code: "invalid-archive" },
   );
+});
+
+test("two authored themes roundtrip every 36 matrix slots with calibrated data, shared snapshot files and release metadata", async () => {
+  const left = await harness("dawn");
+  let right: Awaited<ReturnType<typeof harness>> | undefined,
+    archive = "";
+  try {
+    right = await harness("horizon");
+    const receipts: VerifiedOracleCase[] = [],
+      epoch = String(Math.floor(Date.now() / 1000)),
+      harnesses = [left, right];
+    for (const h of harnesses)
+      for (const request of h.store.plan.requests)
+        receipts.push(await h.capture(true, request.caseId, epoch));
+    const artifacts = receipts.map(makeGoldenArtifact),
+      goldens = validateGoldenMatrix(
+        artifacts,
+        harnesses.map((h) => h.info.pin),
+        left.store.plan.fixtureHash,
+        new Date(),
+      );
+    assert.equal(goldens.size, 36);
+    const saved = await savePrivateCaseArchive([...receipts].reverse());
+    archive = saved.directory;
+    const snapshots = await readCaseSnapshots(saved.manifest, goldens, left.store.plan.fixtureHash);
+    assert.equal(snapshots.size, 36);
+    // Every non-cart case has identical calibrated data in this compact fixture. Hash-addressed files must be safely shared across themes/cases.
+    assert.equal((await readdir(saved.directory)).length, 3);
+    for (const h of harnesses) {
+      const filesHash = corpusFilesFingerprint(h.files);
+      for (const request of h.store.plan.requests) {
+        const key = `${h.info.pin.name}/${request.caseId}`,
+          golden = goldens.get(key),
+          snapshot = snapshots.get(key);
+        assert.ok(golden && snapshot);
+        assert.equal(filesHash, golden.themeFilesHash);
+        assert.equal(snapshot.meta.now, golden.capturedAt);
+        assert.equal(snapshot.cart.lines.length, request.scenario === "with-items" ? 2 : 0);
+        await compareGoldenCase(new NodeThemeFileSystem(h.info.path), golden, snapshot);
+      }
+    }
+    await assert.rejects(
+      readCaseSnapshots(
+        saved.manifest,
+        new Map([...goldens].slice(1)),
+        left.store.plan.fixtureHash,
+      ),
+      { code: "invalid-archive" },
+    );
+  } finally {
+    if (archive) await rm(archive, { recursive: true, force: true });
+    if (right) await right.close();
+    await left.close();
+  }
 });

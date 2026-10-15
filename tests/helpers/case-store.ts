@@ -483,8 +483,10 @@ export function compactCaseStore() {
     verifyShopSettings: async () => {},
     readCaptureContextSource: async () => captureContextSource,
   };
-  function cartTransport(options: { text?: (epoch: string) => string; sectionId?: string } = {}) {
-    const epoch = String(Math.floor(Date.now() / 1000));
+  function cartTransport(
+    options: { text?: (epoch: string) => string; sectionId?: string; epoch?: string } = {},
+  ) {
+    const epoch = options.epoch ?? String(Math.floor(Date.now() / 1000));
     let note: string | null = null,
       items: Record<string, unknown>[] = [],
       posts = 0;
