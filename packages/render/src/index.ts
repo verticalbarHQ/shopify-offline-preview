@@ -475,6 +475,7 @@ export async function renderTheme(
     definitions: z.infer<typeof settingSchema>[],
     configured: LiquidRecord,
     dynamicContext?: () => Context,
+    resourceContext?: () => Context,
   ): LiquidRecord {
     const result: LiquidRecord = { ...configured };
     for (const definition of definitions) {
@@ -502,9 +503,13 @@ export async function renderTheme(
           get() {
             if (resolving) throw new Error("Cyclic dynamic setting reference");
             resolving = true;
+            const context =
+              resourceContext && ["product", "collection", "page", "blog"].includes(definition.type)
+                ? resourceContext()
+                : dynamicContext();
             const single = /^\s*\{\{([\s\S]*?)\}\}\s*$/.exec(raw);
             const resolved = single
-              ? evalNumericValue(engine, single[1] ?? "", dynamicContext())
+              ? evalNumericValue(engine, single[1] ?? "", context)
               : engine.render(
                   parseLiquid(engine, raw, `settings.${key}`, (error, token) => {
                     liquidError(
@@ -513,7 +518,7 @@ export async function renderTheme(
                       token.getPosition()[0] ?? 1,
                     );
                   }),
-                  dynamicContext(),
+                  context,
                 );
             return resolved
               .then((value) =>
@@ -617,6 +622,30 @@ export async function renderTheme(
     return result;
   }
   let settingsConfig: LiquidRecord = {};
+  function closestSettings(
+    definitions: z.infer<typeof settingSchema>[],
+    resolved: LiquidRecord,
+    inherited: unknown,
+  ): LiquidRecord {
+    const parent = object(inherited) ? inherited : {};
+    const closest = Object.defineProperties({}, Object.getOwnPropertyDescriptors(parent));
+    const assigned = new Set<string>();
+    for (const definition of definitions) {
+      const key = definition.id;
+      const type = definition.type;
+      if (!key || !["product", "collection", "page", "blog"].includes(type) || assigned.has(type))
+        continue;
+      assigned.add(type);
+      Object.defineProperty(closest, type, {
+        enumerable: true,
+        configurable: true,
+        get() {
+          return resolved[key];
+        },
+      });
+    }
+    return closest;
+  }
   let settingsPointer = "config/settings_data.json#/current";
   if (files.has("config/settings_data.json")) {
     const config = settingsDataSchema.parse(
@@ -754,7 +783,12 @@ export async function renderTheme(
           : id;
       const sectionData = {
         id: sectionId,
-        settings: settings(schema.settings, config.settings, () => sectionContext),
+        settings: settings(
+          schema.settings,
+          config.settings,
+          () => sectionContext,
+          () => sectionContext.spawn({ closest: globals.closest }),
+        ),
         blocks,
         index: options.designMode ? null : index,
         index0: options.designMode || index === null ? null : index - 1,
@@ -762,6 +796,12 @@ export async function renderTheme(
       };
       const sectionGlobals = Object.defineProperties({}, Object.getOwnPropertyDescriptors(globals));
       Object.defineProperty(sectionGlobals, "section", { value: sectionData, enumerable: true });
+      const closest = closestSettings(schema.settings, sectionData.settings, globals.closest);
+      Object.defineProperty(sectionGlobals, "closest", {
+        value: closest,
+        enumerable: true,
+        configurable: true,
+      });
       const context = new PreviewContext({ section: sectionData }, engine.options, {
         globals: sectionGlobals,
       });
@@ -829,10 +869,32 @@ export async function renderTheme(
       }
       sectionLocales.set(entry.id, schema.locales);
       const inherited: unknown = caller.getSync(["closest"]);
-      const closest = object(inherited)
+      const resourceParent = object(inherited)
         ? Object.defineProperties({}, Object.getOwnPropertyDescriptors(inherited))
         : {};
+      for (const [key, value] of Object.entries(args))
+        if (key.startsWith("closest."))
+          Object.defineProperty(resourceParent, key.slice(8), {
+            value,
+            enumerable: true,
+            configurable: true,
+          });
       const parameters: LiquidRecord = {};
+      let blockContext: Context;
+      const blockData = {
+        id,
+        type: config.type,
+        settings: settings(
+          schema.settings,
+          config.settings,
+          () => blockContext,
+          () => blockContext.spawn({ closest: resourceParent }),
+        ),
+        shopify_attributes: options.designMode
+          ? `data-shopify-editor-block="${escapeHtml(JSON.stringify({ id, type: config.type }))}"`
+          : "",
+      };
+      const closest = closestSettings(schema.settings, blockData.settings, inherited);
       for (const [key, value] of Object.entries(args)) {
         if (key.startsWith("closest."))
           Object.defineProperty(closest, key.slice(8), {
@@ -843,15 +905,6 @@ export async function renderTheme(
         else if (!["id", "type"].includes(key))
           Object.defineProperty(parameters, key, { value, enumerable: true });
       }
-      let blockContext: Context;
-      const blockData = {
-        id,
-        type: config.type,
-        settings: settings(schema.settings, config.settings, () => blockContext),
-        shopify_attributes: options.designMode
-          ? `data-shopify-editor-block="${escapeHtml(JSON.stringify({ id, type: config.type }))}"`
-          : "",
-      };
       const scope = Object.defineProperties({}, Object.getOwnPropertyDescriptors(caller.globals));
       for (const [key, value] of Object.entries({
         block: blockData,
