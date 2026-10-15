@@ -45,9 +45,11 @@ export function prepareNativeImageProbe(kind: Kind) {
         ? `[{% for sop_i in product.images %}${liquidImage("sop_i")}{% unless forloop.last %},{% endunless %}{% endfor %}]`
         : `[{% if ${kind}.image != nil %}${liquidImage(`${kind}.image`)}{% endif %}]`,
     liquid = `{% capture sop_image_observation %}{"shopId":{{shop.id | append: '' | json}},"permanentDomain":{{shop.permanent_domain | json}},"kind":"${kind}","parentId":{{${kind}.id | append: '' | json}},"handle":{{${kind}.handle | json}},"images":${images},"media":[${kind === "product" ? `{% for sop_m in product.media %}${liquidImage("sop_m")}{% unless forloop.last %},{% endunless %}{% endfor %}` : ""}],"variants":[${kind === "product" ? `{% for sop_v in product.variants %}{"id":{{sop_v.id | append: '' | json}},"imageId":{% if sop_v.image == nil %}null{% else %}{{sop_v.image.id | append: '' | json}}{% endif %},"mediaId":{% if sop_v.featured_media == nil %}null{% else %}{{sop_v.featured_media.id | append: '' | json}}{% endif %}}{% unless forloop.last %},{% endunless %}{% endfor %}` : ""}]}{% endcapture %}<script id="${key}" type="application/json">{{sop_image_observation | base64_encode | json}}</script>`,
+    layout =
+      "<!doctype html><html><head>{{content_for_header}}</head><body>{{content_for_layout}}</body></html>",
     files: CorpusFiles = {
-      [`layout/${key}.liquid`]:
-        "<!doctype html><html><head></head><body>{{content_for_layout}}</body></html>",
+      "layout/theme.liquid": layout,
+      [`layout/${key}.liquid`]: layout,
       [`sections/${key}.liquid`]: liquid,
       [`templates/${kind}.${key}.json`]: JSON.stringify({
         layout: key,

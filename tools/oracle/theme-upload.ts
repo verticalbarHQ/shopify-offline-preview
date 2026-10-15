@@ -12,6 +12,7 @@ import {
   readComparisonThemeFiles,
 } from "./benchmark-theme.js";
 import { type CorpusFiles, corpusFilesFingerprint } from "./corpus-environment.js";
+import { type PreparedNativeImageProbe, prepareNativeImageProbe } from "./image-native.js";
 import { openOracleSeedJournal, seedJournalFingerprint } from "./seed-journal.js";
 import {
   assertOracleStore,
@@ -44,9 +45,9 @@ export interface ThemePushCommand {
   args: readonly string[];
   cwd: string;
 }
-export interface ThemeUploadDependencies {
+export interface ThemeUploadDependencies<Context = ThemeUploadContext> {
   /** Must verify actual backup/restoration, manual first wipe and explicit theme-upload approval. No default grant. */
-  authorize(context: ThemeUploadContext): Promise<void>;
+  authorize(context: Context): Promise<void>;
   readIdentity(): Promise<unknown>;
   readTheme(id: string): Promise<OracleTheme>;
   readAllFiles(id: string): Promise<CorpusFiles>;
@@ -74,9 +75,17 @@ const cliResult = z.object({
   }),
 });
 
-/** Uploads one prepared copy only after explicit authorization. Importing/opening this module performs no upload.
- * The private journal suppresses duplicate uploads across reopen. Any dispatched-but-unverified outcome stays
- * pending for operator recovery; this module never retries, publishes, deletes or adopts a theme automatically. */
+interface UploadIdentity {
+  domain: string;
+  shopId: string;
+  filesHash: string;
+}
+export interface NativeImageProbeUploadContext extends UploadIdentity {
+  probe: PreparedNativeImageProbe["kind"];
+}
+type FileReader = (id: string) => Promise<CorpusFiles>;
+
+/** Prepared benchmark copies alone can return opaque benchmark proofs. Opening performs no upload. */
 export async function openOracleBenchmarkUploader(
   inputConfig: OracleConfig,
   shopId: string,
@@ -85,7 +94,102 @@ export async function openOracleBenchmarkUploader(
   dependencies: ThemeUploadDependencies,
 ) {
   const config = oracleConfigSchema.parse(inputConfig),
-    info = inspectPreparedBenchmarkTheme(prepared),
+    info = inspectPreparedBenchmarkTheme(prepared);
+  return openThemeUploader(
+    config,
+    shopId,
+    directory,
+    {
+      context: {
+        domain: config.domain,
+        shopId,
+        theme: info.pin.name,
+        commit: info.pin.commit,
+        filesHash: info.filesHash,
+      },
+      scope: {
+        version: 1,
+        operation: "unpublished-benchmark-upload",
+        config,
+        shopId,
+        pin: info.pin,
+        filesHash: info.filesHash,
+      },
+      name: `SOP-${info.pin.name}-${info.pin.commit.slice(0, 12)}-${info.filesHash.slice(0, 12)}`,
+      readFiles: async () => {
+        inspectPreparedBenchmarkTheme(prepared);
+        return readComparisonThemeFiles(info.path);
+      },
+      createVerifier: (id: string, reader: FileReader) =>
+        createBenchmarkThemeVerifier(prepared, id, reader),
+    },
+    dependencies,
+  );
+}
+
+/** Only the built-in authored expressions for one image kind can be uploaded, never arbitrary caller files.
+ * Probe verification returns void: it cannot certify a pinned benchmark or produce golden theme evidence. */
+export async function openOracleNativeImageProbeUploader(
+  inputConfig: OracleConfig,
+  shopId: string,
+  kind: PreparedNativeImageProbe["kind"],
+  directory: string,
+  dependencies: ThemeUploadDependencies<NativeImageProbeUploadContext>,
+) {
+  const config = oracleConfigSchema.parse(inputConfig),
+    probe = prepareNativeImageProbe(kind);
+  return openThemeUploader(
+    config,
+    shopId,
+    directory,
+    {
+      context: { domain: config.domain, shopId, probe: kind, filesHash: probe.harnessHash },
+      scope: {
+        version: 1,
+        operation: "unpublished-native-image-probe-upload",
+        config,
+        shopId,
+        kind,
+        filesHash: probe.harnessHash,
+      },
+      name: `SOP-native-image-${kind}-${probe.harnessHash.slice(0, 12)}`,
+      readFiles: async () => structuredClone(probe.files),
+      createVerifier: (id: string, reader: FileReader) => async (input: OracleTheme) => {
+        const theme = oracleThemeSchema.parse(input);
+        if (
+          theme.id !== `gid://shopify/OnlineStoreTheme/${id}` ||
+          theme.role !== "UNPUBLISHED" ||
+          theme.processing ||
+          theme.processingFailed ||
+          corpusFilesFingerprint(await reader(id)) !== probe.harnessHash
+        )
+          throw new ThemeUploadError("upload-unverified");
+      },
+    },
+    dependencies,
+  );
+}
+
+/** Shared execution lane. Success/reopen suppress a second CLI invocation; unknown dispatched outcomes stay
+ * pending. No automatic retry, adoption, publish, delete, recovery or default authorization. */
+async function openThemeUploader<
+  Context extends UploadIdentity,
+  Verifier extends (theme: OracleTheme, challenge?: string) => Promise<unknown>,
+>(
+  inputConfig: OracleConfig,
+  shopId: string,
+  directory: string,
+  source: {
+    context: Context;
+    scope: unknown;
+    name: string;
+    readFiles(): Promise<CorpusFiles>;
+    createVerifier(id: string, reader: FileReader): Verifier;
+  },
+  dependencies: ThemeUploadDependencies<Context>,
+) {
+  const config = oracleConfigSchema.parse(inputConfig),
+    context = source.context,
     {
       authorize,
       readIdentity,
@@ -100,21 +204,7 @@ export async function openOracleBenchmarkUploader(
     )
   )
     throw new ThemeUploadError("invalid-input");
-  const context: ThemeUploadContext = {
-      domain: config.domain,
-      shopId,
-      theme: info.pin.name,
-      commit: info.pin.commit,
-      filesHash: info.filesHash,
-    },
-    scope = seedJournalFingerprint({
-      version: 1,
-      operation: "unpublished-benchmark-upload",
-      config,
-      shopId,
-      pin: info.pin,
-      filesHash: info.filesHash,
-    }),
+  const scope = seedJournalFingerprint(source.scope),
     journal = await openOracleSeedJournal(directory, scope);
   let busy = false,
     closed = false;
@@ -135,10 +225,20 @@ export async function openOracleBenchmarkUploader(
         // Existing pending/completed records fail here before authorization, reads or a second CLI call.
         intent = await journal.begin(scope);
         try {
-          inspectPreparedBenchmarkTheme(prepared);
-          const files = await readComparisonThemeFiles(info.path);
-          if (corpusFilesFingerprint(files) !== info.filesHash) throw new Error();
+          const files = await source.readFiles();
+          if (corpusFilesFingerprint(files) !== context.filesHash) throw new Error();
           stage = await realpath(await mkdtemp(join(tmpdir(), "sop-theme-upload-")));
+          for (const folder of [
+            "assets",
+            "blocks",
+            "config",
+            "layout",
+            "locales",
+            "sections",
+            "snippets",
+            "templates",
+          ])
+            await mkdir(join(stage, folder), { mode: 0o700 });
           // Copy recognized theme files only. Exclude root .env, CLI config, ignore files and build scripts from CLI cwd.
           for (const [path, body] of Object.entries(files)) {
             await mkdir(dirname(join(stage, path)), { recursive: true, mode: 0o700 });
@@ -154,10 +254,9 @@ export async function openOracleBenchmarkUploader(
           }
           await authorize(structuredClone(context));
           await guard();
-          inspectPreparedBenchmarkTheme(prepared);
           if (
-            corpusFilesFingerprint(await readComparisonThemeFiles(info.path)) !== info.filesHash ||
-            corpusFilesFingerprint(await readComparisonThemeFiles(stage)) !== info.filesHash
+            corpusFilesFingerprint(await source.readFiles()) !== context.filesHash ||
+            corpusFilesFingerprint(await readComparisonThemeFiles(stage)) !== context.filesHash
           )
             throw new Error();
         } catch {
@@ -171,7 +270,7 @@ export async function openOracleBenchmarkUploader(
             "push",
             "--unpublished",
             "--theme",
-            `SOP-${info.pin.name}-${info.pin.commit.slice(0, 12)}-${info.filesHash.slice(0, 12)}`,
+            source.name,
             "--store",
             config.domain,
             "--path",
@@ -187,7 +286,7 @@ export async function openOracleBenchmarkUploader(
         const result = cliResult.parse(JSON.parse(output));
         if (result.theme.shop !== config.domain) throw new Error();
         const themeId = String(result.theme.id),
-          verifier = createBenchmarkThemeVerifier(prepared, themeId, readAllFiles);
+          verifier = source.createVerifier(themeId, readAllFiles);
         await guard();
         await verifier(oracleThemeSchema.parse(await readTheme(themeId)));
         await guard();

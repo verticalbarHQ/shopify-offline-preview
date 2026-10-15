@@ -168,7 +168,15 @@ function observer(test: Awaited<ReturnType<typeof seeded>>, failure = "") {
 test("prepared image probes contain only expressions, parse as Liquid/HTML, and never insert expected identity values", () => {
   for (const kind of ["product", "collection", "article"] as const) {
     const probe = prepareNativeImageProbe(kind);
-    assert.equal(Object.keys(probe.files).length, 3);
+    assert.equal(Object.keys(probe.files).length, 4);
+    assert.match(
+      String(probe.files["layout/theme.liquid"]),
+      /<head>{{content_for_header}}<\/head>/,
+    );
+    assert.match(
+      String(probe.files["layout/theme.liquid"]),
+      /<body>{{content_for_layout}}<\/body>/,
+    );
     for (const [path, body] of Object.entries(probe.files)) {
       const text = typeof body === "string" ? body : new TextDecoder().decode(body);
       if (path.endsWith(".liquid")) assert.doesNotThrow(() => toLiquidHtmlAST(text));

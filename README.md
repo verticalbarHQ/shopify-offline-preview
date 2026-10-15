@@ -368,6 +368,12 @@ verifier supplies fresh capture checks. Its separate private journal prevents an
 after success or an uncertain dispatched outcome, including after reopen; unresolved outcomes require
 operator inspection. Opening it performs no upload, and it never publishes or deletes a theme.
 
+`openOracleNativeImageProbeUploader` uses the same guarded lane for the fixed product, collection
+and article image probes. Each kind has its own journal scope. Their default and alternate layouts
+include Shopify's required header/layout objects, and the CLI staging directory includes the standard
+theme folders. These probes contain expressions rather than expected fixture identities. Their file
+verifier returns no benchmark receipt, so a probe upload cannot certify a pinned theme or a golden.
+
 The seeding transport in `tools/oracle/seed-execution.ts` accepts only steps compiled from its
 validated fixture matrix. It requires trusted authorization, dependency ownership verification and
 read-back verification callbacks. Each attempt rechecks the pinned shop ID/domain, development-store
