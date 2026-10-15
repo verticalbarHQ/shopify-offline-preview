@@ -180,6 +180,89 @@
         "maxLength": 2000000
       }
     },
+    "localization": {
+      "type": "object",
+      "properties": {
+        "availableCountries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "isoCode": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "currency": {
+                "type": "object",
+                "properties": {
+                  "isoCode": {
+                    "type": "string"
+                  },
+                  "symbol": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "isoCode"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "isoCode"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "availableLanguages": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "isoCode": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "endonymName": {
+                "type": "string"
+              },
+              "primary": {
+                "type": "boolean"
+              },
+              "rootUrl": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "isoCode"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "country": {
+          "type": "string"
+        },
+        "language": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "availableCountries",
+        "availableLanguages",
+        "country",
+        "language"
+      ],
+      "additionalProperties": false
+    },
     "images": {
       "type": "array",
       "items": {

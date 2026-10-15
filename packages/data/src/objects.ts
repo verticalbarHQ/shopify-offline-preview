@@ -883,6 +883,71 @@ export function liquidObjects(
       all_products_collection_url: "/collections/all",
     },
   };
+  if (snapshot.localization) {
+    const source = snapshot.localization;
+    const countries = source.availableCountries.map((country, index) =>
+      tracked(
+        {
+          iso_code: country.isoCode,
+          ...availableFields({ name: country.name }),
+          ...(country.currency
+            ? {
+                currency: tracked(
+                  {
+                    iso_code: country.currency.isoCode,
+                    ...availableFields({
+                      symbol: country.currency.symbol,
+                      name: country.currency.name,
+                    }),
+                  },
+                  "currency",
+                  `localization.availableCountries[${index}].currency`,
+                  { iso_code: "isoCode" },
+                ),
+              }
+            : {}),
+        },
+        "country",
+        `localization.availableCountries[${index}]`,
+        { iso_code: "isoCode" },
+      ),
+    );
+    const languages = source.availableLanguages.map((language, index) =>
+      tracked(
+        {
+          iso_code: language.isoCode,
+          ...availableFields({
+            name: language.name,
+            endonym_name: language.endonymName,
+            primary: language.primary,
+            root_url: language.rootUrl,
+          }),
+        },
+        "shop_locale",
+        `localization.availableLanguages[${index}]`,
+        { iso_code: "isoCode", endonym_name: "endonymName", root_url: "rootUrl" },
+      ),
+    );
+    globals.localization = tracked(
+      {
+        available_countries: countries,
+        available_languages: languages,
+        country: countries.find((country) => country.iso_code === source.country),
+        language: languages.find((language) => language.iso_code === source.language),
+      },
+      "localization",
+      "localization",
+      { available_countries: "availableCountries", available_languages: "availableLanguages" },
+    );
+  } else {
+    Object.defineProperty(globals, "localization", {
+      enumerable: true,
+      get() {
+        hooks.unsupportedOperation?.("Localization availability is absent from the snapshot.");
+        return null;
+      },
+    });
+  }
   if (snapshot.shop.policies !== undefined) {
     const shop = globals.shop;
     if (
