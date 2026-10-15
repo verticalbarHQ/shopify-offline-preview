@@ -395,6 +395,12 @@ write. Errors expose fixed codes, without API messages or credential values. Thi
 no approvals or credentials and has no live CLI. Backup/restoration, owner-confirmed first wipe,
 staged upload handling and the actual verification integration remain prerequisites.
 
+Content source verification reads page, blog and article SEO from the typed
+`global.title_tag` and `global.description_tag` metafields. Their create/update payloads use
+`MetafieldInput`, because these Admin API resources have no `seo` field. A null fixture value
+requires an absent metafield on readback; the helper does not delete an existing SEO metafield,
+and a conflicting value fails the mandatory postcondition.
+
 `tools/oracle/seed-identities.ts` reads exact resource-ID batches with a fresh development-store
 identity check and verifies expected handles, variant parents/options, collection source/app and
 complete membership/order, article parents, active locations and publication catalog/app relations.

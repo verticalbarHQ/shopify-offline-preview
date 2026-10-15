@@ -521,7 +521,21 @@ test("page/blog/article/collection/menu source comparisons retain exact content,
       actual.__typename,
       actual.id,
       undefined,
-      async () => reply(actual),
+      async () => {
+        if (["Page", "Blog", "Article"].includes(actual.__typename) && "seo" in actual) {
+          const { seo, ...record } = actual;
+          return reply({
+            ...record,
+            seoTitle:
+              seo?.title == null ? null : { value: seo.title, type: "single_line_text_field" },
+            seoDescription:
+              seo?.description == null
+                ? null
+                : { value: seo.description, type: "single_line_text_field" },
+          });
+        }
+        return reply(actual);
+      },
     );
     assertOracleSeedSource(task, parsed, get);
     const changed = structuredClone(parsed);
@@ -585,7 +599,14 @@ test("mandatory executor postcondition verifies source before issuing an executi
       templateSuffix: wanted.templateSuffix,
       body: changed ? "changed" : wanted.bodyHtml,
       isPublished: true,
-      seo: { title: wanted.seo?.title ?? null, description: wanted.seo?.description ?? null },
+      seoTitle:
+        wanted.seo?.title == null
+          ? null
+          : { value: wanted.seo.title, type: "single_line_text_field" },
+      seoDescription:
+        wanted.seo?.description == null
+          ? null
+          : { value: wanted.seo.description, type: "single_line_text_field" },
     });
   };
   const verifyResult = createOracleSeedSourceVerifier(

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { type Snapshot, snapshotSchema } from "../../packages/data/src/schema.js";
+import { contentSeoFields, contentSeoSelection, normalizeContentSeo } from "./content-seo.js";
 import type { SeedExecutionContext } from "./seed-execution.js";
 import { buildOracleSeedPlan, type SeedTask } from "./seed-plan.js";
 import { compileSeedTask, seedBindingKey } from "./seed-requests.js";
@@ -138,27 +139,38 @@ const schemas = {
     seo,
     image,
   }),
-  Page: z.object({
-    ...common,
-    __typename: z.literal("Page"),
-    body: z.string(),
-    isPublished: z.boolean(),
-    seo,
-  }),
-  Blog: z.object({ ...common, __typename: z.literal("Blog"), commentPolicy: z.string(), seo }),
-  Article: z.object({
-    ...common,
-    __typename: z.literal("Article"),
-    body: z.string(),
-    summary: z.string().nullable(),
-    author: z.object({ name: z.string() }).nullable(),
-    publishedAt: z.string().nullable(),
-    isPublished: z.boolean(),
-    tags: z.array(z.string()),
-    blog: z.object({ id: z.string().regex(/^gid:\/\/shopify\/Blog\/[1-9]\d*$/) }),
-    image,
-    seo,
-  }),
+  Page: z
+    .object({
+      ...common,
+      __typename: z.literal("Page"),
+      body: z.string(),
+      isPublished: z.boolean(),
+      ...contentSeoFields,
+    })
+    .transform(normalizeContentSeo),
+  Blog: z
+    .object({
+      ...common,
+      __typename: z.literal("Blog"),
+      commentPolicy: z.string(),
+      ...contentSeoFields,
+    })
+    .transform(normalizeContentSeo),
+  Article: z
+    .object({
+      ...common,
+      __typename: z.literal("Article"),
+      body: z.string(),
+      summary: z.string().nullable(),
+      author: z.object({ name: z.string() }).nullable(),
+      publishedAt: z.string().nullable(),
+      isPublished: z.boolean(),
+      tags: z.array(z.string()),
+      blog: z.object({ id: z.string().regex(/^gid:\/\/shopify\/Blog\/[1-9]\d*$/) }),
+      image,
+      ...contentSeoFields,
+    })
+    .transform(normalizeContentSeo),
   Menu: z.object({
     __typename: z.literal("Menu"),
     id: gid,
@@ -181,9 +193,9 @@ export const seedSourceSelections: Record<SeedSourceKind, string> = {
         inventoryLevel(locationId:$location) { isActive location { id } quantities(names:["available"]) { name quantity } } }
     } pageInfo { hasNextPage endCursor } }`,
   Collection: `${commonSelection} descriptionHtml sortOrder seo { title description } image { url altText width height }`,
-  Page: `${commonSelection} body isPublished seo { title description }`,
-  Blog: `${commonSelection} commentPolicy seo { title description }`,
-  Article: `${commonSelection} body summary author { name } publishedAt isPublished tags blog { id } image { url altText width height } seo { title description }`,
+  Page: `${commonSelection} body isPublished ${contentSeoSelection}`,
+  Blog: `${commonSelection} commentPolicy ${contentSeoSelection}`,
+  Article: `${commonSelection} body summary author { name } publishedAt isPublished tags blog { id } image { url altText width height } ${contentSeoSelection}`,
   Menu: "id handle title items { title type url resourceId items { title type url resourceId items { title type url resourceId items { title } } } }",
 };
 

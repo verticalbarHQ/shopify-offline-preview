@@ -2,6 +2,7 @@ import { basename } from "node:path";
 import type { MenuLink } from "../../packages/data/src/schema.js";
 import { snapshotSchema } from "../../packages/data/src/schema.js";
 import { themePath } from "../../packages/theme/src/index.js";
+import { contentSeoMetafields } from "./content-seo.js";
 import type { SeedTask } from "./seed-plan.js";
 
 export type SeedValue =
@@ -367,7 +368,7 @@ export function compileSeedTask(
             body: p.bodyHtml,
             templateSuffix: p.templateSuffix,
             isPublished: true,
-            ...(p.seo ? { seo: seoValue(p.seo) } : {}),
+            metafields: contentSeoMetafields(p.seo),
           },
         },
         "page",
@@ -394,7 +395,7 @@ export function compileSeedTask(
             ...(p.commentsEnabled === undefined
               ? {}
               : { commentPolicy: p.commentsEnabled ? "MODERATED" : "CLOSED" }),
-            ...(p.seo ? { seo: seoValue(p.seo) } : {}),
+            metafields: contentSeoMetafields(p.seo),
           },
         },
         "blog",
@@ -426,7 +427,7 @@ export function compileSeedTask(
           tags: a.tags,
           templateSuffix: a.templateSuffix,
           image: imageValue(a.image, true),
-          ...(a.seo ? { seo: seoValue(a.seo) } : {}),
+          metafields: contentSeoMetafields(a.seo),
         },
       },
       "article",

@@ -496,15 +496,6 @@
           "defaultValue": null
         },
         {
-          "name": "seo",
-          "type": {
-            "kind": "INPUT_OBJECT",
-            "name": "SEOInput",
-            "ofType": null
-          },
-          "defaultValue": null
-        },
-        {
           "name": "title",
           "type": {
             "kind": "NON_NULL",
@@ -583,15 +574,6 @@
                 "ofType": null
               }
             }
-          },
-          "defaultValue": null
-        },
-        {
-          "name": "seo",
-          "type": {
-            "kind": "INPUT_OBJECT",
-            "name": "SEOInput",
-            "ofType": null
           },
           "defaultValue": null
         },
@@ -1346,6 +1328,58 @@
           "name": "OUNCES"
         }
       ]
+    },
+    {
+      "kind": "INPUT_OBJECT",
+      "name": "MetafieldInput",
+      "inputFields": [
+        {
+          "name": "id",
+          "type": {
+            "kind": "SCALAR",
+            "name": "ID",
+            "ofType": null
+          },
+          "defaultValue": null
+        },
+        {
+          "name": "namespace",
+          "type": {
+            "kind": "SCALAR",
+            "name": "String",
+            "ofType": null
+          },
+          "defaultValue": null
+        },
+        {
+          "name": "key",
+          "type": {
+            "kind": "SCALAR",
+            "name": "String",
+            "ofType": null
+          },
+          "defaultValue": null
+        },
+        {
+          "name": "value",
+          "type": {
+            "kind": "SCALAR",
+            "name": "String",
+            "ofType": null
+          },
+          "defaultValue": null
+        },
+        {
+          "name": "type",
+          "type": {
+            "kind": "SCALAR",
+            "name": "String",
+            "ofType": null
+          },
+          "defaultValue": null
+        }
+      ],
+      "enumValues": null
     }
   ],
   "operations": [

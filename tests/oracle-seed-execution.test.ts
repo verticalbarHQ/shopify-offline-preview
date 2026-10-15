@@ -43,18 +43,34 @@ const schema = {
       kind: "INPUT_OBJECT",
       name: "PageCreateInput",
       enumValues: null,
-      inputFields: ["handle", "title", "body", "templateSuffix"]
-        .map((name) => ({ name, type: named("String") }))
-        .concat([
-          { name: "isPublished", type: named("Boolean") },
-          { name: "seo", type: named("SEOInput", "INPUT_OBJECT") },
-        ]),
+      inputFields: [
+        ...["handle", "title", "body", "templateSuffix"].map((name) => ({
+          name,
+          type: named("String"),
+        })),
+        { name: "isPublished", type: named("Boolean") },
+        {
+          name: "metafields",
+          type: {
+            kind: "LIST",
+            name: null,
+            ofType: {
+              kind: "NON_NULL",
+              name: null,
+              ofType: named("MetafieldInput", "INPUT_OBJECT"),
+            },
+          },
+        },
+      ],
     },
     {
       kind: "INPUT_OBJECT",
-      name: "SEOInput",
+      name: "MetafieldInput",
       enumValues: null,
-      inputFields: ["title", "description"].map((name) => ({ name, type: named("String") })),
+      inputFields: ["namespace", "key", "type", "value"].map((name) => ({
+        name,
+        type: named("String"),
+      })),
     },
     ...["String", "Boolean"].map((name) => ({
       kind: "SCALAR",

@@ -93,7 +93,14 @@ async function setup(failure = "", authorize: () => Promise<void> = async () => 
                   : source.bodyHtml,
               templateSuffix: source.templateSuffix,
               isPublished: true,
-              seo: source.seo,
+              seoTitle:
+                source.seo?.title == null
+                  ? null
+                  : { value: source.seo.title, type: "single_line_text_field" },
+              seoDescription:
+                source.seo?.description == null
+                  ? null
+                  : { value: source.seo.description, type: "single_line_text_field" },
             },
           ],
         });

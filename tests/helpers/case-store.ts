@@ -175,6 +175,13 @@ function authoredCaseStore(options: { genericImages?: boolean; fullFixture?: boo
       title: value?.title ?? null,
       description: value?.description ?? null,
     });
+  const contentSeo = (value: Parameters<typeof seo>[0]) => ({
+    seoTitle: value?.title == null ? null : { value: value.title, type: "single_line_text_field" },
+    seoDescription:
+      value?.description == null
+        ? null
+        : { value: value.description, type: "single_line_text_field" },
+  });
   let writes = 0,
     reads = 0,
     gets = 0,
@@ -352,7 +359,7 @@ function authoredCaseStore(options: { genericImages?: boolean; fullFixture?: boo
         templateSuffix: p.templateSuffix,
         body: p.bodyHtml,
         isPublished: true,
-        seo: seo(p.seo),
+        ...contentSeo(p.seo),
       };
     }
     if (task.resource === "blog") {
@@ -362,7 +369,7 @@ function authoredCaseStore(options: { genericImages?: boolean; fullFixture?: boo
         title: b.title,
         templateSuffix: b.templateSuffix,
         commentPolicy: b.commentsEnabled ? "MODERATED" : "CLOSED",
-        seo: seo(b.seo),
+        ...contentSeo(b.seo),
       };
     }
     if (task.resource === "article") {
@@ -384,7 +391,7 @@ function authoredCaseStore(options: { genericImages?: boolean; fullFixture?: boo
         tags: a.tags,
         blog: { id: ids.get(blogTask.key), handle: task.identity[0] },
         image: adminImage(a.image),
-        seo: seo(a.seo),
+        ...contentSeo(a.seo),
         createdAt: date,
         updatedAt: date,
         commentsCount: { count: a.commentsCount ?? 0, precision: "EXACT" },

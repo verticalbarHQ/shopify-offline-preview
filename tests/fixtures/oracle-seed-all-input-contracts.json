@@ -107,15 +107,6 @@
           "defaultValue": null
         },
         {
-          "name": "seo",
-          "type": {
-            "kind": "INPUT_OBJECT",
-            "name": "SEOInput",
-            "ofType": null
-          },
-          "defaultValue": null
-        },
-        {
           "name": "tags",
           "type": {
             "kind": "LIST",
@@ -280,15 +271,6 @@
           "defaultValue": null
         },
         {
-          "name": "seo",
-          "type": {
-            "kind": "INPUT_OBJECT",
-            "name": "SEOInput",
-            "ofType": null
-          },
-          "defaultValue": null
-        },
-        {
           "name": "tags",
           "type": {
             "kind": "LIST",
@@ -446,15 +428,6 @@
           "defaultValue": null
         },
         {
-          "name": "seo",
-          "type": {
-            "kind": "INPUT_OBJECT",
-            "name": "SEOInput",
-            "ofType": null
-          },
-          "defaultValue": null
-        },
-        {
           "name": "metafields",
           "type": {
             "kind": "LIST",
@@ -552,15 +525,6 @@
           "type": {
             "kind": "SCALAR",
             "name": "String",
-            "ofType": null
-          },
-          "defaultValue": null
-        },
-        {
-          "name": "seo",
-          "type": {
-            "kind": "INPUT_OBJECT",
-            "name": "SEOInput",
             "ofType": null
           },
           "defaultValue": null
@@ -7232,15 +7196,6 @@
           "defaultValue": null
         },
         {
-          "name": "seo",
-          "type": {
-            "kind": "INPUT_OBJECT",
-            "name": "SEOInput",
-            "ofType": null
-          },
-          "defaultValue": null
-        },
-        {
           "name": "title",
           "type": {
             "kind": "NON_NULL",
@@ -7319,15 +7274,6 @@
                 "ofType": null
               }
             }
-          },
-          "defaultValue": null
-        },
-        {
-          "name": "seo",
-          "type": {
-            "kind": "INPUT_OBJECT",
-            "name": "SEOInput",
-            "ofType": null
           },
           "defaultValue": null
         },
