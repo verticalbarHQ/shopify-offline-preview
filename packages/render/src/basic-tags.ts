@@ -30,6 +30,10 @@ export function registerBasicTags(engine: Liquid): void {
       async render(context: Context) {
         return `<style data-shopify>${await engine.render(this.body, context)}</style>`;
       }
+      // biome-ignore lint/correctness/useYield: LiquidJS's public traversal protocol returns children
+      *children() {
+        return this.body;
+      }
     },
   );
   for (const name of ["doc", "javascript", "stylesheet"])

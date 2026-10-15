@@ -34,6 +34,22 @@ test("float literals survive assignments, nested branches and loops and maintain
   assert.ok(result.html.includes("3.0|5.0|equal|ordered|3.03.0|-0.0"), result.html);
   assert.deepEqual(result.diagnostics, []);
 });
+test("style bodies preserve decimal literals through liquid blocks and nested loops", async () => {
+  const result = await render(`{% style %}{% liquid
+    assign sizes = '14,14,12,24' | split: ','
+    for size in sizes
+      assign rem = size | divided_by: 16.0
+      echo '--size:' | append: rem | append: 'rem;'
+    endfor
+  %}{% endstyle %}`);
+  assert.ok(
+    result.html.includes(
+      "<style data-shopify>--size:0.875rem;--size:0.875rem;--size:0.75rem;--size:1.5rem;</style>",
+    ),
+    result.html,
+  );
+  assert.deepEqual(result.diagnostics, []);
+});
 test("arithmetic coercion distinguishes complete decimal strings from integer-prefix strings", async () => {
   const result = await render(
     `{{'3abc'|plus:2}}|{{'3.5abc'|plus:2}}|{{'2e1'|plus:0}}|{{'1.2.3'|plus:0}}|{{'abc'|plus:2}}|{{'3.0'|plus:2}}|{{3.0|times:2}}|{{3.0|abs}}|{{3.0|modulo:2}}|{{3.0|round}}`,
