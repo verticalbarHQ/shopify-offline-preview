@@ -333,6 +333,8 @@ test("product pagination reads exact pinned IDs, traverses cursors and retains f
       const body = JSON.parse(String(init?.body));
       assert.ok(body.query.startsWith("query "));
       assert.ok(!body.query.includes("mutation"));
+      assert.match(body.query, /optionValues\s*\{\s*name\s*\}/);
+      assert.doesNotMatch(body.query, /optionValues\s*\(/);
       assert.deepEqual(body.variables.ids, [productId]);
       assert.equal(body.variables.location, locationId);
       const node = structuredClone(full);

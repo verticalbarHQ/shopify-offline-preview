@@ -17,7 +17,14 @@ const source = z.object({
   targetType: z.string(),
   app: z.object({ id }).nullable(),
   inclusion: rules,
-  exclusion: rules.nullable(),
+  exclusion: rules
+    .extend({
+      selections: z.object({
+        nodes: z.array(z.object({ product: productRef })).max(250),
+        pageInfo,
+      }),
+    })
+    .nullable(),
 });
 const options = z.array(z.object({ name: z.string(), value: z.string() }));
 const nodeSchemas = {
@@ -75,7 +82,7 @@ export const seedIdentitySelections: Record<SeedIdentityKind, string> = {
   Collection: `id handle sortOrder products(first:250,sortKey:MANUAL) { nodes { id handle } pageInfo { hasNextPage } }
     sources { __typename id ... on CollectionConditionsSource { title shareable targetType app { id }
       inclusion { conditions { __typename } selections(first:250) { nodes { product { id handle } variantIds } pageInfo { hasNextPage } } }
-      exclusion { conditions { __typename } selections(first:250) { nodes { product { id handle } variantIds } pageInfo { hasNextPage } } }
+      exclusion { conditions { __typename } selections(first:250) { nodes { product { id handle } } pageInfo { hasNextPage } } }
     } }`,
   Page: "id handle",
   Blog: "id handle",

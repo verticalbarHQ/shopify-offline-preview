@@ -208,6 +208,39 @@ test("collection membership and owned single conditions source are checked inste
   source.inclusion.conditions.push({ __typename: "CollectionSourceInclusionConditionProductTag" });
   assert.throws(() => assertOracleSeedIdentity(expectedCollection, node), code("binding-mismatch"));
 });
+test("collection exclusion selections contain products without inclusion-only variant IDs", async () => {
+  for (const excluded of [false, true]) {
+    const raw = collection(),
+      source = raw.sources[0];
+    assert.ok(source);
+    source.exclusion = {
+      conditions: [],
+      selections: {
+        nodes: excluded ? [{ product: { id: pid(1), handle: "p-1" } }] : [],
+        pageInfo: { hasNextPage: false },
+      },
+    };
+    const [node] = await readOracleSeedIdentities(
+      config,
+      "authored-token",
+      shopId,
+      "Collection",
+      [raw.id],
+      async (_url, init) => {
+        const query: string = JSON.parse(String(init?.body)).query;
+        assert.doesNotMatch(query.split("exclusion {")[1] ?? "", /variantIds/);
+        return reply([raw]);
+      },
+    );
+    assert.ok(node);
+    if (excluded)
+      assert.throws(
+        () => assertOracleSeedIdentity(expectedCollection, node),
+        code("binding-mismatch"),
+      );
+    else assert.doesNotThrow(() => assertOracleSeedIdentity(expectedCollection, node));
+  }
+});
 test("collection truncation, exclusions and changed order cannot pass as equal membership", () => {
   const node = collection();
   node.products.pageInfo.hasNextPage = true;

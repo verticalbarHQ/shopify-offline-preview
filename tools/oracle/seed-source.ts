@@ -184,7 +184,7 @@ export type SeedSourceNode = z.infer<(typeof schemas)[SeedSourceKind]>;
 const commonSelection = "id handle title templateSuffix";
 export const seedSourceSelections: Record<SeedSourceKind, string> = {
   Product: `${commonSelection} descriptionHtml vendor productType tags status seo { title description } category { id name } isGiftCard requiresSellingPlan
-    options(first:3) { name position optionValues(byPosition:true) { name } }
+    options(first:3) { name position optionValues { name } }
     media(first:50) { nodes { __typename id ... on MediaImage { alt fileStatus image { url altText width height } } } pageInfo { hasNextPage } }
     variants(first:50,after:$after) { nodes { id position selectedOptions { name value } price compareAtPrice sku taxable inventoryPolicy inventoryQuantity
       barcodes(first:20) { nodes { value type } pageInfo { hasNextPage } }
