@@ -27,6 +27,7 @@ import { type RenderNode, type RenderResult, renderSchema } from "./contracts.js
 import { registerCycleTag } from "./cycle-tag.js";
 import { ImageUrlInputError } from "./filters/images.js";
 import { registerShopifyFilters } from "./filters/index.js";
+import { translateFactory } from "./filters/translations.js";
 import { fontSetting } from "./fonts.js";
 import { registerIncludeTag } from "./include-tag.js";
 import { registerSnapshotHashes } from "./json-hashes.js";
@@ -705,6 +706,21 @@ export async function renderTheme(
     suffix: route.template.slice(10, -5).split(".")[1] ?? null,
   };
   globals.current_page = Number(route.query.page ?? 1);
+  const systemText = translateFactory(files, snapshot.shop.locale, () => undefined);
+  Object.defineProperty(globals, "powered_by_link", {
+    enumerable: true,
+    get() {
+      if (snapshot.shop.locale.split("-")[0] !== "en")
+        diagnostic(
+          "not-implemented",
+          "Localized Shopify marketing URLs are unavailable; the default Shopify URL is used.",
+        );
+      const label = systemText("shopify.links.powered_by_shopify", [], (key) =>
+        diagnostic("missing-resource", `Translation ${key} is missing.`),
+      );
+      return `<a target="_blank" rel="nofollow" href="https://www.shopify.com?utm_campaign=poweredby&amp;utm_medium=shopify&amp;utm_source=onlinestore">${label}</a>`;
+    },
+  });
   registerPageMetadata(globals, snapshot, route, {
     read: readSnapshot,
     unsupported: (message) => diagnostic("not-implemented", message),
