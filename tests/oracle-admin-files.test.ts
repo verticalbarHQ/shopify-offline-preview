@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { readOracleThemeFiles } from "../tools/oracle/admin-files.js";
+import { readOracleAllThemeFiles, readOracleThemeFiles } from "../tools/oracle/admin-files.js";
 
 const config = { domain: "example-test.myshopify.com", apiVersion: "2026-10" as const };
 function response(nodes: unknown[], extra: Record<string, unknown> = {}) {
@@ -133,4 +133,77 @@ test("malformed API documents, pagination and CDN redirects fail without exposin
     /HTTP 302/,
   );
   assert.equal(calls, 2);
+});
+
+function inventoryServer(failure = "") {
+  let inventories = 0,
+    bodies = 0;
+  const fetcher: typeof fetch = async (url, init) => {
+    assert.equal(String(url), `https://${config.domain}/admin/api/2026-10/graphql.json`);
+    assert.equal(init?.method, "POST");
+    const { query, variables } = JSON.parse(String(init?.body));
+    assert.ok(query.startsWith("query "));
+    let files: unknown;
+    if (query.includes("OfflinePreviewFileInventory")) {
+      inventories++;
+      const second = variables.after !== null;
+      files = {
+        nodes: second
+          ? [{ filename: failure === "duplicate" ? "assets/one.txt" : "layout/theme.liquid" }]
+          : [
+              { filename: "assets/one.txt" },
+              ...(failure === "changed" && bodies > 0 ? [{ filename: "assets/extra.txt" }] : []),
+            ],
+        userErrors: [],
+        pageInfo: { hasNextPage: !second || failure === "cursor", endCursor: "next" },
+      };
+    } else {
+      bodies++;
+      assert.ok(query.includes("OfflinePreviewFiles"));
+      files = {
+        nodes: variables.filenames.map((filename: string) => ({
+          filename,
+          body: {
+            __typename: "OnlineStoreThemeFileBodyText",
+            content: filename === "assets/one.txt" ? "One" : "Layout",
+          },
+        })),
+        userErrors: [],
+        pageInfo: { hasNextPage: false },
+      };
+    }
+    return Response.json(
+      {
+        data: {
+          theme: {
+            id: "gid://shopify/OnlineStoreTheme/2",
+            role: failure === "live" ? "MAIN" : "UNPUBLISHED",
+            processing: false,
+            processingFailed: false,
+            files,
+          },
+        },
+      },
+      { headers: { "x-shopify-api-version": failure === "version" ? "2026-07" : "2026-10" } },
+    );
+  };
+  return { fetcher, counts: () => ({ inventories, bodies }) };
+}
+test("complete theme reads paginate the full inventory, read all bodies, and bracket with an unchanged second inventory", async () => {
+  const s = inventoryServer(),
+    files = await readOracleAllThemeFiles(config, "private-authored-token", "2", s.fetcher);
+  assert.deepEqual(files, { "assets/one.txt": "One", "layout/theme.liquid": "Layout" });
+  assert.deepEqual(s.counts(), { inventories: 4, bodies: 1 });
+});
+test("incomplete cursors, duplicate files, changed inventories, live themes and wrong API versions cannot certify a full file read", async () => {
+  for (const failure of ["cursor", "duplicate", "changed", "live", "version"]) {
+    const s = inventoryServer(failure);
+    await assert.rejects(
+      readOracleAllThemeFiles(config, "private-authored-token", "2", s.fetcher),
+      (error) =>
+        error instanceof Error &&
+        error.message === "Oracle complete theme file verification failed; details withheld",
+    );
+    if (failure !== "changed") assert.equal(s.counts().bodies, 0);
+  }
 });

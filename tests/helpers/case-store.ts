@@ -483,7 +483,8 @@ export function compactCaseStore() {
     verifyShopSettings: async () => {},
     readCaptureContextSource: async () => captureContextSource,
   };
-  function cartTransport() {
+  function cartTransport(options: { text?: (epoch: string) => string; sectionId?: string } = {}) {
+    const epoch = String(Math.floor(Date.now() / 1000));
     let note: string | null = null,
       items: Record<string, unknown>[] = [],
       posts = 0;
@@ -568,7 +569,7 @@ export function compactCaseStore() {
           domain: config.domain,
           path: target.pathname,
           locale: snapshot.shop.locale,
-          epoch: String(Math.floor(Date.now() / 1000)),
+          epoch,
           cart: {
             currency: value.currency,
             note: value.note,
@@ -598,7 +599,7 @@ export function compactCaseStore() {
           },
         };
       return new Response(
-        `<div id="shopify-section-main">Authored case</div><script id="${captureContextKey}" type="application/json">${JSON.stringify(Buffer.from(JSON.stringify(context)).toString("base64"))}</script>`,
+        `<div id="shopify-section-${options.sectionId ?? "main"}">${options.text?.(epoch) ?? "Authored case"}</div><script id="${captureContextKey}" type="application/json">${JSON.stringify(Buffer.from(JSON.stringify(context)).toString("base64"))}</script>`,
         { headers: { "content-type": "text/html" } },
       );
     };

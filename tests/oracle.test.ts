@@ -10,7 +10,7 @@ import {
 import { renderTheme } from "../packages/render/src/index.js";
 import { MemoryThemeFileSystem } from "../packages/theme/src/index.js";
 import { readOracleIdentity, readOracleTheme } from "../tools/oracle/admin-read.js";
-import { assertGoldenFreshness, makeGoldenArtifact } from "../tools/oracle/artifacts.js";
+import { assertGoldenFreshness, goldenArtifactSchema } from "../tools/oracle/artifacts.js";
 import { captureOraclePage } from "../tools/oracle/capture.js";
 import { instrumentLiquid } from "../tools/oracle/instrument.js";
 import { sectionTypeMap } from "../tools/oracle/section-types.js";
@@ -347,13 +347,20 @@ test("release freshness rejects future and stale captures and golden artifacts c
     privateRawHtml: [html("Example"), html("Example")] as const,
     privateSectionText: a.sectionText,
   };
-  const golden = makeGoldenArtifact(capture, {
+  // Synthetic freshness/schema input only; this bypasses no production receipt or theme gate.
+  const golden = goldenArtifactSchema.parse({
+    schemaVersion: "1.0",
+    capturedAt: capture.capturedAt,
+    doubleCaptureStable: true,
+    summary: capture.publicSummary,
     theme: "dawn",
     themeCommit: "a".repeat(40),
     caseId: "test-synthetic",
     path: "/",
     scenario: "default",
     fixtureHash: "b".repeat(64),
+    caseSnapshotHash: "c".repeat(64),
+    themeFilesHash: "d".repeat(64),
   });
   assert.ok(!JSON.stringify(golden).includes("privateRawHtml"));
   assert.doesNotThrow(() => assertGoldenFreshness(golden, new Date("2026-10-20T00:00:00Z")));

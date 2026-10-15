@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import { type DefaultTreeAdapterTypes, parse } from "parse5";
 import { z } from "zod";
@@ -6,6 +6,10 @@ import { liquidPrice } from "../../packages/data/src/objects.js";
 import { validateSnapshotReferences } from "../../packages/data/src/scenarios.js";
 import { type Snapshot, snapshotSchema } from "../../packages/data/src/schema.js";
 import { oracleThemeSchema } from "./admin-read.js";
+import {
+  type BenchmarkThemeBinding,
+  inspectVerifiedBenchmarkThemeFiles,
+} from "./benchmark-theme.js";
 import {
   type CaptureDependencies,
   type CapturedPage,
@@ -117,6 +121,7 @@ interface Observation {
   rawHashes: readonly string[];
   summaryHash: string;
   sectionTextHash: string;
+  theme?: BenchmarkThemeBinding;
   contexts: readonly [NativeCaptureContext, NativeCaptureContext];
 }
 const observations = new WeakMap<VerifiedCaptureContext, Observation>();
@@ -147,6 +152,7 @@ export async function captureOracleContextPage(
     throw new CaptureContextError("invalid-input");
   const start = Date.now(),
     expectedPath = new URL(input.path, `https://${input.config.domain}`).pathname;
+  const themeBindings: (BenchmarkThemeBinding | null)[] = [];
   const check = async () => {
     const identity = await dependencies.readIdentity(),
       theme = oracleThemeSchema.parse(await dependencies.readTheme(input.previewThemeId));
@@ -159,7 +165,11 @@ export async function captureOracleContextPage(
       theme.processingFailed
     )
       throw new CaptureContextError("context-mismatch");
-    await dependencies.verifyThemeFiles(theme);
+    const challenge = randomUUID(),
+      proof = await dependencies.verifyThemeFiles(theme, challenge);
+    themeBindings.push(
+      proof === undefined ? null : inspectVerifiedBenchmarkThemeFiles(proof, challenge),
+    );
     if (
       (await dependencies.readCaptureContextSource(input.previewThemeId)) !== captureContextSource
     )
@@ -222,6 +232,13 @@ export async function captureOracleContextPage(
   )
     throw new CaptureContextError("unstable-context");
   const receipt: VerifiedCaptureContext = Object.freeze({ kind: "verified-capture-context" });
+  const boundTheme = themeBindings[0];
+  if (
+    boundTheme &&
+    (boundTheme.themeId !== input.previewThemeId ||
+      themeBindings.some((binding) => !isDeepStrictEqual(binding, boundTheme)))
+  )
+    throw new CaptureContextError("context-mismatch");
   observations.set(receipt, {
     domain: input.config.domain,
     shopId,
@@ -237,6 +254,7 @@ export async function captureOracleContextPage(
       .update(JSON.stringify(capture.privateSectionText))
       .digest("hex"),
     contexts: [first, second],
+    ...(boundTheme ? { theme: boundTheme } : {}),
   });
   return {
     capture: { ...capture, capturedAt: new Date(Number(first.epoch) * 1000).toISOString() },

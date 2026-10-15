@@ -47,6 +47,7 @@ export function validateGoldenMatrix(
     throw new Error("Both distinct benchmark pins are required");
   if (!/^[a-f0-9]{64}$/.test(fixtureHash)) throw new Error("Valid actual fixture hash required");
   const output = new Map<string, GoldenArtifact>();
+  const themeFiles = new Map<string, string>();
   for (const value of input) {
     const golden = goldenArtifactSchema.parse(value);
     const key = `${golden.theme}/${golden.caseId}`;
@@ -63,6 +64,9 @@ export function validateGoldenMatrix(
     const page = benchmarkMatrix.find((item) => item.id === golden.caseId);
     if (!pin || pin.commit !== golden.themeCommit)
       throw new Error(`Oracle theme pin mismatch: ${key}`);
+    if (themeFiles.has(golden.theme) && themeFiles.get(golden.theme) !== golden.themeFilesHash)
+      throw new Error(`Oracle theme file set mismatch: ${key}`);
+    themeFiles.set(golden.theme, golden.themeFilesHash);
     if (!page || page.path !== golden.path || page.scenario !== golden.scenario)
       throw new Error(`Oracle request matrix mismatch: ${key}`);
     if (fixtureHash !== golden.fixtureHash) throw new Error(`Oracle fixture mismatch: ${key}`);

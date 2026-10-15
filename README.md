@@ -255,9 +255,11 @@ Shopify render parity and do not waive acceptance gates. `oracle:offline-check` 
 theme copies and runs all 36 cases through the tree/text summary and repeat-capture stability
 pipeline. Its output is local pipeline evidence, never a Shopify golden.
 
-`pnpm parity:check [--snapshot <snapshot.json>] [--release]` compares instrumented offline renders
+`pnpm parity:check [--snapshot <base-snapshot.json>] --case-snapshots <manifest.json> [--release]` compares instrumented offline renders
 against actual captures in `oracle/goldens/{dawn,horizon}/`. It requires all 36 cases, the exact theme
-pins, paths, scenarios and snapshot hash, and fails on Liquid errors or unimplemented events.
+pins, paths, scenarios, base-fixture hash, calibrated case-snapshot hashes and comparison-copy file
+hashes, and fails on Liquid errors or unimplemented events. It renders each calibrated snapshot
+verbatim, including the observed Native clock and identifiers; it does not reapply source overlays.
 `--release` also enforces the seven-day capture window. It currently fails because real captures
 have not been collected. No foundation CI result substitutes for this gate; static oracle-backed
 coverage and any explicitly evidenced server-only differences remain separate requirements.
@@ -346,6 +348,15 @@ isolated session capture, then assembles the calibrated snapshot and HTML as an 
 The receipt retains separate base-fixture and case-snapshot hashes, the original request (including
 pagination/search parameters), and raw-response hashes. Theme-pin verification, offline parity,
 full matrix coverage and release freshness remain separate gates.
+
+`preparePinnedBenchmarkTheme` downloads the locked public source into temporary storage and prepares
+the comparison copy. `createBenchmarkThemeVerifier` checks its complete uploaded file inventory;
+`readOracleAllThemeFiles` supplies paginated inventory and body reads bracketed by a second inventory.
+Fresh capture challenges bind those checks to the actual response pair. `makeGoldenArtifact` accepts
+only assembled case receipts carrying this theme evidence and emits hashes rather than raw input.
+`savePrivateCaseArchive` keeps the calibrated snapshots and manifest under ignored `.local` with
+owner-only permissions. The parity loader checks their exact inventory, scope, capture clock and
+fingerprints against the public goldens before rendering.
 
 The seeding transport in `tools/oracle/seed-execution.ts` accepts only steps compiled from its
 validated fixture matrix. It requires trusted authorization, dependency ownership verification and

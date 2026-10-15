@@ -1,4 +1,5 @@
 import { type OracleTheme, oracleThemeSchema } from "./admin-read.js";
+import type { VerifiedBenchmarkThemeFiles } from "./benchmark-theme.js";
 import { assertOracleStore, type OracleConfig, type OracleIdentity } from "./store-guard.js";
 import {
   assertStableCapture,
@@ -20,7 +21,10 @@ export interface CaptureDependencies {
   /** Mandatory trusted adapter verifies all prepared shop settings, including the Native request context. */
   verifyShopSettings(): Promise<void>;
   fetcher?: typeof fetch;
-  verifyThemeFiles?(theme: OracleTheme): Promise<void>;
+  verifyThemeFiles?(
+    theme: OracleTheme,
+    challenge?: string,
+  ): Promise<void | VerifiedBenchmarkThemeFiles>;
 }
 export interface CapturedPage {
   publicSummary: PrivateSummary["summary"];

@@ -4,15 +4,17 @@ import { join } from "node:path";
 import { z } from "zod";
 import { benchmarkMatrix, defaultFixture } from "../packages/data/src/fixture.js";
 import { parseSnapshot } from "../packages/data/src/schema.js";
-import { renderTheme } from "../packages/render/src/index.js";
 import { NodeThemeFileSystem } from "../packages/theme/src/node.js";
+import { readComparisonThemeFiles } from "./oracle/benchmark-theme.js";
+import { readCaseSnapshots } from "./oracle/case-archive.js";
+import { compareGoldenCase } from "./oracle/compare-case.js";
+import { corpusFilesFingerprint } from "./oracle/corpus-environment.js";
 import { instrumentTheme } from "./oracle/instrument-theme.js";
 import { benchmarkPinSchema, snapshotFingerprint, validateGoldenMatrix } from "./oracle/matrix.js";
-import { sectionTypeMap } from "./oracle/section-types.js";
-import { compareSummaries, summarizeHtml } from "./oracle/summary.js";
 
 const args = process.argv.slice(2);
 let snapshotFile: string | undefined;
+let caseManifest: string | undefined;
 let release = false;
 for (let index = 0; index < args.length; index++) {
   const option = args[index];
@@ -20,7 +22,14 @@ for (let index = 0; index < args.length; index++) {
   else if (option === "--snapshot" && snapshotFile === undefined) {
     snapshotFile = args[++index];
     if (!snapshotFile || snapshotFile.startsWith("--")) throw new Error("Snapshot file required");
-  } else throw new Error("Usage: check-parity [--snapshot <snapshot.json>] [--release]");
+  } else if (option === "--case-snapshots" && caseManifest === undefined) {
+    caseManifest = args[++index];
+    if (!caseManifest || caseManifest.startsWith("--"))
+      throw new Error("Case snapshot manifest required");
+  } else
+    throw new Error(
+      "Usage: check-parity [--snapshot <snapshot.json>] --case-snapshots <manifest.json> [--release]",
+    );
 }
 const snapshot = snapshotFile
   ? parseSnapshot(await readFile(snapshotFile, "utf8"))
@@ -49,35 +58,31 @@ const goldens = validateGoldenMatrix(
   fixtureHash,
   release ? new Date() : undefined,
 );
+if (!caseManifest)
+  throw new Error("Exact calibrated case snapshots required: --case-snapshots <manifest.json>");
+const caseSnapshots = await readCaseSnapshots(caseManifest, goldens, fixtureHash);
 const manifest = z
   .array(z.object({ name: z.string(), path: z.string(), commit: z.string() }))
   .parse(JSON.parse(await readFile(".local/benchmark-paths.json", "utf8")));
 for (const pin of pins) {
   const item = manifest.find((entry) => entry.name === pin.name && entry.commit === pin.commit);
   assert.ok(item, `Pinned benchmark download missing: ${pin.name}`);
-  const copy = await instrumentTheme(item.path);
+  const copy = await instrumentTheme(item.path, { captureContext: true });
   try {
     const fs = new NodeThemeFileSystem(copy.path);
+    const filesHash = corpusFilesFingerprint(await readComparisonThemeFiles(copy.path));
     for (const page of benchmarkMatrix) {
-      const result = await renderTheme(fs, page.path, { snapshot, scenario: page.scenario });
-      assert.deepEqual(
-        result.diagnostics.filter((diagnostic) =>
-          ["liquid-error", "not-implemented"].includes(diagnostic.code),
-        ),
-        [],
-        `${pin.name}/${page.id}: dynamic coverage fails`,
+      const key = `${pin.name}/${page.id}`,
+        expected = goldens.get(key),
+        snapshot = caseSnapshots.get(key);
+      assert.ok(expected && snapshot);
+      assert.equal(
+        filesHash,
+        expected.themeFilesHash,
+        `${key}: local pinned comparison-copy file mismatch`,
       );
-      const actual = summarizeHtml(result.html, {
-        sectionTypes: await sectionTypeMap(fs, result.route.template),
-      }).summary;
-      const expected = goldens.get(`${pin.name}/${page.id}`);
-      assert.ok(expected);
-      const comparison = compareSummaries(expected.summary, actual);
-      assert.ok(
-        comparison.equal,
-        `${pin.name}/${page.id}: tree=${comparison.treeEqual}, text=${comparison.textEqual}`,
-      );
-      console.log(`${pin.name}/${page.id}: Shopify tree/text parity PASS`);
+      await compareGoldenCase(fs, expected, snapshot);
+      console.log(`${key}: Shopify tree/text parity PASS`);
     }
   } finally {
     await rm(copy.path, { recursive: true, force: true });

@@ -25,6 +25,8 @@ function examples(): GoldenArtifact[] {
       scenario: page.scenario,
       capturedAt: "2026-10-13T00:00:00Z",
       fixtureHash,
+      caseSnapshotHash: "e".repeat(64),
+      themeFilesHash: "f".repeat(64),
       doubleCaptureStable: true,
       summary: {
         schemaVersion: "1.0",
@@ -38,6 +40,13 @@ function examples(): GoldenArtifact[] {
 
 test("golden matrix refuses absent, duplicate, wrongly pinned and mismatched request evidence", () => {
   assert.equal(validateGoldenMatrix(examples(), pins, fixtureHash).size, 36);
+  const inconsistent = examples();
+  assert.ok(inconsistent[0]);
+  inconsistent[0].themeFilesHash = "0".repeat(64);
+  assert.throws(
+    () => validateGoldenMatrix(inconsistent, pins, fixtureHash),
+    /theme file set mismatch/,
+  );
   assert.throws(() => validateGoldenMatrix([], pins, fixtureHash), /missing for 36/);
   assert.throws(
     () => validateGoldenMatrix(examples().slice(1), pins, fixtureHash),

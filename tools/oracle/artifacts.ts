@@ -3,6 +3,7 @@ import { mkdir, mkdtemp, realpath, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { z } from "zod";
 import type { CapturedPage } from "./capture.js";
+import { inspectVerifiedOracleCase, type VerifiedOracleCase } from "./case-capture.js";
 import { publicSummarySchema } from "./summary.js";
 
 export const goldenArtifactSchema = z.strictObject({
@@ -14,24 +15,29 @@ export const goldenArtifactSchema = z.strictObject({
   scenario: z.string(),
   capturedAt: z.iso.datetime(),
   fixtureHash: z.string().regex(/^[a-f0-9]{64}$/),
+  caseSnapshotHash: z.string().regex(/^[a-f0-9]{64}$/),
+  themeFilesHash: z.string().regex(/^[a-f0-9]{64}$/),
   doubleCaptureStable: z.literal(true),
   summary: publicSummarySchema,
 });
 export type GoldenArtifact = z.infer<typeof goldenArtifactSchema>;
 
-export function makeGoldenArtifact(
-  capture: CapturedPage,
-  metadata: Omit<
-    GoldenArtifact,
-    "schemaVersion" | "capturedAt" | "doubleCaptureStable" | "summary"
-  >,
-): GoldenArtifact {
+export function makeGoldenArtifact(receipt: VerifiedOracleCase): GoldenArtifact {
+  const record = inspectVerifiedOracleCase(receipt);
+  if (!record.theme) throw new Error("Pinned uploaded theme evidence is required for a golden");
   return goldenArtifactSchema.parse({
-    ...metadata,
+    theme: record.theme.theme,
+    themeCommit: record.theme.themeCommit,
+    caseId: record.caseId,
+    path: record.path,
+    scenario: record.sourceScenario,
+    fixtureHash: record.baseFixtureHash,
+    caseSnapshotHash: record.snapshotHash,
+    themeFilesHash: record.theme.filesHash,
     schemaVersion: "1.0",
-    capturedAt: capture.capturedAt,
+    capturedAt: record.capture.capturedAt,
     doubleCaptureStable: true,
-    summary: capture.publicSummary,
+    summary: record.capture.publicSummary,
   });
 }
 export function assertGoldenFreshness(golden: GoldenArtifact, now: Date = new Date()): void {

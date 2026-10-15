@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import { applyScenario } from "../../packages/data/src/scenarios.js";
 import { type Snapshot, snapshotSchema } from "../../packages/data/src/schema.js";
+import type { BenchmarkThemeBinding } from "./benchmark-theme.js";
 import type { CapturedPage, CaptureInput } from "./capture.js";
 import {
   applyOracleCaptureContext,
@@ -77,6 +78,7 @@ interface CaseRecord {
   rawHashes: readonly string[];
   snapshot: Snapshot;
   capture: CapturedPage;
+  theme?: BenchmarkThemeBinding;
 }
 const cases = new WeakMap<VerifiedOracleCase, CaseRecord>();
 export function inspectVerifiedOracleCase(receipt: VerifiedOracleCase): CaseRecord {
@@ -203,6 +205,7 @@ export function assembleOracleCase(
       rawHashes,
       snapshot,
       capture,
+      ...(contextRecord.theme ? { theme: contextRecord.theme } : {}),
     });
     return receipt;
   } catch (error) {

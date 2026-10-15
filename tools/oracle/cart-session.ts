@@ -340,7 +340,7 @@ export function createOracleCartSessions(
     try {
       if (typeof dependencies.verifyThemeFiles !== "function")
         throw new OracleCartError("invalid-input");
-      const checkTheme = async () => {
+      const checkTheme = async (_theme?: unknown, challenge?: string) => {
         const theme = oracleThemeSchema.parse(await dependencies.readTheme(input.previewThemeId));
         if (
           theme.id !== `gid://shopify/OnlineStoreTheme/${input.previewThemeId}` ||
@@ -349,7 +349,7 @@ export function createOracleCartSessions(
           theme.processingFailed
         )
           throw new OracleCartError("scope-mismatch");
-        await dependencies.verifyThemeFiles?.(theme);
+        return dependencies.verifyThemeFiles?.(theme, challenge);
       };
       await verify(session.observation.stateHash, session.targets);
       if (!isDeepStrictEqual(await read(session), session.cart))

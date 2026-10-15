@@ -128,3 +128,117 @@ export async function readOracleThemeFiles(
   }
   return files;
 }
+
+/** Full, unchanged unpublished-theme inventory plus exact file bytes. Sequential cursor reads; no mutations or credentials on CDN GETs. */
+export async function readOracleAllThemeFiles(
+  input: OracleConfig,
+  token: string,
+  themeId: string,
+  fetcher: typeof fetch = fetch,
+): Promise<CorpusFiles> {
+  const config = oracleConfigSchema.parse(input),
+    endpoint = `https://${config.domain}/admin/api/${config.apiVersion}/graphql.json`;
+  if (!token.trim() || !/^[1-9]\d*$/.test(themeId))
+    throw new Error("Existing token and unpublished preview theme required");
+  let total = 0;
+  const bounded: typeof fetch = async (url, init) => {
+    const response = await fetcher(url, init);
+    if (
+      !response.ok ||
+      response.redirected ||
+      (response.url && response.url !== String(url)) ||
+      (String(url) === endpoint &&
+        response.headers.get("x-shopify-api-version") !== config.apiVersion)
+    )
+      throw new Error("Oracle complete file read refused");
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error("Oracle complete file read refused");
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    try {
+      for (;;) {
+        const part = await reader.read();
+        if (part.done) break;
+        size += part.value.byteLength;
+        total += part.value.byteLength;
+        if (size > 32 * 1024 * 1024 || total > 128 * 1024 * 1024)
+          throw new Error("Oracle complete file read bound exceeded");
+        chunks.push(part.value);
+      }
+    } finally {
+      await reader.cancel();
+      reader.releaseLock();
+    }
+    return new Response(Buffer.concat(chunks), {
+      status: response.status,
+      headers: response.headers,
+    });
+  };
+  const schema = z.object({
+    data: z.object({
+      theme: oracleThemeSchema
+        .extend({
+          files: z.object({
+            nodes: z.array(z.object({ filename: z.string() })).max(50),
+            userErrors: z.array(z.unknown()),
+            pageInfo: z.object({ hasNextPage: z.boolean(), endCursor: z.string().nullable() }),
+          }),
+        })
+        .nullable(),
+    }),
+    errors: z.array(z.unknown()).optional(),
+  });
+  async function inventory() {
+    const files = new Set<string>(),
+      cursors = new Set<string>();
+    let after: string | null = null;
+    const deadline = Date.now() + 120000;
+    for (let page = 0; page < 100; page++) {
+      if (Date.now() >= deadline) throw new Error();
+      const response = await bounded(endpoint, {
+          method: "POST",
+          redirect: "error",
+          headers: { "Content-Type": "application/json", "X-Shopify-Access-Token": token },
+          body: JSON.stringify({
+            query: `query OfflinePreviewFileInventory($id:ID!,$after:String){ theme(id:$id){id role processing processingFailed files(first:50,after:$after){nodes{filename} userErrors{code filename} pageInfo{hasNextPage endCursor}}}}`,
+            variables: { id: `gid://shopify/OnlineStoreTheme/${themeId}`, after },
+          }),
+          signal: AbortSignal.timeout(Math.min(30000, deadline - Date.now())),
+        }),
+        document = schema.parse(await response.json()),
+        theme = document.data.theme;
+      if (
+        document.errors?.length ||
+        !theme ||
+        theme.id !== `gid://shopify/OnlineStoreTheme/${themeId}` ||
+        theme.role !== "UNPUBLISHED" ||
+        theme.processing ||
+        theme.processingFailed ||
+        theme.files.userErrors.length
+      )
+        throw new Error();
+      for (const node of theme.files.nodes) {
+        themePath(node.filename);
+        if (files.has(node.filename)) throw new Error();
+        files.add(node.filename);
+        if (files.size > 1000) throw new Error();
+      }
+      if (!theme.files.pageInfo.hasNextPage) return [...files].sort();
+      const cursor = theme.files.pageInfo.endCursor;
+      if (!theme.files.nodes.length || !cursor || cursors.has(cursor)) throw new Error();
+      cursors.add(cursor);
+      after = cursor;
+    }
+    throw new Error();
+  }
+  try {
+    const before = await inventory();
+    if (!before.length) throw new Error();
+    const files = await readOracleThemeFiles(config, token, themeId, before, bounded),
+      after = await inventory();
+    if (JSON.stringify(before) !== JSON.stringify(after)) throw new Error();
+    return files;
+  } catch {
+    throw new Error("Oracle complete theme file verification failed; details withheld");
+  }
+}
