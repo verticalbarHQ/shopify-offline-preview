@@ -678,6 +678,7 @@ export async function renderTheme(
     config: SectionConfig,
     configFile: string,
     groupType?: string,
+    index: number | null = null,
   ): Promise<string> {
     const file = themePath(`sections/${config.type}.liquid`);
     const pointer = id.replaceAll("~", "~0").replaceAll("/", "~1");
@@ -748,8 +749,9 @@ export async function renderTheme(
         id: sectionId,
         settings: settings(schema.settings, config.settings, () => sectionContext),
         blocks,
-        index: null,
-        location: groupType ?? "template",
+        index: options.designMode ? null : index,
+        index0: options.designMode || index === null ? null : index - 1,
+        location: groupType ?? (index === null ? "static" : "template"),
       };
       const sectionGlobals = Object.defineProperties({}, Object.getOwnPropertyDescriptors(globals));
       Object.defineProperty(sectionGlobals, "section", { value: sectionData, enumerable: true });
@@ -878,10 +880,11 @@ export async function renderTheme(
   async function assembly(file: string, groupType?: string): Promise<string> {
     const config = templateConfig(source(file), file);
     let result = "";
+    let index = 0;
     for (const id of config.order) {
       const configured = config.sections[id];
       if (configured && !configured.disabled)
-        result += await section(id, configured, file, groupType);
+        result += await section(id, configured, file, groupType, ++index);
     }
     return result;
   }
