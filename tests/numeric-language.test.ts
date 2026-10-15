@@ -123,7 +123,10 @@ test("float parsing, arithmetic and JSON are identical between Node and browser 
     new URL("../dist/browser.js", import.meta.url).href
   );
   const input = files(
-    `{%assign n=3.0%}{{n|divided_by:2}}|{{n|json}}|{{5|divided_by:3}}|{%for i in(1..2)%}{{3.0}}{%endfor%}`,
+    `{%assign n=3.0%}{{n|divided_by:2}}|{{n|json}}|{{5|divided_by:3}}|{%for i in(1..2)%}{{3.0}}{%endfor%}{%style%}{%liquid
+assign rem = 14 | divided_by: 16.0
+echo rem
+%}{%endstyle%}`,
   );
   const options = { snapshot: defaultFixture(), inspect: true };
   assert.equal(

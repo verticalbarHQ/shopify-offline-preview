@@ -580,7 +580,7 @@ export async function renderTheme(
       if (["collection_list", "product_list"].includes(definition.type)) {
         const dictionary =
           globals[definition.type === "collection_list" ? "collections" : "all_products"];
-        result[key] = (Array.isArray(raw) ? raw : []).flatMap((handle) => {
+        const resources = (Array.isArray(raw) ? raw : []).flatMap((handle) => {
           if (typeof handle === "string" && object(dictionary) && Object.hasOwn(dictionary, handle))
             return [Reflect.get(dictionary, handle)];
           diagnostic(
@@ -589,6 +589,7 @@ export async function renderTheme(
           );
           return [];
         });
+        result[key] = Object.defineProperty(resources, "count", { get: () => resources.length });
         continue;
       }
       const resource = {
