@@ -77,6 +77,10 @@ test("corpus extraction requires the exact unique string payload and withholds m
     extractCorpusOutput(payload(item.payloadId, "</script>한글 😀"), item),
     "</script>한글 😀",
   );
+  assert.equal(
+    extractCorpusOutput(payload(item.payloadId, "\uFEFFleading BOM"), item),
+    "\uFEFFleading BOM",
+  );
   for (const encoded of ["%%", "/w=="])
     assert.throws(
       () =>

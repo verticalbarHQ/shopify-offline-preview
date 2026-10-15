@@ -175,7 +175,7 @@ export function extractCorpusOutput(
     if (output.length > 12 * 1024 * 1024) throw new Error();
     const bytes = Buffer.from(output, "base64");
     if (bytes.length > 8 * 1024 * 1024 || bytes.toString("base64") !== output) throw new Error();
-    return new TextDecoder("utf8", { fatal: true }).decode(bytes);
+    return new TextDecoder("utf8", { fatal: true, ignoreBOM: true }).decode(bytes);
   } catch {
     throw new Error("Corpus payload must contain canonical UTF-8 Base64");
   }
