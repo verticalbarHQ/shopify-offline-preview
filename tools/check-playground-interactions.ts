@@ -40,6 +40,8 @@ const files = {
 };
 files["sections/main.liquid"] +=
   "{% javascript %}const shared=1;window.bundleLexical=shared;window.bundleCount=(window.bundleCount||0)+1;window.bundleSawDOM=!!document.getElementById('theme-block');{% endjavascript %}{% stylesheet %}h1{font-style:italic}{% endstylesheet %}";
+files["sections/main.liquid"] +=
+  '{% if images["uploaded-hero.svg"].width %}<img id="uploaded-hero" src="{{ images["uploaded-hero.svg"] | image_url: width: 19 }}">{% endif %}';
 const themeZip = join(temp, "theme.zip");
 await writeFile(
   themeZip,
@@ -47,8 +49,14 @@ await writeFile(
 );
 const snapshot = defaultFixture();
 snapshot.shop.name = "Private Browser Snapshot Needle";
+snapshot.images = [
+  { filename: "uploaded-hero.svg", file: "uploads/hero.svg", alt: null, width: 19, height: 7 },
+];
 const dataFiles: Record<string, Uint8Array> = {
   "snapshot.json": strToU8(JSON.stringify(snapshot)),
+  "images/uploads/hero.svg": strToU8(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="19" height="7"><rect width="19" height="7" fill="red"/></svg>',
+  ),
 };
 for (const file of new Set(snapshot.products.flatMap((p) => p.images.map((i) => i.file))))
   dataFiles[`images/${file}`] = await readFile(`fixtures/default/images/${file}`);
@@ -263,6 +271,12 @@ try {
   await browser("upload", "#snapshot-zip", dataZip);
   await parent(
     `(async()=>{await (${wait})(()=>window.SOP_INSPECTOR_STATE.result?.html.includes('Private Browser Snapshot Needle')&&document.querySelector('#status').dataset.state==='ready');return true;})()`,
+  );
+  assert.deepEqual(
+    await frame(
+      `(async()=>{await (${wait})(()=>document.querySelector('#uploaded-hero')?.naturalWidth===19);const image=document.querySelector('#uploaded-hero');return [image.naturalWidth,image.naturalHeight,image.src.startsWith('data:image/svg+xml;base64,')];})()`,
+    ),
+    [19, 7, true],
   );
   await parent(
     `document.querySelector('#design').checked=true;document.querySelector('#design').dispatchEvent(new Event('change'));true;`,

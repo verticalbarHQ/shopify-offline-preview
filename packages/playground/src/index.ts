@@ -1,4 +1,5 @@
 import { defaultFixture } from "../../data/src/fixture.js";
+import { snapshotImages } from "../../data/src/images.js";
 import { applyScenario, validateSnapshotReferences } from "../../data/src/scenarios.js";
 import { parseSnapshot, type Snapshot } from "../../data/src/schema.js";
 import type { InspectorTransport } from "../../dev/src/transport.js";
@@ -43,13 +44,7 @@ function fail(kind: "theme" | "snapshot", error: unknown) {
   if (started) changed();
 }
 function imageNames(value: Snapshot): string[] {
-  return [
-    ...new Set([
-      ...value.products.flatMap((p) => p.images.map((i) => i.file)),
-      ...value.collections.flatMap((c) => (c.image ? [c.image.file] : [])),
-      ...value.blogs.flatMap((b) => b.articles.flatMap((a) => (a.image ? [a.image.file] : []))),
-    ]),
-  ];
+  return [...new Set(snapshotImages(value).map((image) => image.file))];
 }
 const defaultImages = Promise.all(
   imageNames(snapshot).map(async (file) => {
