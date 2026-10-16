@@ -53,6 +53,9 @@ let client: BrowserProtocol | undefined;
 const rows = [];
 const requests: { url: string; method: string; body: string; sessionId: string }[] = [];
 const exceptions: string[] = [];
+const detachedSessions = new Set<string>();
+const iframeSetups = new Set<Promise<void>>();
+const setupErrors: unknown[] = [];
 try {
   await browser("open", origin);
   client = await BrowserProtocol.connect((await browser("get", "cdp-url")).trim());
@@ -68,6 +71,8 @@ try {
     .object({ sessionId: z.string() })
     .parse(await c.call("Target.attachToTarget", { targetId: page.targetId, flatten: true }));
   c.on((event) => {
+    if (event.method === "Target.detachedFromTarget")
+      detachedSessions.add(z.object({ sessionId: z.string() }).parse(event.params).sessionId);
     if (event.method === "Runtime.exceptionThrown")
       exceptions.push(JSON.stringify(event.params).slice(0, 300));
     if (
@@ -99,15 +104,24 @@ try {
           waitingForDebugger: z.boolean(),
         })
         .parse(event.params);
-      if (attached.targetInfo.type === "iframe")
-        void c
+      if (attached.targetInfo.type === "iframe") {
+        const setup = c
           .call("Runtime.enable", {}, attached.sessionId)
           .then(() => c.call("Network.enable", {}, attached.sessionId))
           .then(() =>
             attached.waitingForDebugger
               ? c.call("Runtime.runIfWaitingForDebugger", {}, attached.sessionId)
               : undefined,
-          );
+          )
+          .then(() => undefined)
+          .catch((error: unknown) => {
+            // Route changes replace srcdoc frames while CDP setup is still in flight.
+            // Only an observed detach makes that setup obsolete; live-frame failures fail the run.
+            if (!detachedSessions.has(attached.sessionId)) setupErrors.push(error);
+          })
+          .finally(() => iframeSetups.delete(setup));
+        iframeSetups.add(setup);
+      }
     }
   });
   await c.call("Network.enable", {}, sessionId);
@@ -220,6 +234,8 @@ try {
     assert.ok(!/[{}]|%7B|%7D|%7b|%7d/.test(url.href), "Theme content appeared in a URL");
   }
   assert.ok(rows.length === 36);
+  await Promise.all(iframeSetups);
+  assert.deepEqual(setupErrors, [], "Active preview frame instrumentation failed");
   const report = {
     status: "pass",
     coverage: "Current renderer only; Shopify parity remains pending",

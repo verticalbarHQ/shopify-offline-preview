@@ -1,4 +1,5 @@
 import { type Liquid, Tokenizer, toValue } from "liquidjs";
+import { liquidObjectKind } from "../../../data/src/objects.js";
 import { isSnapshotHash } from "../json-hashes.js";
 import { LiquidRange } from "../range-values.js";
 
@@ -129,7 +130,10 @@ export function registerCoreLanguage(engine: Liquid): void {
     if (!original) throw new Error("Pinned LiquidJS equality operator unavailable");
     engine.options.operators[name] = (left, right, context) => {
       let result: boolean | undefined;
-      if ((left === blank && right === empty) || (left === empty && right === blank))
+      const cart = left === empty ? right : right === empty ? left : undefined;
+      if (liquidObjectKind(cart) === "cart")
+        result = Reflect.get(cart as object, "item_count") === 0;
+      else if ((left === blank && right === empty) || (left === empty && right === blank))
         result = false;
       else if ((left === blank && right === nil) || (left === nil && right === blank))
         result = true;

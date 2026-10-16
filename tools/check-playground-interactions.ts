@@ -33,6 +33,7 @@ const files = {
     'import {marker} from "./a.js"; export const answer=37; export function readMarker(){return marker;}',
   "assets/main.css": '@import "./base.css";',
   "assets/base.css": "h1{color:rgb(150,0,0)}",
+  "assets/shadow.css": "ul{display:flex;list-style:none;color:rgb(0,100,0)}",
   "sections/unused-error.liquid":
     "{% javascript %}throw new Error('Own isolated bundle failure');{% endjavascript %}{% stylesheet %}h1{color:blue}{% endstylesheet %}",
   "snippets/unused-script.liquid":
@@ -40,6 +41,10 @@ const files = {
 };
 files["sections/main.liquid"] +=
   "{% javascript %}const shared=1;window.bundleLexical=shared;window.bundleCount=(window.bundleCount||0)+1;window.bundleSawDOM=!!document.getElementById('theme-block');{% endjavascript %}{% stylesheet %}h1{font-style:italic}{% endstylesheet %}";
+files["sections/main.liquid"] +=
+  '{% if images["uploaded-hero.svg"].width %}<img id="uploaded-hero" src="{{ images["uploaded-hero.svg"] | image_url: width: 19 }}">{% endif %}';
+files["sections/main.liquid"] +=
+  '<div id="shadow-host"><template shadowrootmode="open"><link rel="stylesheet" href="/sop/assets/shadow.css"><ul><li>Filter</li></ul><div id="nested-host"><template shadowrootmode="open"><link rel="stylesheet" href="/sop/assets/shadow.css"><ul><li>Nested filter</li></ul></template></div></template></div>';
 const themeZip = join(temp, "theme.zip");
 await writeFile(
   themeZip,
@@ -47,8 +52,14 @@ await writeFile(
 );
 const snapshot = defaultFixture();
 snapshot.shop.name = "Private Browser Snapshot Needle";
+snapshot.images = [
+  { filename: "uploaded-hero.svg", file: "uploads/hero.svg", alt: null, width: 19, height: 7 },
+];
 const dataFiles: Record<string, Uint8Array> = {
   "snapshot.json": strToU8(JSON.stringify(snapshot)),
+  "images/uploads/hero.svg": strToU8(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="19" height="7"><rect width="19" height="7" fill="red"/></svg>',
+  ),
 };
 for (const file of new Set(snapshot.products.flatMap((p) => p.images.map((i) => i.file))))
   dataFiles[`images/${file}`] = await readFile(`fixtures/default/images/${file}`);
@@ -184,6 +195,17 @@ try {
   );
   assert.deepEqual(
     await frame(
+      `(async()=>{const root=document.querySelector('#shadow-host').shadowRoot,nested=root.querySelector('#nested-host').shadowRoot;await (${wait})(()=>[root,nested].every(r=>getComputedStyle(r.querySelector('ul')).display==='flex'));return [root,nested].map(r=>{const s=getComputedStyle(r.querySelector('ul'));return {display:s.display,listStyle:s.listStyleType,color:s.color,local:r.querySelector('link').href.startsWith('data:text/css;base64,')};});})()`,
+    ),
+    Array.from({ length: 2 }, () => ({
+      display: "flex",
+      listStyle: "none",
+      color: "rgb(0, 100, 0)",
+      local: true,
+    })),
+  );
+  assert.deepEqual(
+    await frame(
       `fetch('/cart/add.js',{method:'POST'}).then(async response=>({status:response.status,body:await response.json()}))`,
     ),
     { status: 501, body: { error: "not available offline" } },
@@ -191,6 +213,18 @@ try {
   assert.deepEqual(
     await frame(
       `new Promise(resolve=>{const x=new XMLHttpRequest();x.open('POST','/cart/add.js');x.onload=()=>resolve({status:x.status,body:JSON.parse(x.responseText)});x.send('example');})`,
+    ),
+    { status: 501, body: { error: "not available offline" } },
+  );
+  assert.deepEqual(
+    await frame(
+      `(async()=>{const url=new URL(window.location.href);url.searchParams.set('section_id','header');const response=await fetch(url);return {status:response.status,body:await response.json()};})()`,
+    ),
+    { status: 501, body: { error: "not available offline" } },
+  );
+  assert.deepEqual(
+    await frame(
+      `new Promise(resolve=>{const url=new URL(window.location.href);url.searchParams.set('sections','header,footer');const x=new XMLHttpRequest();x.open('GET',url);x.onload=()=>resolve({status:x.status,body:JSON.parse(x.responseText)});x.send();})`,
     ),
     { status: 501, body: { error: "not available offline" } },
   );
@@ -265,6 +299,12 @@ try {
   await parent(
     `(async()=>{await (${wait})(()=>window.SOP_INSPECTOR_STATE.result?.html.includes('Private Browser Snapshot Needle')&&document.querySelector('#status').dataset.state==='ready');return true;})()`,
   );
+  assert.deepEqual(
+    await frame(
+      `(async()=>{await (${wait})(()=>document.querySelector('#uploaded-hero')?.naturalWidth===19);const image=document.querySelector('#uploaded-hero');return [image.naturalWidth,image.naturalHeight,image.src.startsWith('data:image/svg+xml;base64,')];})()`,
+    ),
+    [19, 7, true],
+  );
   await parent(
     `document.querySelector('#design').checked=true;document.querySelector('#design').dispatchEvent(new Event('change'));true;`,
   );
@@ -323,6 +363,10 @@ try {
     assert.equal(request.method, "GET");
     assert.ok(!url.href.includes("Needle"));
   }
+  assert.ok(
+    requests.every((request) => !request.url.startsWith("https://sop-preview.invalid/sop/")),
+    "Uploaded assets must resolve locally, including inside shadow roots",
+  );
   const report = {
     status: "pass",
     zipInput: true,
@@ -334,6 +378,7 @@ try {
     moduleCycles: true,
     dynamicImports: true,
     cssImports: true,
+    nestedShadowStylesheets: true,
     sourceViewer: true,
     sectionHighlight: true,
     appBlockAndEmbedBadgesAndSource: true,
@@ -342,6 +387,7 @@ try {
     themeBlockHoverAndSource: true,
     mobileWidth: 390,
     fetchAndXhr501: true,
+    srcdocSectionRequests501: true,
     designMode: true,
     noUploads: true,
     invalidSnapshotClearsPreview: true,

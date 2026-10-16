@@ -108,6 +108,18 @@ function request(input: string) {
   let url: URL;
   try {
     url = new URL(input, baseUrl);
+    if (
+      configuration.virtualResources &&
+      url.protocol === "about:" &&
+      url.pathname === "srcdoc" &&
+      location.href === "about:srcdoc"
+    ) {
+      // Themes build section requests from location.href in the sandboxed srcdoc frame.
+      const current = new URL(baseUrl);
+      current.search = url.search;
+      current.hash = url.hash;
+      url = current;
+    }
   } catch {
     return;
   }

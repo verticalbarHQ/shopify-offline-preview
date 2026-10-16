@@ -216,3 +216,31 @@ test("settings JSON source is available only after an app node references it, wi
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("uploaded snapshot images serve original bytes and unknown files remain placeholders", async () => {
+  const { root, theme, data } = await setup();
+  const snapshot = defaultFixture();
+  snapshot.images = [
+    { filename: "hero.svg", file: "uploads/hero.svg", alt: null, width: 2, height: 1 },
+  ];
+  const bytes =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="2" height="1"><rect width="2" height="1" fill="red"/></svg>';
+  await mkdir(join(data, "images/uploads"), { recursive: true });
+  await writeFile(join(data, "images/uploads/hero.svg"), bytes);
+  await writeFile(join(data, "images/secret.svg"), "not in snapshot");
+  await writeFile(join(data, "snapshot.json"), JSON.stringify(snapshot));
+  const session = await startDevServer({ themeDirectory: theme, dataDirectory: data, port: 0 });
+  try {
+    const response = await fetch(`${session.previewOrigin}/sop/images/uploads/hero.svg?width=1`);
+    assert.match(response.headers.get("content-type") ?? "", /image\/svg\+xml/);
+    assert.equal(await response.text(), bytes);
+    const unknown = await (
+      await fetch(`${session.previewOrigin}/sop/images/secret.svg?width=17`)
+    ).text();
+    assert.match(unknown, /width="17"/);
+    assert.ok(!unknown.includes("not in snapshot"));
+  } finally {
+    await session.close();
+    await rm(root, { recursive: true, force: true });
+  }
+});

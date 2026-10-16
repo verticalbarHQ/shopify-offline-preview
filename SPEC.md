@@ -330,6 +330,9 @@ The library does not implement live-store collection or provider-specific export
   redistributed with the library; absent entries produce `missing-resource` diagnostics.
 - `cart`: lines (variant reference and quantity), note.
 - `filters`: the storefront filter configuration used for collection facets.
+- Optional `localization`: available countries and languages plus the selected country/language
+  codes for the captured storefront context. Availability is source data, not inferred from the
+  shop currency or locale. Missing localization remains nil and is diagnosed on access.
 - `scenarios`: named overlays (JSON merge patches over the snapshot).
 
 The data package **derives** the Liquid objects: `price`, `price_min` / `price_max`, `available`,

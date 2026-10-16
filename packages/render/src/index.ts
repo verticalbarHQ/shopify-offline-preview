@@ -27,6 +27,7 @@ import { type RenderNode, type RenderResult, renderSchema } from "./contracts.js
 import { registerCycleTag } from "./cycle-tag.js";
 import { ImageUrlInputError } from "./filters/images.js";
 import { registerShopifyFilters } from "./filters/index.js";
+import { translateFactory } from "./filters/translations.js";
 import { fontSetting } from "./fonts.js";
 import { registerIncludeTag } from "./include-tag.js";
 import { registerSnapshotHashes } from "./json-hashes.js";
@@ -475,6 +476,7 @@ export async function renderTheme(
     definitions: z.infer<typeof settingSchema>[],
     configured: LiquidRecord,
     dynamicContext?: () => Context,
+    resourceContext?: () => Context,
   ): LiquidRecord {
     const result: LiquidRecord = { ...configured };
     for (const definition of definitions) {
@@ -502,9 +504,13 @@ export async function renderTheme(
           get() {
             if (resolving) throw new Error("Cyclic dynamic setting reference");
             resolving = true;
+            const context =
+              resourceContext && ["product", "collection", "page", "blog"].includes(definition.type)
+                ? resourceContext()
+                : dynamicContext();
             const single = /^\s*\{\{([\s\S]*?)\}\}\s*$/.exec(raw);
             const resolved = single
-              ? evalNumericValue(engine, single[1] ?? "", dynamicContext())
+              ? evalNumericValue(engine, single[1] ?? "", context)
               : engine.render(
                   parseLiquid(engine, raw, `settings.${key}`, (error, token) => {
                     liquidError(
@@ -513,7 +519,7 @@ export async function renderTheme(
                       token.getPosition()[0] ?? 1,
                     );
                   }),
-                  dynamicContext(),
+                  context,
                 );
             return resolved
               .then((value) =>
@@ -571,6 +577,21 @@ export async function renderTheme(
         result[key] = imageSetting(raw, key);
         continue;
       }
+      if (["collection_list", "product_list"].includes(definition.type)) {
+        const dictionary =
+          globals[definition.type === "collection_list" ? "collections" : "all_products"];
+        const resources = (Array.isArray(raw) ? raw : []).flatMap((handle) => {
+          if (typeof handle === "string" && object(dictionary) && Object.hasOwn(dictionary, handle))
+            return [Reflect.get(dictionary, handle)];
+          diagnostic(
+            "missing-resource",
+            `Setting ${key} references a resource absent from the snapshot.`,
+          );
+          return [];
+        });
+        result[key] = Object.defineProperty(resources, "count", { get: () => resources.length });
+        continue;
+      }
       const resource = {
         product: "all_products",
         collection: "collections",
@@ -593,14 +614,7 @@ export async function renderTheme(
             `Setting ${key} references a resource absent from the snapshot.`,
           );
       } else if (
-        [
-          "video",
-          "video_url",
-          "product_list",
-          "collection_list",
-          "metaobject",
-          "metaobject_list",
-        ].includes(definition.type)
+        ["video", "video_url", "metaobject", "metaobject_list"].includes(definition.type)
       ) {
         result[key] = null;
         if (raw)
@@ -610,6 +624,30 @@ export async function renderTheme(
     return result;
   }
   let settingsConfig: LiquidRecord = {};
+  function closestSettings(
+    definitions: z.infer<typeof settingSchema>[],
+    resolved: LiquidRecord,
+    inherited: unknown,
+  ): LiquidRecord {
+    const parent = object(inherited) ? inherited : {};
+    const closest = Object.defineProperties({}, Object.getOwnPropertyDescriptors(parent));
+    const assigned = new Set<string>();
+    for (const definition of definitions) {
+      const key = definition.id;
+      const type = definition.type;
+      if (!key || !["product", "collection", "page", "blog"].includes(type) || assigned.has(type))
+        continue;
+      assigned.add(type);
+      Object.defineProperty(closest, type, {
+        enumerable: true,
+        configurable: true,
+        get() {
+          return resolved[key];
+        },
+      });
+    }
+    return closest;
+  }
   let settingsPointer = "config/settings_data.json#/current";
   if (files.has("config/settings_data.json")) {
     const config = settingsDataSchema.parse(
@@ -669,6 +707,21 @@ export async function renderTheme(
     suffix: route.template.slice(10, -5).split(".")[1] ?? null,
   };
   globals.current_page = Number(route.query.page ?? 1);
+  const systemText = translateFactory(files, snapshot.shop.locale, () => undefined);
+  Object.defineProperty(globals, "powered_by_link", {
+    enumerable: true,
+    get() {
+      if (snapshot.shop.locale.split("-")[0] !== "en")
+        diagnostic(
+          "not-implemented",
+          "Localized Shopify marketing URLs are unavailable; the default Shopify URL is used.",
+        );
+      const label = systemText("shopify.links.powered_by_shopify", [], (key) =>
+        diagnostic("missing-resource", `Translation ${key} is missing.`),
+      );
+      return `<a target="_blank" rel="nofollow" href="https://www.shopify.com?utm_campaign=poweredby&amp;utm_medium=shopify&amp;utm_source=onlinestore">${label}</a>`;
+    },
+  });
   registerPageMetadata(globals, snapshot, route, {
     read: readSnapshot,
     unsupported: (message) => diagnostic("not-implemented", message),
@@ -678,6 +731,7 @@ export async function renderTheme(
     config: SectionConfig,
     configFile: string,
     groupType?: string,
+    index: number | null = null,
   ): Promise<string> {
     const file = themePath(`sections/${config.type}.liquid`);
     const pointer = id.replaceAll("~", "~0").replaceAll("/", "~1");
@@ -746,13 +800,25 @@ export async function renderTheme(
           : id;
       const sectionData = {
         id: sectionId,
-        settings: settings(schema.settings, config.settings, () => sectionContext),
+        settings: settings(
+          schema.settings,
+          config.settings,
+          () => sectionContext,
+          () => sectionContext.spawn({ closest: globals.closest }),
+        ),
         blocks,
-        index: null,
-        location: groupType ?? "template",
+        index: options.designMode ? null : index,
+        index0: options.designMode || index === null ? null : index - 1,
+        location: groupType ?? (index === null ? "static" : "template"),
       };
       const sectionGlobals = Object.defineProperties({}, Object.getOwnPropertyDescriptors(globals));
       Object.defineProperty(sectionGlobals, "section", { value: sectionData, enumerable: true });
+      const closest = closestSettings(schema.settings, sectionData.settings, globals.closest);
+      Object.defineProperty(sectionGlobals, "closest", {
+        value: closest,
+        enumerable: true,
+        configurable: true,
+      });
       const context = new PreviewContext({ section: sectionData }, engine.options, {
         globals: sectionGlobals,
       });
@@ -820,10 +886,32 @@ export async function renderTheme(
       }
       sectionLocales.set(entry.id, schema.locales);
       const inherited: unknown = caller.getSync(["closest"]);
-      const closest = object(inherited)
+      const resourceParent = object(inherited)
         ? Object.defineProperties({}, Object.getOwnPropertyDescriptors(inherited))
         : {};
+      for (const [key, value] of Object.entries(args))
+        if (key.startsWith("closest."))
+          Object.defineProperty(resourceParent, key.slice(8), {
+            value,
+            enumerable: true,
+            configurable: true,
+          });
       const parameters: LiquidRecord = {};
+      let blockContext: Context;
+      const blockData = {
+        id,
+        type: config.type,
+        settings: settings(
+          schema.settings,
+          config.settings,
+          () => blockContext,
+          () => blockContext.spawn({ closest: resourceParent }),
+        ),
+        shopify_attributes: options.designMode
+          ? `data-shopify-editor-block="${escapeHtml(JSON.stringify({ id, type: config.type }))}"`
+          : "",
+      };
+      const closest = closestSettings(schema.settings, blockData.settings, inherited);
       for (const [key, value] of Object.entries(args)) {
         if (key.startsWith("closest."))
           Object.defineProperty(closest, key.slice(8), {
@@ -834,15 +922,6 @@ export async function renderTheme(
         else if (!["id", "type"].includes(key))
           Object.defineProperty(parameters, key, { value, enumerable: true });
       }
-      let blockContext: Context;
-      const blockData = {
-        id,
-        type: config.type,
-        settings: settings(schema.settings, config.settings, () => blockContext),
-        shopify_attributes: options.designMode
-          ? `data-shopify-editor-block="${escapeHtml(JSON.stringify({ id, type: config.type }))}"`
-          : "",
-      };
       const scope = Object.defineProperties({}, Object.getOwnPropertyDescriptors(caller.globals));
       for (const [key, value] of Object.entries({
         block: blockData,
@@ -878,10 +957,11 @@ export async function renderTheme(
   async function assembly(file: string, groupType?: string): Promise<string> {
     const config = templateConfig(source(file), file);
     let result = "";
+    let index = 0;
     for (const id of config.order) {
       const configured = config.sections[id];
       if (configured && !configured.disabled)
-        result += await section(id, configured, file, groupType);
+        result += await section(id, configured, file, groupType, ++index);
     }
     return result;
   }

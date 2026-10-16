@@ -394,6 +394,48 @@ export function liquidObjects(
     products.set(source.handle, product);
     for (const variant of variants) Object.defineProperty(variant, "product", { value: product });
   }
+  function storefrontFilters(members: LiquidRecord[]) {
+    const query = new URL(route.path, "https://offline.invalid");
+    return snapshot.filters.map((filter, index) => {
+      if (filter.type !== "price_range") return filter;
+      const minimum = `${filter.id}.gte`,
+        maximum = `${filter.id}.lte`;
+      const selected = (name: string) => {
+        const value = query.searchParams.get(name);
+        if (!value || !/^\d+(?:\.\d{1,2})?$/.test(value)) return null;
+        try {
+          return liquidPrice(value);
+        } catch {
+          return null;
+        }
+      };
+      const removed = new URL(query);
+      removed.searchParams.delete(minimum);
+      removed.searchParams.delete(maximum);
+      removed.searchParams.delete("page");
+      return tracked(
+        {
+          id: filter.id,
+          label: filter.label,
+          type: filter.type,
+          param_name: filter.id,
+          values: [],
+          active_values: [],
+          inactive_values: [],
+          operator: null,
+          min_value: { param_name: minimum, value: selected(minimum) },
+          max_value: { param_name: maximum, value: selected(maximum) },
+          range_max: members.reduce(
+            (maximum, product) => Math.max(maximum, Number(product.price_max) || 0),
+            0,
+          ),
+          url_to_remove: removed.pathname + removed.search,
+        },
+        "filter",
+        `filters[${index}]`,
+      );
+    });
+  }
   for (const [collectionIndex, source] of snapshot.collections.entries()) {
     const members = source.products.flatMap((handle) => {
       const product = products.get(handle);
@@ -424,7 +466,9 @@ export function liquidObjects(
           current_vendor: null,
           current_type: null,
           sort_by: route.sortBy,
-          filters: snapshot.filters,
+          get filters() {
+            return storefrontFilters(members);
+          },
         },
         "collection",
         `collections[${collectionIndex}]`,
@@ -478,7 +522,9 @@ export function liquidObjects(
           current_vendor: null,
           current_type: null,
           sort_by: route.sortBy,
-          filters: snapshot.filters,
+          get filters() {
+            return storefrontFilters(members);
+          },
         },
         "collection",
         "collections.all",
@@ -689,7 +735,17 @@ export function liquidObjects(
       cart_level_discount_applications: [],
       discount_applications: [],
       attributes: {},
-      currency: { iso_code: snapshot.shop.currency },
+      currency: {
+        iso_code: snapshot.shop.currency,
+        symbol:
+          new Intl.NumberFormat("en", {
+            style: "currency",
+            currency: snapshot.shop.currency,
+            currencyDisplay: "narrowSymbol",
+          })
+            .formatToParts(0)
+            .find((part) => part.type === "currency")?.value ?? snapshot.shop.currency,
+      },
       ...availableFields({
         taxes_included: snapshot.cart.taxesIncluded,
         duties_included: snapshot.cart.dutiesIncluded,
@@ -792,7 +848,11 @@ export function liquidObjects(
         { name: "Price, low to high", value: "price-ascending" },
         { name: "Price, high to low", value: "price-descending" },
       ],
-      filters: snapshot.filters,
+      get filters() {
+        return storefrontFilters(
+          matching().filter((value) => liquidObjectKind(value) === "product"),
+        );
+      },
     },
     "search",
     "search",
@@ -883,6 +943,71 @@ export function liquidObjects(
       all_products_collection_url: "/collections/all",
     },
   };
+  if (snapshot.localization) {
+    const source = snapshot.localization;
+    const countries = source.availableCountries.map((country, index) =>
+      tracked(
+        {
+          iso_code: country.isoCode,
+          ...availableFields({ name: country.name }),
+          ...(country.currency
+            ? {
+                currency: tracked(
+                  {
+                    iso_code: country.currency.isoCode,
+                    ...availableFields({
+                      symbol: country.currency.symbol,
+                      name: country.currency.name,
+                    }),
+                  },
+                  "currency",
+                  `localization.availableCountries[${index}].currency`,
+                  { iso_code: "isoCode" },
+                ),
+              }
+            : {}),
+        },
+        "country",
+        `localization.availableCountries[${index}]`,
+        { iso_code: "isoCode" },
+      ),
+    );
+    const languages = source.availableLanguages.map((language, index) =>
+      tracked(
+        {
+          iso_code: language.isoCode,
+          ...availableFields({
+            name: language.name,
+            endonym_name: language.endonymName,
+            primary: language.primary,
+            root_url: language.rootUrl,
+          }),
+        },
+        "shop_locale",
+        `localization.availableLanguages[${index}]`,
+        { iso_code: "isoCode", endonym_name: "endonymName", root_url: "rootUrl" },
+      ),
+    );
+    globals.localization = tracked(
+      {
+        available_countries: countries,
+        available_languages: languages,
+        country: countries.find((country) => country.iso_code === source.country),
+        language: languages.find((language) => language.iso_code === source.language),
+      },
+      "localization",
+      "localization",
+      { available_countries: "availableCountries", available_languages: "availableLanguages" },
+    );
+  } else {
+    Object.defineProperty(globals, "localization", {
+      enumerable: true,
+      get() {
+        hooks.unsupportedOperation?.("Localization availability is absent from the snapshot.");
+        return null;
+      },
+    });
+  }
   if (snapshot.shop.policies !== undefined) {
     const shop = globals.shop;
     if (

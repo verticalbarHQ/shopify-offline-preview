@@ -4,6 +4,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defaultFixture } from "../../data/src/fixture.js";
+import { snapshotImages } from "../../data/src/images.js";
 import { applyScenario, validateSnapshotReferences } from "../../data/src/scenarios.js";
 import { parseSnapshot, type Snapshot } from "../../data/src/schema.js";
 import { type RenderResult, renderTheme } from "../../render/src/index.js";
@@ -272,13 +273,7 @@ export async function startDevServer(options: DevOptions): Promise<DevSession> {
     if (url.pathname.startsWith("/sop/images/")) {
       const file = themePath(decodeURIComponent(url.pathname.slice("/sop/images/".length)));
       const data = await snapshot();
-      const images = [
-        ...data.products.flatMap((product) => product.images),
-        ...data.collections.flatMap((collection) => (collection.image ? [collection.image] : [])),
-        ...data.blogs.flatMap((blog) =>
-          blog.articles.flatMap((article) => (article.image ? [article.image] : [])),
-        ),
-      ];
+      const images = snapshotImages(data);
       try {
         if (!images.some((image) => image.file === file))
           throw new Error("Image is absent from the snapshot");

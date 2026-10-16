@@ -9,6 +9,41 @@ const seo = z.strictObject({
   title: z.string().nullable().optional(),
   description: z.string().nullable().optional(),
 });
+const localization = z
+  .strictObject({
+    availableCountries: z.array(
+      z.strictObject({
+        isoCode: z.string().min(1),
+        name: z.string().optional(),
+        currency: z
+          .strictObject({
+            isoCode: z.string(),
+            symbol: z.string().optional(),
+            name: z.string().optional(),
+          })
+          .optional(),
+      }),
+    ),
+    availableLanguages: z.array(
+      z.strictObject({
+        isoCode: z.string().min(1),
+        name: z.string().optional(),
+        endonymName: z.string().optional(),
+        primary: z.boolean().optional(),
+        rootUrl: z.string().optional(),
+      }),
+    ),
+    country: z.string(),
+    language: z.string(),
+  })
+  .refine(
+    (value) => value.availableCountries.some((country) => country.isoCode === value.country),
+    "Selected localization country must be available",
+  )
+  .refine(
+    (value) => value.availableLanguages.some((language) => language.isoCode === value.language),
+    "Selected localization language must be available",
+  );
 const imagePathPattern =
   // biome-ignore lint/suspicious/noControlCharactersInRegex: NUL must be rejected in local file paths and their published JSON Schema.
   /^(?!\/)(?!.*[\\\u0000])(?!.*(?:^|\/)\.{1,2}(?:\/|$))(?!.*\/\/)(?!.*\/$).+$/;
@@ -169,6 +204,7 @@ export const snapshotSchema = z.strictObject({
   placeholderSvgs: z
     .partialRecord(z.enum(placeholderNames), z.string().min(1).max(2_000_000))
     .optional(),
+  localization: localization.optional(),
   images: z
     .array(
       image.extend({
