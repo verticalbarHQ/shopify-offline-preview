@@ -193,5 +193,5 @@ test("tag and metafield filter operators come from the snapshot, never a guess",
   vendor.filters = [
     { id: "filter.p.vendor", label: "Vendor", type: "list", operator: "AND", values: [] },
   ];
-  assert.throws(() => parseSnapshot(JSON.stringify(vendor)), /configurable operator/);
+  assert.throws(() => parseSnapshot(JSON.stringify(vendor)));
 });

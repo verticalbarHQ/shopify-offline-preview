@@ -115,7 +115,8 @@ export function storefrontQuery(
     }
     const selected = query.searchParams.getAll(filter.id);
     const matches = predicate(filter);
-    const operator = filterOperatorConfigurable(filter) ? filter.operator : "OR";
+    const configured = "operator" in filter ? filter.operator : undefined;
+    const operator = filterOperatorConfigurable(filter) ? configured : "OR";
     if (selected.length && !matches && options.apply)
       options.unsupported(
         `Storefront filter ${filter.id} cannot be decided from the snapshot; results are not filtered by it.`,

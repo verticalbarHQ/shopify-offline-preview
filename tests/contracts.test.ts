@@ -50,6 +50,24 @@ test("check output and render contract example validate against published JSON S
   assert.equal(render({ html: "" }), false);
 });
 
+test("the published snapshot schema and the parser agree on which filters take an operator", async () => {
+  const validate = await validator("snapshot");
+  const cases = [
+    [{ id: "filter.p.tag", type: "list", operator: "AND" }, true],
+    [{ id: "filter.p.m.custom.fabric", type: "list", operator: "OR" }, true],
+    [{ id: "filter.p.vendor", type: "list" }, true],
+    [{ id: "filter.p.vendor", type: "list", operator: "AND" }, false],
+    [{ id: "filter.p.tag", type: "boolean", operator: "AND" }, false],
+  ] as const;
+  for (const [filter, valid] of cases) {
+    const input = snapshot();
+    input.filters = [{ ...filter, label: "Filter", values: [] }];
+    assert.equal(validate(input), valid, JSON.stringify(filter));
+    if (valid) parseSnapshot(JSON.stringify(input));
+    else assert.throws(() => parseSnapshot(JSON.stringify(input)), Error, JSON.stringify(filter));
+  }
+});
+
 test("snapshot contract accepts externally prepared inputs and rejects invalid source values", async () => {
   const input = snapshot();
   input.products.push({
