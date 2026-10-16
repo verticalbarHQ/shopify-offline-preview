@@ -13,7 +13,7 @@ import { z } from "zod";
 import type { Diagnostic } from "../../check/src/contracts.js";
 import { defaultFixture } from "../../data/src/fixture.js";
 import { ImageDirectory, NamedImageDrop } from "../../data/src/images.js";
-import { type LiquidRecord, liquidObjects } from "../../data/src/objects.js";
+import { type LiquidRecord, liquidObjects, ScalarDrop } from "../../data/src/objects.js";
 import { applyScenario, validateSnapshotReferences } from "../../data/src/scenarios.js";
 import { type Snapshot, snapshotSchema } from "../../data/src/schema.js";
 import { registry } from "../../spec/src/index.js";
@@ -104,8 +104,6 @@ export async function renderTheme(
   );
   validateSnapshotReferences(snapshot);
   registerSnapshotHashes(snapshot);
-  const route = resolveRoute(snapshot, path);
-  const diagnostics: Diagnostic[] = [...route.diagnostics];
   const data = new Map<string, Set<string>>();
   const tree: RenderNode[] = [];
   const stack: RenderNode[] = [];
@@ -113,6 +111,8 @@ export async function renderTheme(
   let serial = 0;
   const files = new Map<string, string>();
   const allPaths = new Set(await theme.listFiles());
+  const route = resolveRoute(snapshot, path, (file) => allPaths.has(file));
+  const diagnostics: Diagnostic[] = [...route.diagnostics];
   const sectionLocales = new Map<string, unknown>();
   for (const file of allPaths)
     if (
@@ -201,6 +201,9 @@ export async function renderTheme(
       read: readSnapshot,
       unsupportedOperation(message) {
         diagnostic("not-implemented", message);
+      },
+      missing(message) {
+        diagnostic("missing-resource", message);
       },
       unsupported(type, property) {
         diagnostic(
@@ -470,6 +473,62 @@ export async function renderTheme(
     diagnostic("missing-resource", `Setting ${key} references an image absent from the snapshot.`);
     return null;
   }
+  /** Theme-editor resource URIs resolve to storefront paths; absent resources resolve to nil. */
+  function urlSetting(value: unknown, key: string): unknown {
+    if (typeof value !== "string" || !value.startsWith("shopify://")) return value ?? null;
+    const parts = value.slice("shopify://".length).split("/");
+    let decoded: string[];
+    try {
+      decoded = parts.map(decodeURIComponent);
+    } catch {
+      decoded = [];
+    }
+    const [namespace, handle = "", child] = decoded;
+    const dictionary =
+      { products: "all_products", collections: "collections", pages: "pages", blogs: "blogs" }[
+        namespace ?? ""
+      ] ?? null;
+    if (!dictionary || decoded.length > (namespace === "blogs" ? 3 : 2)) {
+      diagnostic("not-implemented", `Setting ${key} uses an unsupported resource URL ${value}.`);
+      return null;
+    }
+    const resource =
+      namespace === "blogs" && child !== undefined
+        ? articleSetting(`${handle}/${child}`, key)
+        : lookup(dictionary, handle);
+    if (resource === null) {
+      if (!(namespace === "blogs" && child !== undefined))
+        diagnostic(
+          "missing-resource",
+          `Setting ${key} references a resource absent from the snapshot.`,
+        );
+      return null;
+    }
+    return object(resource) ? (resource.url ?? null) : null;
+  }
+  function lookup(dictionaryName: string, handle: string): unknown {
+    const dictionary = globals[dictionaryName];
+    return object(dictionary) && Object.hasOwn(dictionary, handle)
+      ? Reflect.get(dictionary, handle)
+      : null;
+  }
+  /** Article settings store `<blog handle>/<article handle>`. */
+  function articleSetting(value: unknown, key: string): unknown {
+    const [blogHandle = "", articleHandle, extra] =
+      typeof value === "string" ? value.split("/") : [];
+    const blog =
+      articleHandle !== undefined && extra === undefined ? lookup("blogs", blogHandle) : null;
+    const articles = object(blog) ? blog.articles : null;
+    const article = Array.isArray(articles)
+      ? articles.find((entry) => object(entry) && entry.handle === articleHandle)
+      : undefined;
+    if (article !== undefined) return article;
+    diagnostic(
+      "missing-resource",
+      `Setting ${key} references a resource absent from the snapshot.`,
+    );
+    return null;
+  }
   let globalSettingsContext: Context;
   const colorGroups = new Map<string, ColorSchemeGroup>();
   function settings(
@@ -575,6 +634,14 @@ export async function renderTheme(
       }
       if (definition.type === "image_picker") {
         result[key] = imageSetting(raw, key);
+        continue;
+      }
+      if (definition.type === "url") {
+        result[key] = urlSetting(raw, key);
+        continue;
+      }
+      if (definition.type === "article") {
+        result[key] = raw ? articleSetting(raw, key) : null;
         continue;
       }
       if (["collection_list", "product_list"].includes(definition.type)) {
@@ -702,10 +769,16 @@ export async function renderTheme(
       return assetBundles.header();
     },
   });
-  globals.template = {
-    name: route.pageType,
-    suffix: route.template.slice(10, -5).split(".")[1] ?? null,
-  };
+  const templateSuffix = route.template.slice(10, -5).split(".")[1] ?? null;
+  globals.template = new ScalarDrop(
+    { name: route.pageType, suffix: templateSuffix, directory: null },
+    templateSuffix ? `${route.pageType}.${templateSuffix}` : route.pageType,
+    (property) =>
+      diagnostic(
+        "not-implemented",
+        `Object property template.${property} is not available offline.`,
+      ),
+  );
   globals.current_page = Number(route.query.page ?? 1);
   const systemText = translateFactory(files, snapshot.shop.locale, () => undefined);
   Object.defineProperty(globals, "powered_by_link", {

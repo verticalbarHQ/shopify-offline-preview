@@ -125,7 +125,8 @@ async function renderCommand(args: string[]): Promise<number> {
     );
     validateSnapshotReferences(snapshot);
     const theme = new NodeThemeFileSystem(target);
-    const route = resolveRoute(snapshot, path);
+    const themeFiles = new Set(await theme.listFiles());
+    const route = resolveRoute(snapshot, path, (file) => themeFiles.has(file));
     templateConfig(await theme.readText(route.template), route.template);
     phase = 4;
     const result = await renderTheme(theme, path, {

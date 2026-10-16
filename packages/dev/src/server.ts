@@ -11,6 +11,7 @@ import { type RenderResult, renderTheme } from "../../render/src/index.js";
 import { themePath } from "../../theme/src/index.js";
 import { NodeThemeFileSystem } from "../../theme/src/node.js";
 import { isBlockedEndpoint } from "./endpoints.js";
+import { missingImageSvg } from "./missing-image.js";
 import { inspectorHtml } from "./shell.js";
 import { servedPreview } from "./view.js";
 
@@ -286,11 +287,12 @@ export async function startDevServer(options: DevOptions): Promise<DevSession> {
         });
         response.end(bytes);
       } catch {
-        const dimension = (key: string) =>
-          Math.min(8192, Math.max(1, Number(url.searchParams.get(key)) || 64));
         response.writeHead(200, { "Content-Type": "image/svg+xml; charset=utf-8" });
         response.end(
-          `<svg xmlns="http://www.w3.org/2000/svg" width="${dimension("width")}" height="${dimension("height")}" viewBox="0 0 64 64"><rect width="64" height="64" fill="#e2e8f0"/><path d="M12 46l14-16 10 9 7-7 9 14z" fill="#94a3b8"/><circle cx="44" cy="20" r="6" fill="#94a3b8"/></svg>`,
+          missingImageSvg(
+            Number(url.searchParams.get("width")),
+            Number(url.searchParams.get("height")),
+          ),
         );
       }
       return;

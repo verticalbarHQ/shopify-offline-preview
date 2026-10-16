@@ -284,3 +284,18 @@ test("image assignment compatibility does not suppress errors from other filters
   assert.ok(result.diagnostics.some((d) => d.code === "liquid-error"));
   assert.ok(result.html.includes("After"));
 });
+
+test("image_tag removes attributes passed as Liquid nil, as Horizon's product media does", async () => {
+  const snapshot = defaultFixture();
+  const theme = new MemoryThemeFileSystem({
+    ...files,
+    "sections/main.liquid": `{{product.featured_image | image_url: width: 64 | image_tag: srcset: nil, sizes: null, width: nil, preload: nil, class: 'own'}}`,
+  });
+  const result = await renderTheme(theme, `/products/${snapshot.products[0]?.handle}`, {
+    snapshot,
+  });
+  assert.ok(result.html.includes('height="64" class="own">'), result.html);
+  for (const absent of ["srcset=", "sizes=", ' width="', "[object Object]", 'rel="preload"'])
+    assert.ok(!result.html.includes(absent), `${absent}: ${result.html}`);
+  assert.equal(result.diagnostics.length, 0);
+});

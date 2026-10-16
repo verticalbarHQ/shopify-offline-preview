@@ -25,8 +25,15 @@ export interface ResolvedRoute {
   diagnostics: Diagnostic[];
 }
 
-/** Resolves source resources only; missing resources are never synthesized. */
-export function resolveRoute(snapshot: Snapshot, input: string): ResolvedRoute {
+/**
+ * Resolves source resources only; missing resources are never synthesized. With `hasTemplate`,
+ * an alternate template absent from the theme falls back to the assigned, then default template.
+ */
+export function resolveRoute(
+  snapshot: Snapshot,
+  input: string,
+  hasTemplate: (file: string) => boolean = () => true,
+): ResolvedRoute {
   if (!input.startsWith("/") || input.startsWith("//") || input.includes("\\"))
     throw new Error("Render requires a local URL path");
   const url = new URL(input, "https://offline.invalid");
@@ -97,13 +104,29 @@ export function resolveRoute(snapshot: Snapshot, input: string): ResolvedRoute {
       message: "The requested resource is not present in the local snapshot.",
     });
   const view = url.searchParams.get("view");
-  if (view !== null) suffix = view || null;
-  if (suffix !== null && !/^[a-zA-Z0-9_-]+$/.test(suffix))
-    throw new Error("Invalid alternate template suffix");
+  const suffixes = [...new Set([...(view === null ? [] : [view || null]), suffix, null])];
+  for (const candidate of suffixes)
+    if (candidate !== null && !/^[a-zA-Z0-9_-]+$/.test(candidate))
+      throw new Error("Invalid alternate template suffix");
+  const templates = suffixes.map((candidate) =>
+    themePath(`templates/${pageType}${candidate ? `.${candidate}` : ""}.json`),
+  );
+  const requested = templates[0] ?? themePath(`templates/${pageType}.json`);
+  // An absent default template stays fatal when it is loaded.
+  const template = templates.find(hasTemplate) ?? templates.at(-1) ?? requested;
+  if (template !== requested)
+    diagnostics.push({
+      code: "missing-resource",
+      severity: "warning",
+      file: null,
+      line: null,
+      nodeId: null,
+      message: `Template ${requested} is absent from the theme; ${template} is rendered.`,
+    });
   return {
     path: url.pathname + url.search,
     pageType,
-    template: themePath(`templates/${pageType}${suffix ? `.${suffix}` : ""}.json`),
+    template,
     resource,
     query: {
       variant: url.searchParams.get("variant"),

@@ -66,6 +66,37 @@ const rows = [];
 function flatten(nodes: RenderNode[]): RenderNode[] {
   return nodes.flatMap((node) => [node, ...flatten(node.children)]);
 }
+/** Evaluates in the preview frame at `previewUrl` once it returns a non-null value. */
+async function inPreview(previewUrl: string, expression: string): Promise<unknown> {
+  for (let attempt = 0; attempt < 200; attempt++) {
+    const frames = z
+      .object({
+        frameTree: z.object({
+          childFrames: z
+            .array(z.object({ frame: z.object({ id: z.string(), url: z.string() }) }))
+            .optional(),
+        }),
+      })
+      .parse(await client.call("Page.getFrameTree", {}, attached.sessionId));
+    const frameId = frames.frameTree.childFrames?.find((frame) => frame.frame.url === previewUrl)
+      ?.frame.id;
+    const frameContext = frameId ? contexts.get(frameId) : undefined;
+    if (frameContext !== undefined) {
+      try {
+        const value = await client.evaluate(attached.sessionId, expression, frameContext);
+        if (value !== null) return value;
+      } catch (error) {
+        if (
+          !(error instanceof Error) ||
+          !/Cannot find context|Execution context was destroyed/.test(error.message)
+        )
+          throw error;
+      }
+    }
+    await delay(50);
+  }
+  return null;
+}
 const wait = `async predicate => {const until=Date.now()+10000;while(!predicate()){if(Date.now()>until) throw new Error('Inspector did not become ready');await new Promise(resolve=>setTimeout(resolve,20));}}`;
 try {
   for (const [index, item] of manifest.entries()) {
@@ -155,46 +186,15 @@ try {
         path: z.string(),
         viewId: z.string(),
       });
-      let child: z.infer<typeof childSchema> | undefined;
       // The parent is ready before iframe navigation finishes. Read the bridge and
       // measurements atomically from this generation, never from a prior same-route view.
-      for (let attempt = 0; attempt < 200; attempt++) {
-        const frames = z
-          .object({
-            frameTree: z.object({
-              childFrames: z
-                .array(z.object({ frame: z.object({ id: z.string(), url: z.string() }) }))
-                .optional(),
-            }),
-          })
-          .parse(await client.call("Page.getFrameTree", {}, attached.sessionId));
-        const frameId = frames.frameTree.childFrames?.find(
-          (frame) => frame.frame.url === actual.previewUrl,
-        )?.frame.id;
-        const frameContext = frameId ? contexts.get(frameId) : undefined;
-        if (frameContext !== undefined) {
-          try {
-            const observation = await client.evaluate(
-              attached.sessionId,
-              `(()=>{if(location.href!==${JSON.stringify(actual.previewUrl)})return null;const element=document.getElementById('sop-bridge-config');const badges=document.getElementById('sop-diagnostic-badges');if(!element||!badges)return null;const config=JSON.parse(element.textContent);return {regions:config.regions.filter(region=>document.getElementById(region.domId)).length,badges:badges.children.length,path:config.path,viewId:config.viewId};})()`,
-              frameContext,
-            );
-            if (observation !== null) {
-              child = childSchema.parse(observation);
-              assert.equal(child.viewId, viewId, `${item.name}/${page.id}: stale preview view`);
-              break;
-            }
-          } catch (error) {
-            if (
-              !(error instanceof Error) ||
-              !/Cannot find context|Execution context was destroyed/.test(error.message)
-            )
-              throw error;
-          }
-        }
-        await delay(50);
-      }
+      const observation = await inPreview(
+        actual.previewUrl,
+        `(()=>{if(location.href!==${JSON.stringify(actual.previewUrl)})return null;const element=document.getElementById('sop-bridge-config');const badges=document.getElementById('sop-diagnostic-badges');if(!element||!badges)return null;const config=JSON.parse(element.textContent);return {regions:config.regions.filter(region=>document.getElementById(region.domId)).length,badges:badges.children.length,path:config.path,viewId:config.viewId};})()`,
+      );
+      const child = observation === null ? undefined : childSchema.parse(observation);
       assert.ok(child, `${item.name}/${page.id}: current iframe bridge absent`);
+      assert.equal(child.viewId, viewId, `${item.name}/${page.id}: stale preview view`);
       assert.equal(child.path, page.path, `${item.name}/${page.id}: preview route changed`);
       rows.push({
         theme: item.name,
@@ -210,6 +210,33 @@ try {
         `${item.name}/${page.id}: ${actual.nodes} source nodes; ${child.regions} regions; CLI diagnostics equal`,
       );
     }
+    // The theme's own add-to-cart script must reach the blocked-endpoint contract through
+    // routes.cart_add_url (Dawn posts to it; Horizon appends `.js`).
+    const previewUrl = z
+      .string()
+      .url()
+      .parse(
+        await client.evaluate(
+          attached.sessionId,
+          `(async()=>{document.querySelector('#path').value='/products/sop-matrix-needle';document.querySelector('#scenario').value='default';document.querySelector('#controls').requestSubmit();await (${wait})(()=>document.querySelector('#status').dataset.state==='ready');window.SOP_INSPECTOR_STATE.runtime=[];return document.querySelector('#preview').src;})()`,
+        ),
+      );
+    const clicked = await inPreview(
+      previewUrl,
+      `(()=>{if(location.href!==${JSON.stringify(previewUrl)}||!document.getElementById('sop-diagnostic-badges'))return null;const button=document.querySelector('form[action="/cart/add"] button[type=submit]');if(!button||button.disabled)return 'unavailable';button.click();return 'clicked';})()`,
+    );
+    assert.equal(clicked, "clicked", `${item.name}: product form submit button`);
+    const blocked = await client.evaluate(
+      attached.sessionId,
+      `(async()=>{await (${wait})(()=>window.SOP_INSPECTOR_STATE.runtime.some(d=>d.code==='blocked-endpoint'));return window.SOP_INSPECTOR_STATE.runtime.filter(d=>d.code==='blocked-endpoint').map(d=>d.message);})()`,
+    );
+    const messages = z.array(z.string()).parse(blocked);
+    assert.ok(
+      messages.some((message) => /^\/cart\/add(?:\.js)?: /.test(message)),
+      `${item.name}: add to cart did not report a blocked cart endpoint: ${messages.join("; ")}`,
+    );
+    rows.push({ theme: item.name, case: "add-to-cart", blockedEndpoints: messages });
+    console.log(`${item.name}/add-to-cart: ${messages.join("; ")}`);
   }
   await writeFile(
     ".local/results/inspector-browser-summary.json",

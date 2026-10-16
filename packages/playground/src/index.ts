@@ -18,7 +18,8 @@ import { playgroundPreview } from "./preview.js";
 let theme: MemoryThemeFileSystem | undefined;
 let themeFiles: BrowserFiles = Object.create(null);
 let snapshot = defaultFixture();
-let images: BrowserFiles = Object.create(null);
+/** Image files of the opened snapshot; null while the bundled fixture is in use. */
+let images: BrowserFiles | null = null;
 let themeHandle: DirectoryHandle | undefined;
 let dataHandle: DirectoryHandle | undefined;
 let started = false;
@@ -77,16 +78,21 @@ async function setSnapshot(files: BrowserFiles) {
   const value = parseSnapshot(new TextDecoder().decode(content));
   validateSnapshotReferences(value);
   const localImages: BrowserFiles = Object.create(null);
+  const missing: string[] = [];
   for (const file of imageNames(value)) {
     const bytes = files[`images/${file}`];
-    if (!bytes) throw new Error(`Snapshot image missing: images/${file}`);
-    localImages[file] = bytes;
+    if (bytes) localImages[file] = bytes;
+    else missing.push(file);
   }
   errors.snapshot = null;
   snapshot = value;
   images = localImages;
   revision++;
-  notify("Snapshot and images loaded in this browser");
+  notify(
+    missing.length
+      ? `Snapshot loaded in this browser; ${missing.length} image file(s) missing under images/ show placeholders (first: images/${missing[0]})`
+      : "Snapshot and images loaded in this browser",
+  );
   await mount();
 }
 const transport: InspectorTransport = {
@@ -112,7 +118,7 @@ const transport: InspectorTransport = {
   },
   async preview(frame, result, input, viewId, signal) {
     const current = revision;
-    const localImages = Object.keys(images).length ? images : await defaultImages;
+    const localImages = images ?? (await defaultImages);
     const html = await playgroundPreview(
       result,
       applyScenario(snapshot, input.scenario),
@@ -201,7 +207,7 @@ document.querySelector("#default-snapshot")?.addEventListener("click", () => {
   selections.snapshot++;
   errors.snapshot = null;
   snapshot = defaultFixture();
-  images = Object.create(null);
+  images = null;
   dataHandle = undefined;
   revision++;
   notify("Using the bundled fixture");

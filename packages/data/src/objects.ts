@@ -1,7 +1,9 @@
 import { Drop } from "liquidjs";
+import { handleize } from "./handle.js";
 import { ImageDirectory } from "./images.js";
-import type { Snapshot } from "./schema.js";
+import type { MenuLink, Snapshot } from "./schema.js";
 import { type SearchCandidate, searchResults } from "./search.js";
+import { storefrontQuery } from "./storefront-filters.js";
 
 export type LiquidRecord = Record<string, unknown>;
 const objectKinds = new WeakMap<object, string>();
@@ -12,10 +14,53 @@ export function preserveLiquidObjectKind(source: unknown, target: object): void 
   const kind = liquidObjectKind(source);
   if (kind !== undefined) objectKinds.set(target, kind);
 }
+/**
+ * Standard storefront paths for the primary locale. Customer-account profile and storefront
+ * login URLs depend on the shop's account host, so they stay absent and are diagnosed on access.
+ */
+const routePaths = {
+  root_url: "/",
+  account_url: "/account",
+  account_login_url: "/account/login",
+  account_logout_url: "/account/logout",
+  account_recover_url: "/account/recover",
+  account_register_url: "/account/register",
+  account_addresses_url: "/account/addresses",
+  collections_url: "/collections",
+  all_products_collection_url: "/collections/all",
+  search_url: "/search",
+  predictive_search_url: "/search/suggest",
+  cart_url: "/cart",
+  cart_add_url: "/cart/add",
+  cart_change_url: "/cart/change",
+  cart_clear_url: "/cart/clear",
+  cart_update_url: "/cart/update",
+  product_recommendations_url: "/recommendations/products",
+} as const;
+/** A Liquid object that outputs and compares as a scalar, like Shopify's `template` drop. */
+export class ScalarDrop extends Drop {
+  readonly #scalar: unknown;
+  readonly #missing: ((property: string) => void) | undefined;
+  constructor(fields: LiquidRecord, scalar: unknown, missing?: (property: string) => void) {
+    super();
+    Object.defineProperties(this, Object.getOwnPropertyDescriptors(fields));
+    this.#scalar = scalar;
+    this.#missing = missing;
+  }
+  valueOf() {
+    return this.#scalar;
+  }
+  override liquidMethodMissing(property: string | number) {
+    this.#missing?.(String(property));
+    return undefined;
+  }
+}
 export interface ObjectHooks {
   read(path: string): void;
   unsupported(type: string, property: string): void;
   unsupportedOperation?(message: string): void;
+  /** A source reference names a resource absent from the snapshot; it resolves to nil. */
+  missing?(message: string): void;
 }
 export interface RouteContext {
   pageType: string;
@@ -111,7 +156,7 @@ export function liquidObjects(
           typeof key === "string" &&
           !internal.has(key) &&
           !Array.isArray(target) &&
-          !["settings", "dictionary", "metafields"].includes(type)
+          !["settings", "dictionary", "metafields", "metaobject"].includes(type)
         )
           hooks.unsupported(type, key);
         return descriptor;
@@ -125,8 +170,16 @@ export function liquidObjects(
             hooks.read(Array.isArray(target) ? `${path}[${source}]` : `${path}.${source}`);
           return Reflect.get(target, key, receiver);
         }
-        if (Array.isArray(target) || ["settings", "dictionary", "metafields"].includes(type))
+        if (
+          Array.isArray(target) ||
+          ["settings", "dictionary", "metafields", "metaobject"].includes(type)
+        )
           return Reflect.get(target, key, receiver);
+        // Drops keep their scalar conversion and missing-property protocol behind the proxy.
+        if (target instanceof Drop && (key === "valueOf" || key === "liquidMethodMissing")) {
+          const method: unknown = Reflect.get(target, key);
+          return typeof method === "function" ? method.bind(target) : method;
+        }
         // LiquidJS probes iterator/thenable properties directly; missing Liquid
         // properties are diagnosed by its own-property descriptor lookup above.
         return undefined;
@@ -155,6 +208,60 @@ export function liquidObjects(
         path,
       );
     return value;
+  }
+  /**
+   * A snapshot metafield written as `{ "type": <Shopify type>, "value": <Liquid value> }` has
+   * Shopify's metafield properties and outputs its value. Any other JSON is a legacy metafield
+   * value and is exposed unchanged.
+   */
+  function typedMetafield(value: unknown): value is { type: string; value: unknown } {
+    return (
+      value !== null &&
+      typeof value === "object" &&
+      !Array.isArray(value) &&
+      Object.keys(value).length === 2 &&
+      "value" in value &&
+      "type" in value &&
+      typeof value.type === "string"
+    );
+  }
+  function metafield(type: string | undefined, value: unknown, path: string): object {
+    const reference = type !== undefined && /_reference$/.test(type);
+    return tracked(
+      new ScalarDrop(
+        {
+          ...(type === undefined ? {} : { type, "list?": type.startsWith("list.") }),
+          get value() {
+            if (!reference) return value;
+            hooks.unsupportedOperation?.(
+              `Metafield reference ${path} is not resolved to a resource offline.`,
+            );
+            return null;
+          },
+        },
+        value === null || ["string", "number", "boolean"].includes(typeof value)
+          ? value
+          : JSON.stringify(value),
+      ),
+      "metafield",
+      path,
+      { "list?": "type" },
+    );
+  }
+  function metafields(source: Snapshot["products"][number]["metafields"], path: string) {
+    return Object.fromEntries(
+      Object.entries(source).map(([namespace, fields]) => [
+        namespace,
+        Object.fromEntries(
+          Object.entries(fields).map(([key, value]) => [
+            key,
+            typedMetafield(value)
+              ? metafield(value.type, value.value, `${path}.${namespace}.${key}`)
+              : value,
+          ]),
+        ),
+      ]),
+    );
   }
   const products = new Map<string, LiquidRecord>();
   const collections = new Map<string, LiquidRecord>();
@@ -329,6 +436,68 @@ export function liquidObjects(
       });
     }
     const firstAvailable = variants.find((variant) => variant.available) ?? null;
+    const current = selected ?? firstAvailable ?? variants[0];
+    const optionRows = source.variants.map((variant) =>
+      source.options.map(
+        (option) => variant.optionValues.find((value) => value.name === option.name)?.value ?? "",
+      ),
+    );
+    const currentRow = optionRows[current ? variants.indexOf(current) : -1] ?? [];
+    // Shopify derives option value state from the selected-or-first-available variant: earlier
+    // options constrain availability, and `variant` swaps only this option's value.
+    const optionsWithValues = source.options.map((option, index) =>
+      tracked(
+        {
+          name: option.name,
+          position: index + 1,
+          values: tracked(
+            option.values.map((value, valueIndex) => {
+              const isSelected = currentRow[index] === value;
+              const swapped = currentRow.map((entry, position) =>
+                position === index ? value : entry,
+              );
+              const match = isSelected
+                ? current
+                : variants[optionRows.findIndex((row) => row.every((v, i) => v === swapped[i]))];
+              const fields: LiquidRecord = {
+                name: value,
+                selected: isSelected,
+                available: source.variants.some(
+                  (variant, row) =>
+                    variant.available &&
+                    optionRows[row]?.[index] === value &&
+                    currentRow.slice(0, index).every((v, i) => optionRows[row]?.[i] === v),
+                ),
+                variant: match ?? null,
+                // Snapshots have no combined listings, so no value points at another product.
+                product_url: null,
+              };
+              // Horizon measures option labels with `value.size`, the name's length.
+              Object.defineProperty(fields, "size", { value: value.length, enumerable: false });
+              return tracked(
+                new ScalarDrop(fields, value),
+                "product_option_value",
+                `${path}.options[${index}]`,
+                {
+                  name: `values[${valueIndex}]`,
+                  selected: null,
+                  available: null,
+                  variant: null,
+                  product_url: null,
+                  size: `values[${valueIndex}]`,
+                },
+              );
+            }),
+            "product_option_value",
+            `${path}.options[${index}].values`,
+          ),
+          selected_value: currentRow[index] ?? null,
+        },
+        "product_option",
+        `${path}.options[${index}]`,
+        { position: null, selected_value: null },
+      ),
+    );
     const prices = source.variants.map((variant) => liquidPrice(variant.price));
     const comparePrices = source.variants.flatMap((variant) =>
       variant.compareAtPrice === null ? [] : [liquidPrice(variant.compareAtPrice)],
@@ -378,69 +547,47 @@ export function liquidObjects(
         source.options[0].values.length === 1 &&
         source.options[0].values[0] === "Default Title",
       options: source.options.map((option) => option.name),
-      options_with_values: source.options.map((option, index) => ({
-        name: option.name,
-        position: index + 1,
-        values: option.values,
-        selected_value: (selected ?? firstAvailable ?? variants[0])?.options[index] ?? null,
-      })),
+      options_with_values: optionsWithValues,
       images,
       featured_image: images[0] ?? null,
       media,
       featured_media: media[0] ?? null,
-      metafields: source.metafields,
+      metafields: metafields(source.metafields, `${path}.metafields`),
     };
     const product = tracked(dto, "product", path);
     products.set(source.handle, product);
     for (const variant of variants) Object.defineProperty(variant, "product", { value: product });
   }
-  function storefrontFilters(members: LiquidRecord[]) {
-    const query = new URL(route.path, "https://offline.invalid");
-    return snapshot.filters.map((filter, index) => {
-      if (filter.type !== "price_range") return filter;
-      const minimum = `${filter.id}.gte`,
-        maximum = `${filter.id}.lte`;
-      const selected = (name: string) => {
-        const value = query.searchParams.get(name);
-        if (!value || !/^\d+(?:\.\d{1,2})?$/.test(value)) return null;
-        try {
-          return liquidPrice(value);
-        } catch {
-          return null;
-        }
-      };
-      const removed = new URL(query);
-      removed.searchParams.delete(minimum);
-      removed.searchParams.delete(maximum);
-      removed.searchParams.delete("page");
-      return tracked(
+  const productSources = new Map(snapshot.products.map((source) => [source.handle, source]));
+  const viewed = (handle: string) =>
+    route.pageType === "collection" && route.resourceHandle === handle;
+  /** Filter objects and the filtered, sorted members, derived once on first use. */
+  function collectionQuery(handle: string, handles: string[], defaultSortBy: string) {
+    let result: ReturnType<typeof storefrontQuery> | undefined;
+    return () =>
+      (result ??= storefrontQuery(
+        snapshot,
+        route.path,
+        handles.flatMap((member) => {
+          const source = productSources.get(member),
+            value = products.get(member);
+          return source && value ? [{ source, value }] : [];
+        }),
         {
-          id: filter.id,
-          label: filter.label,
-          type: filter.type,
-          param_name: filter.id,
-          values: [],
-          active_values: [],
-          inactive_values: [],
-          operator: null,
-          min_value: { param_name: minimum, value: selected(minimum) },
-          max_value: { param_name: maximum, value: selected(maximum) },
-          range_max: members.reduce(
-            (maximum, product) => Math.max(maximum, Number(product.price_max) || 0),
-            0,
-          ),
-          url_to_remove: removed.pathname + removed.search,
+          apply: viewed(handle),
+          sortBy: route.sortBy,
+          defaultSortBy,
+          track: tracked,
+          unsupported: (message) => hooks.unsupportedOperation?.(message),
         },
-        "filter",
-        `filters[${index}]`,
-      );
-    });
+      ));
   }
   for (const [collectionIndex, source] of snapshot.collections.entries()) {
     const members = source.products.flatMap((handle) => {
       const product = products.get(handle);
       return product ? [product] : [];
     });
+    const query = collectionQuery(source.handle, source.products, source.sortOrder);
     collections.set(
       source.handle,
       tracked(
@@ -450,8 +597,12 @@ export function liquidObjects(
           title: source.title,
           description: source.descriptionHtml,
           url: `/collections/${source.handle}`,
-          products: members,
-          products_count: members.length,
+          get products() {
+            return query().products;
+          },
+          get products_count() {
+            return query().products.length;
+          },
           all_products_count: members.length,
           image: source.image
             ? tracked(image(source.image), "image", `collections[${collectionIndex}].image`)
@@ -467,7 +618,7 @@ export function liquidObjects(
           current_type: null,
           sort_by: route.sortBy,
           get filters() {
-            return storefrontFilters(members);
+            return query().filters;
           },
         },
         "collection",
@@ -493,6 +644,13 @@ export function liquidObjects(
     const members = [...products.values()].sort((a, b) =>
       collator.compare(String(a.title), String(b.title)),
     );
+    const query = collectionQuery(
+      "all",
+      [...snapshot.products]
+        .sort((a, b) => collator.compare(a.title, b.title))
+        .map((product) => product.handle),
+      "title-ascending",
+    );
     collections.set(
       "all",
       tracked(
@@ -507,8 +665,12 @@ export function liquidObjects(
             return "Products";
           },
           description: "",
-          products: members,
-          products_count: members.length,
+          get products() {
+            return query().products;
+          },
+          get products_count() {
+            return query().products.length;
+          },
           all_products_count: members.length,
           url: "/collections/all",
           image: null,
@@ -523,7 +685,7 @@ export function liquidObjects(
           current_type: null,
           sort_by: route.sortBy,
           get filters() {
-            return storefrontFilters(members);
+            return query().filters;
           },
         },
         "collection",
@@ -558,7 +720,7 @@ export function liquidObjects(
           content: source.bodyHtml,
           url: `/pages/${source.handle}`,
           template_suffix: source.templateSuffix,
-          metafields: source.metafields,
+          metafields: metafields(source.metafields, `pages[${index}].metafields`),
         },
         "page",
         `pages[${index}]`,
@@ -601,7 +763,10 @@ export function liquidObjects(
                 url: `/blogs/${source.handle}/${article.handle}`,
                 tags: article.tags,
                 template_suffix: article.templateSuffix,
-                metafields: article.metafields,
+                metafields: metafields(
+                  article.metafields,
+                  `blogs[${blogIndex}].articles[${index}].metafields`,
+                ),
               },
               "article",
               `blogs[${blogIndex}].articles[${index}]`,
@@ -615,6 +780,7 @@ export function liquidObjects(
             return dto;
           }),
           articles_count: source.articles.length,
+          metafields: metafields(source.metafields, `blogs[${blogIndex}].metafields`),
           ...availableFields({ "comments_enabled?": source.commentsEnabled }),
         },
         "blog",
@@ -622,12 +788,179 @@ export function liquidObjects(
       ),
     ]),
   );
+  const requestPath = localPath(route.path) ?? "/";
+  function localPath(url: string): string | null {
+    try {
+      const parsed = new URL(url, "https://offline.invalid");
+      if (![`offline.invalid`, snapshot.shop.domain].includes(parsed.host)) return null;
+      return parsed.pathname.replace(/(.)\/$/, "$1");
+    } catch {
+      return null;
+    }
+  }
+  /** Resources a menu link points at, found by its source URL. Other link types have no object. */
+  function linkObject(link: MenuLink): unknown {
+    const path = localPath(link.url);
+    let parts: string[] = [];
+    try {
+      parts = (path ?? "").split("/").slice(1).map(decodeURIComponent);
+    } catch {
+      parts = [];
+    }
+    const [namespace, handle = "", child = ""] = parts;
+    const lookup: Record<string, () => unknown> = {
+      product_link: () => (namespace === "products" ? products.get(handle) : undefined),
+      collection_link: () => (namespace === "collections" ? collections.get(handle) : undefined),
+      page_link: () => (namespace === "pages" ? pages.get(handle) : undefined),
+      blog_link: () => (namespace === "blogs" && !child ? blogs.get(handle) : undefined),
+      article_link: () => (namespace === "blogs" ? articles.get(handle)?.get(child) : undefined),
+      policy_link: () => {
+        const shop = globals.shop;
+        const policies = shop && typeof shop === "object" ? Reflect.get(shop, "policies") : null;
+        return Array.isArray(policies)
+          ? policies.find((policy) => Reflect.get(policy, "url") === path)
+          : undefined;
+      },
+    };
+    if (link.type === "metaobject_link") {
+      hooks.unsupportedOperation?.("Metaobject pages for menu links are not available offline.");
+      return null;
+    }
+    const find = lookup[link.type];
+    if (!find) return null;
+    const value = find();
+    if (value === undefined || value === null)
+      hooks.missing?.(`Menu link ${link.title} references a resource absent from the snapshot.`);
+    return value ?? null;
+  }
+  interface LinkState {
+    record: LiquidRecord;
+    active: boolean;
+    current: boolean;
+    levels: number;
+    children: LinkState[];
+  }
+  function menuLinks(links: MenuLink[], path: string): LinkState[] {
+    return links.map((link, index) => {
+      const children = menuLinks(link.links, `${path}[${index}].links`);
+      const target = localPath(link.url);
+      // Shopify ignores URL parameters; a link is active on its own path and below it.
+      const current = target !== null && target === requestPath;
+      const active =
+        current || (target !== null && target !== "/" && requestPath.startsWith(`${target}/`));
+      const levels = children.length ? 1 + Math.max(...children.map((c) => c.levels)) : 0;
+      const descendants = (states: LinkState[]): LinkState[] =>
+        states.flatMap((state) => [state, ...descendants(state.children)]);
+      const all = descendants(children);
+      const record = tracked(
+        {
+          title: link.title,
+          // Shopify derives a link's handle from its title (Dawn ids such as HeaderMenu-catalog).
+          handle: handleize(link.title),
+          url: link.url,
+          type: link.type,
+          links: tracked(
+            children.map((c) => c.record),
+            "link",
+            `${path}[${index}].links`,
+          ),
+          active,
+          current,
+          child_active: all.some((c) => c.active),
+          child_current: all.some((c) => c.current),
+          levels,
+          get object() {
+            return linkObject(link);
+          },
+          // Only Shopify's data-sale opt-out page link carries the privacy-choices icon.
+          ...(target === "/pages/data-sharing-opt-out" ? {} : { data_sharing_opt_out_icon: null }),
+        },
+        "link",
+        `${path}[${index}]`,
+        {
+          handle: "title",
+          active: null,
+          current: null,
+          child_active: null,
+          child_current: null,
+          levels: null,
+          object: "url",
+          data_sharing_opt_out_icon: null,
+        },
+      );
+      return { record, active, current, levels, children };
+    });
+  }
   const menuMap = Object.fromEntries(
-    snapshot.menus.map((menu) => [
-      menu.handle,
-      { handle: menu.handle, title: menu.title, links: menu.links },
-    ]),
+    snapshot.menus.map((menu, index) => {
+      const links = menuLinks(menu.links, `menus[${index}].links`);
+      return [
+        menu.handle,
+        tracked(
+          {
+            handle: menu.handle,
+            title: menu.title,
+            links: tracked(
+              links.map((link) => link.record),
+              "link",
+              `menus[${index}].links`,
+            ),
+            levels: links.length ? 1 + Math.max(...links.map((link) => link.levels)) : 0,
+          },
+          "linklist",
+          `menus[${index}]`,
+          { levels: null },
+        ),
+      ];
+    }),
   );
+  /** `metaobjects.<type>.<handle>` lookup plus `values` and `values_count` per definition. */
+  function metaobjectDefinitions(): LiquidRecord {
+    const definitions = new Map<string, LiquidRecord>();
+    for (const [index, source] of snapshot.metaobjects.entries()) {
+      const path = `metaobjects[${index}]`;
+      const entry = tracked(
+        {
+          ...Object.fromEntries(
+            Object.entries(source.fields).map(([key, value]) => [
+              key,
+              typedMetafield(value)
+                ? metafield(value.type, value.value, `${path}.fields.${key}`)
+                : metafield(undefined, value, `${path}.fields.${key}`),
+            ]),
+          ),
+          system: tracked(
+            { type: source.type, handle: source.handle },
+            "metaobject_system",
+            `${path}`,
+          ),
+        },
+        "metaobject",
+        path,
+        Object.fromEntries(Object.keys(source.fields).map((key) => [key, `fields.${key}`])),
+      );
+      let definition = definitions.get(source.type);
+      if (!definition) {
+        definition = { values: [] };
+        definitions.set(source.type, definition);
+      }
+      definition[source.handle] = entry;
+      (definition.values as LiquidRecord[]).push(entry);
+    }
+    return Object.fromEntries(
+      [...definitions].map(([type, definition]) => [
+        type,
+        tracked(
+          {
+            ...definition,
+            values_count: (definition.values as LiquidRecord[]).length,
+          },
+          "dictionary",
+          `metaobjects.${type}`,
+        ),
+      ]),
+    );
+  }
   function amount(value: bigint): number {
     if (value > BigInt(Number.MAX_SAFE_INTEGER))
       throw new Error("Cart amount exceeds safe Liquid numeric precision");
@@ -802,6 +1135,12 @@ export function liquidObjects(
           price: null,
         });
     }
+  const productSourceOf = new WeakMap<object, Snapshot["products"][number]>();
+  for (const source of snapshot.products) {
+    const value = products.get(source.handle);
+    if (value) productSourceOf.set(value, source);
+  }
+  const resultSources = new WeakMap<object, Snapshot["products"][number]>();
   let results: LiquidRecord[] | undefined;
   function matching(): LiquidRecord[] {
     if (results) return results;
@@ -825,6 +1164,8 @@ export function liquidObjects(
         },
       });
       objectKinds.set(result, candidate.type);
+      const source = productSourceOf.get(candidate.value);
+      if (source) resultSources.set(result, source);
       return result;
     });
     return results;
@@ -849,9 +1190,30 @@ export function liquidObjects(
         { name: "Price, high to low", value: "price-descending" },
       ],
       get filters() {
-        return storefrontFilters(
-          matching().filter((value) => liquidObjectKind(value) === "product"),
-        );
+        const query = new URL(route.path, "https://offline.invalid").searchParams;
+        if (
+          snapshot.filters.some((filter) =>
+            [...query.keys()].some((key) => key.startsWith(filter.id)),
+          )
+        )
+          hooks.unsupportedOperation?.(
+            "Storefront filters are not applied to search results offline.",
+          );
+        return storefrontQuery(
+          snapshot,
+          route.path,
+          matching().flatMap((value) => {
+            const source = resultSources.get(value);
+            return source ? [{ source, value }] : [];
+          }),
+          {
+            apply: false,
+            sortBy: null,
+            defaultSortBy: "relevance",
+            track: tracked,
+            unsupported: (message) => hooks.unsupportedOperation?.(message),
+          },
+        ).filters;
       },
     },
     "search",
@@ -922,6 +1284,7 @@ export function liquidObjects(
     pages: tracked(Object.fromEntries(pages), "dictionary", "pages"),
     blogs: tracked(Object.fromEntries(blogs), "dictionary", "blogs"),
     linklists: tracked(menuMap, "dictionary", "linklists"),
+    metaobjects: tracked(metaobjectDefinitions(), "dictionary", "metaobjects"),
     request: tracked(
       {
         path:
@@ -936,12 +1299,13 @@ export function liquidObjects(
       "request",
       "request",
     ),
-    routes: {
-      root_url: "/",
-      cart_url: "/cart",
-      search_url: "/search",
-      all_products_collection_url: "/collections/all",
-    },
+    // Derived paths, not snapshot reads: no source path is recorded for them.
+    routes: tracked(
+      { ...routePaths },
+      "routes",
+      "routes",
+      Object.fromEntries(Object.keys(routePaths).map((key) => [key, null])),
+    ),
   };
   if (snapshot.localization) {
     const source = snapshot.localization;

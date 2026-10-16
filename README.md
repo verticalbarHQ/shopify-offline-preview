@@ -72,7 +72,15 @@ can be paginated without mutating their source; page links preserve the URL quer
 setting-array pagination is diagnosed as pending. Cart lines and exact undiscounted totals derive
 from snapshot variant prices and quantities; compare-at prices do not count as discounts. Basic search
 matches product, page and article words, with documented prefix/type/availability options. Advanced
-query syntax and ambiguous relevance ranking remain explicitly diagnosed.
+query syntax and ambiguous relevance ranking remain explicitly diagnosed. The viewed collection
+applies `sort_by` (title, price, creation date) and the snapshot's storefront filters (vendor,
+product type, tag, availability, variant option, product metafield, price range) to
+`collection.products`, with facet counts and Shopify filter URLs; orders and filters the snapshot
+cannot decide, such as best-selling, are diagnosed and leave the snapshot order or results unchanged.
+An alternate template absent from the theme (`templateSuffix` or `?view=`) falls back to the assigned
+and then the default template with a `missing-resource` diagnostic. `url` settings resolve
+`shopify://` product, collection, page, blog and article URIs to storefront paths, and `article`
+settings resolve `<blog>/<article>` handles; absent resources resolve to nil with `missing-resource`.
 
 ## Bring your own data
 
@@ -92,6 +100,15 @@ boolean `features`, and `policies` with `title`, `body`, `url` and an optional s
 Omitted metadata stays unavailable and produces a diagnostic when read. Shop product and collection
 counts come from the supplied catalog arrays; provide the full storefront catalog for those counts.
 `request.visual_preview_mode` is false because the preview renders complete pages.
+
+A metafield written as `{"type": "<Shopify metafield type>", "value": <Liquid value>}` exposes
+`value`, `type` and `list?` and outputs its value; reference types are diagnosed rather than
+resolved. Any other JSON value is a legacy metafield and is exposed unchanged. `metaobjects[]`
+entries are available as `metaobjects.<type>.<handle>`, with `system.type`, `system.handle`, and
+`values`/`values_count` per type; their fields follow the same metafield rule. Menu links derive
+`current`, `active`, child state, `levels`, a title-based `handle` and their resource `object` from
+their URLs. A snapshot image whose file is missing under `images/` renders as an SVG placeholder in
+both `dev` and the browser playground.
 
 Font settings recognize Assistant, Inter, Work Sans and Anonymous Pro and their available weights/styles.
 `font_face` and `font_url` use fixed Google Fonts WOFF2 URLs for the Latin subset, with an explicit

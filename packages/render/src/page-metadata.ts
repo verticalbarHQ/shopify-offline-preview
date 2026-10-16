@@ -91,6 +91,39 @@ export function registerPageMetadata(
       return system("not_found");
     },
   });
+  Object.defineProperty(globals, "canonical_url", {
+    enumerable: true,
+    get() {
+      // Query parameters other than pagination select views of the same canonical page.
+      hooks.read("shop.domain");
+      const url = new URL(route.path, "https://offline.invalid");
+      const page = Number(route.query.page ?? 1);
+      const pathname = url.pathname.replace(/(.)\/$/, "$1");
+      return `https://${snapshot.shop.domain}${pathname}${Number.isInteger(page) && page > 1 ? `?page=${page}` : ""}`;
+    },
+  });
+  Object.defineProperty(globals, "page_image", {
+    enumerable: true,
+    get() {
+      const resource =
+        route.pageType === "product"
+          ? globals.product
+          : route.pageType === "collection"
+            ? globals.collection
+            : route.pageType === "article"
+              ? globals.article
+              : null;
+      const image =
+        resource !== null && typeof resource === "object"
+          ? Reflect.get(resource, route.pageType === "product" ? "featured_image" : "image")
+          : null;
+      if (image) return image;
+      hooks.unsupported(
+        "The shop's social sharing image is absent from the snapshot; page_image is nil.",
+      );
+      return null;
+    },
+  });
   Object.defineProperty(globals, "page_description", {
     get() {
       if (source) {
