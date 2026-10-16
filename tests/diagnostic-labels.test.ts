@@ -175,11 +175,14 @@ test("documented globals without offline state are nil, server-only or diagnosed
   const result = await renderTheme(
     theme(
       "article",
-      "[{{ customer }}|{{ self }}|{{ current_tags }}|{{ handle }}|{{ articles['news/story-2'].title }}|{{ recommendations.performed? }}|{{ recommendations.products_count }}|{{ additional_checkout_buttons }}|{{ content_for_additional_checkout_buttons }}|{{ shop | login_button }}|{{ theme.name }}]",
+      "[{{ customer }}|{{ self }}|{{ current_tags }}|{{ handle }}|{{ articles['news/story-2'].title }}|{{ recommendations.performed? }}{{ recommendations.performed }}|{{ recommendations.products_count }}|{{ additional_checkout_buttons }}|{{ content_for_additional_checkout_buttons }}|{{ shop | login_button }}|{{ theme.name }}]",
     ),
     "/blogs/news/story-1",
   );
-  assert.ok(result.html.includes("[|||story-1|Example Story 2|false|0|false|||]"), result.html);
+  assert.ok(
+    result.html.includes("[|||story-1|Example Story 2|falsefalse|0|false|||]"),
+    result.html,
+  );
   assert.deepEqual(messages(result, "shopify-server-only"), [
     "Accelerated checkout buttons are omitted; they require Shopify's live checkout.",
     "The Shop login button is omitted; it requires Shopify's live account service.",
@@ -187,4 +190,74 @@ test("documented globals without offline state are nil, server-only or diagnosed
   assert.deepEqual(messages(result, "not-implemented"), [
     "Global object theme is not available offline.",
   ]);
+});
+
+test("omitted shop metadata and policy aliases are missing data", async () => {
+  const snapshot = defaultFixture();
+  delete snapshot.shop.description;
+  delete snapshot.shop.enabled_payment_types;
+  delete snapshot.shop.policies;
+  const result = await renderTheme(
+    theme(
+      "index",
+      "[{{ shop.description }}|{{ shop.enabled_payment_types }}|{{ shop.refund_policy }}]",
+    ),
+    "/",
+    { snapshot },
+  );
+  assert.deepEqual(messages(result, "missing-resource"), [
+    "Object property shop.description is absent from the snapshot.",
+    "Object property shop.enabled_payment_types is absent from the snapshot.",
+    "Object property shop.refund_policy is absent from the snapshot.",
+  ]);
+  assert.deepEqual(messages(result, "not-implemented"), []);
+});
+
+test("metaobject handles cannot replace a definition's values; untyped field types are missing data", async () => {
+  const snapshot = defaultFixture();
+  snapshot.metaobjects = [
+    { type: "t", handle: "values", fields: { q: "x" } },
+    { type: "t", handle: "values_count", fields: { q: "y" } },
+  ];
+  const result = await renderTheme(
+    theme(
+      "index",
+      "[{{ metaobjects.t.values_count }}|{% for e in metaobjects.t.values %}{{ e.q }}{% endfor %}|{{ metaobjects.t.values.first.q.type }}]",
+    ),
+    "/",
+    { snapshot },
+  );
+  assert.ok(result.html.includes("[2|xy|]"), result.html);
+  assert.deepEqual(messages(result, "missing-resource"), [
+    "Object property metafield.type is absent from the snapshot.",
+  ]);
+});
+
+test("price range bounds are documented filter values that report unknown properties", async () => {
+  const snapshot = defaultFixture();
+  snapshot.filters = [{ id: "filter.v.price", label: "Price", type: "price_range", values: [] }];
+  const result = await renderTheme(
+    theme(
+      "collection",
+      "{% for f in collection.filters %}[{{ f.min_value.param_name }}|{{ f.max_value.label }}]{% endfor %}",
+    ),
+    "/collections/sop-catalog",
+    { snapshot },
+  );
+  assert.ok(result.html.includes("[filter.v.price.gte|]"), result.html);
+  assert.deepEqual(messages(result, "not-implemented"), [
+    "Object property filter_value.label is not available offline.",
+  ]);
+});
+
+test("option values measure and serialize as their names", async () => {
+  const result = await renderTheme(
+    theme(
+      "product",
+      "{% assign o = product.options_with_values.first %}[{{ o.values.first | size }}|{{ o.values | json }}|{{ template | json }}]",
+    ),
+    product,
+  );
+  assert.ok(result.html.includes('[3|["Red","Blue"]|"product"]'), result.html);
+  assert.deepEqual(result.diagnostics, []);
 });

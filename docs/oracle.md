@@ -53,9 +53,20 @@ These make no Shopify requests and grant no authorization.
 - `pnpm oracle:seed-requests-prepare --snapshot <snapshot.json> --images <png-dir> --admin-schema <schema.json>`
   compiles create/update request templates and validates them against a retained Admin API input
   schema. Real IDs, processed image URLs, the inventory location and the Online Store publication
-  must resolve before a request can be formed. Store-generated values (resource, image and option
-  value IDs) are calibrated after seeding; set option swatches and image focal points have no
+  must resolve before a request can be formed. Set option swatches and image focal points have no
   seeding adapter yet and are refused.
+
+## Known gaps before the first capture
+
+- Store-generated product, variant, collection, page, blog and article IDs are calibrated from
+  generated metadata, and image IDs from Native observation. **Option value IDs are not
+  calibrated yet**: the fixture's synthetic IDs would reach case snapshots unchanged.
+- The fixture's `localization` (US, USD, English) and the `customer-account-main-menu` contents are
+  neither seeded nor checked against the store; Shopify creates that menu itself, so seeding must
+  update rather than create it.
+- Offline image URLs are root-relative (`/sop/images/…`). Themes that prefix `http:` for
+  `og:image` therefore produce `http:/sop/images/…` offline; Shopify's protocol-relative CDN URLs
+  do not have this problem.
 
 ## Runtime components
 

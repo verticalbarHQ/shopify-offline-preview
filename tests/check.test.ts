@@ -678,3 +678,18 @@ test("renderer registration marks implemented filters, tags and object propertie
   assert.ok(result.pages.flatMap((p) => p.features).every((f) => !f.implemented));
   assert.equal(result.summary.unimplementedCount, result.summary.featureCount);
 });
+
+test("renderer registration excludes stub globals and includes every media type", async () => {
+  const names = new Set((await rendererRegistration()).map((e) => `${e.kind}:${e.name}`));
+  for (const name of ["object:theme", "object:scripts", "object:content_for_index"])
+    assert.equal(names.has(name), false, name);
+  for (const name of [
+    "object:video",
+    "object-property:video.sources",
+    "object-property:external_video.external_id",
+    "object-property:model.sources",
+    "object-property:media.preview_image",
+    "filter:media_tag",
+  ])
+    assert.equal(names.has(name), true, name);
+});

@@ -11,7 +11,7 @@ export interface QueryMember {
 export type Track = <T extends object>(
   value: T,
   type: string,
-  path: string,
+  path?: string | null,
   sourceKeys?: Readonly<Record<string, string | null>>,
 ) => T;
 
@@ -184,8 +184,8 @@ export function storefrontQuery(
           inactive_values: [],
           operator: null,
           presentation: null,
-          min_value: { param_name: minimum, value: price(minimum) },
-          max_value: { param_name: maximum, value: price(maximum) },
+          min_value: options.track({ param_name: minimum, value: price(minimum) }, "filter_value"),
+          max_value: options.track({ param_name: maximum, value: price(maximum) }, "filter_value"),
           range_max: members.reduce(
             (highest, member) => Math.max(highest, Number(member.value.price_max) || 0),
             0,

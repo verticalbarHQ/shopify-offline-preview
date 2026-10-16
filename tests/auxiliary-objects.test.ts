@@ -70,10 +70,11 @@ test("policy aliases resolve prepared policy drops, preserve body output and dia
   assert.deepEqual(result.diagnostics, []);
   assert.ok(Object.values(result.dataUsed).flat().includes("shop.policies[0].body"));
   delete snapshot.shop.policies;
-  assert.ok(
-    (await renderTheme(theme("{{shop.shipping_policy}}"), "/", { snapshot })).diagnostics.some(
-      (d) => d.code === "not-implemented",
+  assert.deepEqual(
+    (await renderTheme(theme("{{shop.shipping_policy}}"), "/", { snapshot })).diagnostics.map(
+      (d) => [d.code, d.message],
     ),
+    [["missing-resource", "Object property shop.shipping_policy is absent from the snapshot."]],
   );
 });
 test("comment settings and counts use provided values, with missing metadata still visible", async () => {

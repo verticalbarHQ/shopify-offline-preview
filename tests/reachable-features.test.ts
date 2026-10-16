@@ -277,3 +277,62 @@ test("new_comment forms post to the article's comments and require an article", 
     page.diagnostics.some((d) => d.message.includes("new_comment form requires an article")),
   );
 });
+
+test("liquid settings render in a child scope; parse errors repeat and self references fail", async () => {
+  const render = (body: string, code: string) =>
+    renderTheme(
+      theme(
+        "product",
+        `${body}{% schema %}${JSON.stringify({ settings: [{ type: "liquid", id: "code", default: code }] })}{% endschema %}`,
+      ),
+      product,
+    );
+  const broken = await render(
+    "[{{ section.settings.code }}][{{ section.settings.code }}]",
+    "{% if true %}open",
+  );
+  assert.equal(broken.diagnostics.length, 1);
+  assert.ok(!broken.html.includes("Cyclic"), broken.html);
+  const scoped = await render(
+    "{{ section.settings | json }}[{{ section.settings.code }}]{{ leaked }}",
+    "{% assign leaked = 'x' %}{{ product.title }}",
+  );
+  assert.ok(scoped.html.includes("[SOP Matrix Needle]</div>"), scoped.html);
+  const cyclic = await render("[{{ section.settings.code }}]", "{{ section.settings.code }}");
+  assert.ok(
+    cyclic.diagnostics.some((d) => d.message.startsWith("Cyclic Liquid setting reference")),
+  );
+});
+
+test("video, external video and model media serialize preview images like image media", async () => {
+  const result = await renderTheme(theme("product", "{{ product.media | json }}"), product, {
+    snapshot: mediaSnapshot(),
+  });
+  const media = JSON.parse(result.html.replace(/^<div[^>]*>|<\/div>$/g, ""));
+  for (const entry of media)
+    assert.deepEqual(Object.keys(entry.preview_image).sort(), [
+      "aspect_ratio",
+      "height",
+      "src",
+      "width",
+    ]);
+});
+
+test("media_tag on a wide image uses image_url's largest width", async () => {
+  const snapshot = defaultFixture();
+  const main = snapshot.products[0];
+  const first = main?.images[0];
+  assert.ok(main && first);
+  // A file of its own: image filters find image metadata by local file.
+  for (const variant of main.variants) if (variant.image === first.file) variant.image = "wide.png";
+  Object.assign(first, { file: "wide.png", width: 6000, height: 3000 });
+  const result = await renderTheme(
+    theme("product", "{{ product.media.first | media_tag }}"),
+    product,
+    {
+      snapshot,
+    },
+  );
+  assert.ok(result.html.includes("?width=5760"), result.html);
+  assert.ok(!result.diagnostics.some((d) => d.code === "liquid-error"));
+});

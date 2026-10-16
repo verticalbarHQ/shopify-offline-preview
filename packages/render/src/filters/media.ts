@@ -126,7 +126,8 @@ export function registerMediaFilters(
         ...(match?.[1] ? [["width", Number(match[1])]] : []),
         ...(match?.[2] ? [["height", Number(match[2])]] : []),
       ];
-      const width = record(input) ? input.width : undefined;
+      // image_url's largest width; the source width is the default size.
+      const width = record(input) ? Math.min(Number(input.width), 5760) : undefined;
       return imageTag(
         imageUrl(input, sized.length ? sized : [["width", width]]),
         Object.entries(extra),

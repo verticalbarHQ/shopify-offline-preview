@@ -55,7 +55,7 @@ Theme, section and block settings resolve their values and schema defaults:
 | `product`, `collection`, `page`, `blog`, `link_list`, `article` | The snapshot resource (`article` stores `<blog>/<article>`); absent handles are nil with `missing-resource`. |
 | `product_list`, `collection_list` | Arrays of snapshot resources with `count`. |
 | `url` | `shopify://products/…`, `collections/…`, `pages/…`, `blogs/…[/…]` become storefront paths; other `shopify://` forms are diagnosed. |
-| `liquid` | The code renders in the section or block scope when read. |
+| `liquid` | The code renders when read, in a child of the section or block scope: it sees the section's variables, and its assignments stay inside. |
 | `video_url` | Outputs the URL and exposes `id` and `type` (`youtube` / `vimeo`). |
 | `video`, `metaobject`, `metaobject_list` | Diagnosed as not implemented; the value is nil. |
 
@@ -154,6 +154,8 @@ Behaviour checked against `Shopify/liquid-spec` where `liquidjs` differs:
   `/recommendations/products` and `/products/<handle>.js` answer HTTP 501.
 - Shopify's font CDN, localized system strings for non-English locales, multi-currency and Markets.
 - `format_address`, comment lists, discounts and other features listed as unregistered by `check`.
+- Absolute image URLs: offline image URLs are root-relative (`/sop/images/…`), so a theme that
+  prefixes `http:` (for example for `og:image`) produces `http:/sop/images/…`.
 
 ## Unverified expectations
 

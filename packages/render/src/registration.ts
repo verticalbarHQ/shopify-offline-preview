@@ -6,6 +6,7 @@ import {
   liquidObjects,
   type RouteContext,
   recordObjectTypes,
+  unavailableGlobals,
 } from "../../data/src/objects.js";
 import { applyScenario } from "../../data/src/scenarios.js";
 import type { Snapshot } from "../../data/src/schema.js";
@@ -39,6 +40,35 @@ function probeSnapshot(): Snapshot {
   const image = { file: "pattern-01.png", alt: "Probe", width: 64, height: 64, focalPoint: null };
   if (main) main.metafields = { custom: { probe: { type: "single_line_text_field", value: "x" } } };
   if (color?.swatches) color.swatches[0] = { color: "#ff0000", image };
+  if (main)
+    main.media = [
+      ...main.images.map((entry) => ({ mediaType: "image" as const, file: entry.file })),
+      {
+        mediaType: "video",
+        id: "1",
+        alt: null,
+        duration: 1000,
+        previewImage: image,
+        sources: [
+          { file: "probe.mp4", format: "mp4", mimeType: "video/mp4", width: 64, height: 64 },
+        ],
+      },
+      {
+        mediaType: "external_video",
+        id: "2",
+        alt: null,
+        previewImage: image,
+        host: "youtube",
+        externalId: "probe",
+      },
+      {
+        mediaType: "model",
+        id: "3",
+        alt: null,
+        previewImage: image,
+        sources: [{ file: "probe.glb", format: "glb", mimeType: "model/gltf-binary" }],
+      },
+    ];
   snapshot.shop.socialSharingImage = image;
   snapshot.shop.policies = [
     { id: "1", title: "Refund policy", body: "<p>Probe</p>", url: "/policies/refund-policy" },
@@ -177,7 +207,8 @@ export function rendererRegistration(): Promise<ImplementationEvidence[]> {
           tags = new Set(Object.keys(engine.tags));
           const scope: unknown = engine.options.globals;
           if (scope && typeof scope === "object")
-            for (const key of Reflect.ownKeys(scope)) if (typeof key === "string") globals.add(key);
+            for (const key of Reflect.ownKeys(scope))
+              if (typeof key === "string" && !unavailableGlobals.includes(key)) globals.add(key);
         },
         () => renderTheme(probeTheme, "/collections/sop-catalog", { snapshot }),
       );

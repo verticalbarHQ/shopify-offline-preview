@@ -1,6 +1,6 @@
 import { Drop, type Liquid, toValue } from "liquidjs";
 import { ImageDirectory, MissingImage, NamedImageDrop } from "../../../data/src/images.js";
-import { liquidObjectKind, mediaProductTitle } from "../../../data/src/objects.js";
+import { liquidObjectKind, mediaProductTitle, ScalarDrop } from "../../../data/src/objects.js";
 import type { Snapshot } from "../../../data/src/schema.js";
 import { themePath } from "../../../theme/src/index.js";
 import { registerFontFilters } from "../fonts.js";
@@ -48,6 +48,8 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
       )
         return input;
       if (input instanceof ImageDirectory && name === "size") return 0;
+      // Option values and other scalar-like objects measure their value, as `value.size` does.
+      if (name === "size" && input instanceof ScalarDrop) return native.call(this, toValue(input));
       const result: unknown = native.call(this, input, ...args);
       // Shopify returns the input object itself when it is kept; LiquidJS would unwrap a Drop
       // (a color or font setting, for example) into its scalar value.

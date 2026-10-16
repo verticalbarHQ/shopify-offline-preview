@@ -285,6 +285,21 @@ export function imageObject(value: SourceImage, path: string, tracked: ObjectTra
     path,
   );
 }
+const policyAliases = [
+  "shipping_policy",
+  "privacy_policy",
+  "refund_policy",
+  "terms_of_service",
+  "subscription_policy",
+];
+/** Documented globals that exist on Shopify but have no offline value; reading one is diagnosed. */
+export const unavailableGlobals: readonly string[] = [
+  "all_country_option_tags",
+  "country_option_tags",
+  "content_for_index",
+  "scripts",
+  "theme",
+];
 /** Source-backed fields plus explicit derivation; omitted fields are observed, never invented. */
 export function liquidObjects(
   snapshot: Snapshot,
@@ -413,7 +428,7 @@ export function liquidObjects(
     return tracked(
       new ScalarDrop(
         {
-          ...(type === undefined ? {} : { type, "list?": type.startsWith("list.") }),
+          ...availableFields({ type, "list?": type?.startsWith("list.") }),
           get value() {
             if (!reference) return value;
             hooks.unsupportedOperation?.(
@@ -1182,7 +1197,7 @@ export function liquidObjects(
   );
   /** `metaobjects.<type>.<handle>` lookup plus `values` and `values_count` per definition. */
   function metaobjectDefinitions(): LiquidRecord {
-    const definitions = new Map<string, LiquidRecord>();
+    const definitions = new Map<string, Map<string, object>>();
     for (const [index, source] of snapshot.metaobjects.entries()) {
       const path = `metaobjects[${index}]`;
       const entry = tracked(
@@ -1207,19 +1222,21 @@ export function liquidObjects(
       );
       let definition = definitions.get(source.type);
       if (!definition) {
-        definition = { values: [] };
+        definition = new Map();
         definitions.set(source.type, definition);
       }
-      definition[source.handle] = entry;
-      (definition.values as LiquidRecord[]).push(entry);
+      definition.set(source.handle, entry);
     }
+    // `values` and `values_count` are the definition's own properties; they win over handles
+    // with the same name.
     return Object.fromEntries(
-      [...definitions].map(([type, definition]) => [
+      [...definitions].map(([type, entries]) => [
         type,
         tracked(
           {
-            ...definition,
-            values_count: (definition.values as LiquidRecord[]).length,
+            ...Object.fromEntries(entries),
+            values: [...entries.values()],
+            values_count: entries.size,
           },
           "dictionary",
           `metaobjects.${type}`,
@@ -1611,15 +1628,16 @@ export function liquidObjects(
         ...availableFields({
           id: snapshot.shop.id === undefined ? undefined : id(snapshot.shop.id),
           permanent_domain: snapshot.shop.permanentDomain,
-        }),
-        products_count: snapshot.products.length,
-        collections_count: snapshot.collections.length,
-        ...(snapshot.shop.features
-          ? { features: tracked(snapshot.shop.features, "shop.features", "shop.features") }
-          : {}),
-        ...(snapshot.shop.policies
-          ? {
-              policies: snapshot.shop.policies.map((source, index) => {
+          // Optional shop metadata; an omission is missing data.
+          description: snapshot.shop.description,
+          customer_accounts_enabled: snapshot.shop.customer_accounts_enabled,
+          customer_accounts_optional: snapshot.shop.customer_accounts_optional,
+          enabled_payment_types: snapshot.shop.enabled_payment_types,
+          features: snapshot.shop.features
+            ? tracked(snapshot.shop.features, "shop.features", "shop.features")
+            : undefined,
+          policies: snapshot.shop.policies
+            ? snapshot.shop.policies.map((source, index) => {
                 class Policy extends Drop {
                   #field(key: "id" | "title" | "body" | "url") {
                     hooks.read(`shop.policies[${index}].${key}`);
@@ -1649,9 +1667,15 @@ export function liquidObjects(
                 const policy = new Policy();
                 objectKinds.set(policy, "policy");
                 return policy;
-              }),
-            }
-          : {}),
+              })
+            : undefined,
+        }),
+        // Without a policy list, the policy aliases are missing data too.
+        ...(snapshot.shop.policies
+          ? {}
+          : availableFields(Object.fromEntries(policyAliases.map((key) => [key, undefined])))),
+        products_count: snapshot.products.length,
+        collections_count: snapshot.collections.length,
       },
       "shop",
       "shop",
@@ -1706,13 +1730,7 @@ export function liquidObjects(
       Array.isArray(shop.policies)
     ) {
       const policies = shop.policies;
-      for (const key of [
-        "shipping_policy",
-        "privacy_policy",
-        "refund_policy",
-        "terms_of_service",
-        "subscription_policy",
-      ])
+      for (const key of policyAliases)
         Object.defineProperty(shop, key, {
           enumerable: true,
           get() {
@@ -1765,8 +1783,9 @@ export function liquidObjects(
     self: null, // Metaobject templates are not rendered.
     current_tags: null, // Tag-filtered collection and blog URLs are not routed.
     // Product recommendations come from a separate storefront request; a page render has none.
+    // Dawn and Horizon read `performed` as well as the documented `performed?`.
     recommendations: tracked(
-      { "performed?": false, products: [], products_count: 0, intent: null },
+      { "performed?": false, performed: false, products: [], products_count: 0, intent: null },
       "recommendations",
     ),
   });
@@ -1789,13 +1808,7 @@ export function liquidObjects(
         return value;
       },
     });
-  for (const key of [
-    "all_country_option_tags",
-    "country_option_tags",
-    "content_for_index",
-    "scripts",
-    "theme",
-  ])
+  for (const key of unavailableGlobals)
     Object.defineProperty(globals, key, {
       enumerable: true,
       get() {

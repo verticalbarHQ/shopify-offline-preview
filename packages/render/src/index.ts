@@ -606,19 +606,26 @@ export async function renderTheme(
           diagnostic("not-implemented", `Liquid setting ${key} cannot render in this scope.`);
           continue;
         }
-        let rendering = false;
+        // Each read renders in a child scope: assignments and loop control stay inside the
+        // setting, and a reference back to it fails once nesting is impossible to resolve.
+        let depth = 0;
         Object.defineProperty(result, key, {
           enumerable: true,
           configurable: true,
           get() {
-            if (rendering) throw new Error("Cyclic Liquid setting reference");
-            rendering = true;
-            const templates = parseLiquid(engine, raw, `settings.${key}`, (error, token) => {
-              liquidError(error, token.file ?? `settings.${key}`, token.getPosition()[0] ?? 1);
-            });
-            return engine.render(templates, dynamicContext()).finally(() => {
-              rendering = false;
-            });
+            if (depth >= 3) throw new Error("Cyclic Liquid setting reference");
+            depth++;
+            try {
+              const templates = parseLiquid(engine, raw, `settings.${key}`, (error, token) => {
+                liquidError(error, token.file ?? `settings.${key}`, token.getPosition()[0] ?? 1);
+              });
+              return engine.render(templates, dynamicContext().spawn()).finally(() => {
+                depth--;
+              });
+            } catch (error) {
+              depth--;
+              throw error;
+            }
           },
         });
         continue;

@@ -118,6 +118,7 @@ export function registerPaymentTypeFilter(engine: Liquid, snapshot: Snapshot, ho
     }
     const cssClass: unknown = toValue(namedArgs(args).class);
     const classes = blank(cssClass) ? "" : liquidFilterText(cssClass);
+    this.context.memoryLimit.use(svg.length + classes.length);
     let asset = cache.get(type);
     if (!asset) {
       asset = template(svg);

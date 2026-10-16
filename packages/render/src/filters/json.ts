@@ -1,7 +1,7 @@
 import { findNodeAtLocation, parseTree } from "jsonc-parser";
 import { type Liquid, toValue } from "liquidjs";
 import { ImageDirectory, MissingImage } from "../../../data/src/images.js";
-import { liquidObjectKind } from "../../../data/src/objects.js";
+import { liquidObjectKind, ScalarDrop } from "../../../data/src/objects.js";
 import { LiquidFloat } from "../numbers.js";
 import { TableRowLoop } from "../tablerow-tag.js";
 
@@ -95,8 +95,12 @@ export function registerJsonFilter(engine: Liquid) {
     const projectedVariants = new WeakSet<object>();
     const floats: { path: (string | number)[]; text: string }[] = [];
     let first = true;
+    // Scalar-like drops (option values, template) serialize as their value; a metafield as its
+    // Liquid value, so a JSON metafield stays structured.
+    const scalar = (value: ScalarDrop): unknown =>
+      liquidObjectKind(value) === "metafield" ? Reflect.get(value, "value") : toValue(value);
     const output = JSON.stringify(
-      toValue(input) ?? null,
+      input instanceof ScalarDrop ? scalar(input) : (toValue(input) ?? null),
       function (this: object, key, value: unknown) {
         const path = first
           ? []
@@ -104,6 +108,7 @@ export function registerJsonFilter(engine: Liquid) {
         first = false;
         if (value instanceof LiquidFloat && Number.isFinite(value.valueOf()))
           floats.push({ path, text: String(value) });
+        if (value instanceof ScalarDrop) return scalar(value);
         if (value !== null && typeof value === "object") paths.set(value, path);
         if (!record(value)) return value;
         const kind = liquidObjectKind(value);
@@ -130,6 +135,15 @@ export function registerJsonFilter(engine: Liquid) {
             "src",
             "width",
           ]);
+          media.preview_image = record(value.preview_image)
+            ? project(value.preview_image, ["aspect_ratio", "height", "width", "src"])
+            : null;
+          paths.set(media, path);
+          return media;
+        }
+        if (kind === "video" || kind === "external_video" || kind === "model") {
+          // Same preview image shape as image media in a product's media array.
+          const media: Record<string, unknown> = { ...value };
           media.preview_image = record(value.preview_image)
             ? project(value.preview_image, ["aspect_ratio", "height", "width", "src"])
             : null;

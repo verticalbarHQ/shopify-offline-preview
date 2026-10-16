@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { defaultFixture } from "../../data/src/fixture.js";
-import { snapshotImages } from "../../data/src/images.js";
+import { snapshotImages, snapshotMediaFiles } from "../../data/src/images.js";
 import { applyScenario, validateSnapshotReferences } from "../../data/src/scenarios.js";
 import { parseSnapshot, type Snapshot } from "../../data/src/schema.js";
 import type { InspectorTransport } from "../../dev/src/transport.js";
@@ -79,7 +79,8 @@ async function setSnapshot(files: BrowserFiles) {
   validateSnapshotReferences(value);
   const localImages: BrowserFiles = Object.create(null);
   const missing: string[] = [];
-  for (const file of imageNames(value)) {
+  // Video and 3D model sources live under images/ like the images themselves.
+  for (const file of new Set([...imageNames(value), ...snapshotMediaFiles(value)])) {
     const bytes = files[`images/${file}`];
     if (bytes) localImages[file] = bytes;
     else missing.push(file);
@@ -90,7 +91,7 @@ async function setSnapshot(files: BrowserFiles) {
   revision++;
   notify(
     missing.length
-      ? `Snapshot loaded in this browser; ${missing.length} image file(s) missing under images/ show placeholders (first: images/${missing[0]})`
+      ? `Snapshot loaded in this browser; ${missing.length} file(s) missing under images/; missing images show placeholders (first: images/${missing[0]})`
       : "Snapshot and images loaded in this browser",
   );
   await mount();
