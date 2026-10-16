@@ -153,6 +153,9 @@ Behaviour checked against `Shopify/liquid-spec` where `liquidjs` differs:
   `/cart/add`, the Section Rendering API (`?section_id=`, `?sections=`), `/search/suggest`,
   `/recommendations/products` and `/products/<handle>.js` answer HTTP 501.
 - Shopify's font CDN, localized system strings for non-English locales, multi-currency and Markets.
+- Without internet access, theme scripts that import Shopify's CDN cannot run. Horizon's import
+  map loads `@shopify/events` from `cdn.shopify.com`, so offline its interactive components
+  (variant picker, add to cart, drawers) stay inactive; the rendered HTML is unaffected.
 - `format_address`, comment lists, discounts and other features listed as unregistered by `check`.
 - Absolute image URLs: offline image URLs are root-relative (`/sop/images/…`), so a theme that
   prefixes `http:` (for example for `og:image`) produces `http:/sop/images/…`.
