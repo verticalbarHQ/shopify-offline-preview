@@ -842,6 +842,8 @@ export function liquidObjects(
           defaultSortBy,
           track: tracked,
           unsupported: (message) => hooks.unsupportedOperation?.(message),
+          missing: (message) =>
+            hooks.missing ? hooks.missing(message) : hooks.unsupportedOperation?.(message),
         },
       ));
   }
@@ -1523,6 +1525,8 @@ export function liquidObjects(
             defaultSortBy: "relevance",
             track: tracked,
             unsupported: (message) => hooks.unsupportedOperation?.(message),
+            missing: (message) =>
+              hooks.missing ? hooks.missing(message) : hooks.unsupportedOperation?.(message),
           },
         ).filters;
       },

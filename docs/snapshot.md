@@ -311,7 +311,9 @@ Totals are the sum of variant prices times quantities. Compare-at prices are not
   - `filter.p.m.<namespace>.<key>`;
 - `label`;
 - `type`: `list`, `boolean` or `price_range`;
-- `values`: `{label, value}` entries.
+- `values`: `{label, value}` entries;
+- `operator` (optional): `AND` or `OR`, how the store combines several selected values. Only tag
+  and metafield list filters have this setting; other filters always use `OR`.
 
 Collection pages use them for `collection.filters`. They also apply `filter.…` and `sort_by` URL
 parameters to the collection's products.

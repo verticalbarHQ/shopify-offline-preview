@@ -1,6 +1,6 @@
 import { handleize } from "./handle.js";
-import { type LiquidRecord, liquidPrice } from "./objects.js";
-import type { Snapshot } from "./schema.js";
+import { availableFields, type LiquidRecord, liquidPrice } from "./objects.js";
+import { filterOperatorConfigurable, type Snapshot } from "./schema.js";
 
 type Product = Snapshot["products"][number];
 type Filter = Snapshot["filters"][number];
@@ -39,7 +39,7 @@ function predicate(filter: Filter): ((product: Product, value: string) => boolea
   if (id === "filter.p.tag") return (product, value) => product.tags.includes(value);
   if (id === "filter.v.availability")
     return (product, value) =>
-      product.variants.some((variant) => variant.available === (value === "1"));
+      product.variants.some((variant) => variant.available === (value === "1" || value === "true"));
   const option = /^filter\.v\.option\.(.+)$/.exec(id)?.[1];
   if (option !== undefined)
     return (product, value) => {
@@ -75,6 +75,7 @@ export function storefrontQuery(
     defaultSortBy: string;
     track: Track;
     unsupported(message: string): void;
+    missing(message: string): void;
   },
 ): { products: LiquidRecord[]; filters: LiquidRecord[] } {
   const query = new URL(path, "https://offline.invalid");
@@ -108,26 +109,32 @@ export function storefrontQuery(
             );
           }),
         matches: null,
+        operator: null,
+        all: false,
       };
     }
     const selected = query.searchParams.getAll(filter.id);
     const matches = predicate(filter);
+    const operator = filterOperatorConfigurable(filter) ? filter.operator : "OR";
     if (selected.length && !matches && options.apply)
       options.unsupported(
         `Storefront filter ${filter.id} cannot be decided from the snapshot; results are not filtered by it.`,
       );
-    if (
-      selected.length > 1 &&
-      (filter.id === "filter.p.tag" || filter.id.startsWith("filter.p.m."))
-    )
-      options.unsupported(
+    if (selected.length > 1 && operator === undefined)
+      options.missing(
         `The operator of storefront filter ${filter.id} is absent from the snapshot; selected values are combined with OR.`,
       );
+    const all = operator === "AND";
     return {
       active: selected.length > 0 && matches !== null,
       test: (product: Product) =>
-        matches === null || selected.some((value) => matches(product, value)),
+        matches === null ||
+        (all
+          ? selected.every((value) => matches(product, value))
+          : selected.some((value) => matches(product, value))),
       matches,
+      operator,
+      all,
     };
   });
   const passes = (product: Product, skip: number) =>
@@ -212,9 +219,13 @@ export function storefrontQuery(
           ...(matches === null
             ? {}
             : {
-                // Faceted count: the other active filters apply, this filter's own selection does not.
+                // Faceted count: the other active filters apply. This filter's own selection
+                // narrows the count only when its values combine with AND.
                 count: members.filter(
-                  (member) => passes(member.source, index) && matches(member.source, entry.value),
+                  (member) =>
+                    passes(member.source, index) &&
+                    (!condition?.all || condition.test(member.source)) &&
+                    matches(member.source, entry.value),
                 ).length,
               }),
           url_to_add: without((url) => {
@@ -245,7 +256,7 @@ export function storefrontQuery(
         values: options.track(values, "filter_value", `filters[${index}].values`),
         active_values: values.filter((value) => value.active),
         inactive_values: values.filter((value) => !value.active),
-        operator: "OR",
+        ...availableFields({ operator: condition === undefined ? "OR" : condition.operator }),
         ...(filter.type === "boolean"
           ? {
               presentation: null,

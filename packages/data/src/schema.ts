@@ -357,16 +357,33 @@ export const snapshotSchema = z.strictObject({
     dutiesIncluded: z.boolean().nullable().optional(),
   }),
   filters: z.array(
-    z.strictObject({
-      id: z.string(),
-      label: z.string(),
-      type: z.enum(["list", "boolean", "price_range"]),
-      values: z.array(z.strictObject({ label: z.string(), value: z.string() })),
-    }),
+    z
+      .strictObject({
+        id: z.string(),
+        label: z.string(),
+        type: z.enum(["list", "boolean", "price_range"]),
+        // The merchant's AND/OR choice; only filters with a configurable operator carry one.
+        operator: z.enum(["AND", "OR"]).optional(),
+        values: z.array(z.strictObject({ label: z.string(), value: z.string() })),
+      })
+      .refine((filter) => filter.operator === undefined || filterOperatorConfigurable(filter), {
+        message: "Only tag and metafield list filters have a configurable operator",
+        path: ["operator"],
+      }),
   ),
   scenarios: z.record(z.string(), z.json()),
 });
 export type Snapshot = z.infer<typeof snapshotSchema>;
+
+/**
+ * Shopify lets merchants combine selected values with AND only for tag and metafield list filters;
+ * every other filter uses OR.
+ */
+export function filterOperatorConfigurable(filter: { id: string; type: string }): boolean {
+  return (
+    filter.type === "list" && (filter.id === "filter.p.tag" || /^filter\.[pv]\.m\./.test(filter.id))
+  );
+}
 
 export interface SnapshotSource {
   readSnapshot(): Promise<string>;

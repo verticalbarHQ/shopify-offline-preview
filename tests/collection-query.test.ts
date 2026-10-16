@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { defaultFixture } from "../packages/data/src/fixture.js";
+import { parseSnapshot } from "../packages/data/src/schema.js";
 import { renderTheme } from "../packages/render/src/index.js";
 import { MemoryThemeFileSystem } from "../packages/theme/src/index.js";
 
@@ -102,6 +103,7 @@ test("filters the snapshot cannot decide are reported instead of silently ignore
     id: "filter.v.m.custom.fabric",
     label: "Fabric",
     type: "list",
+    operator: "OR",
     values: [{ label: "Wool", value: "Wool" }],
   });
   const result = await renderTheme(
@@ -119,4 +121,77 @@ test("filters the snapshot cannot decide are reported instead of silently ignore
       "Object property filter_value.count is not available offline.",
     ],
   );
+});
+
+test("availability filters accept textual true and false values", async () => {
+  const value = snapshot();
+  value.filters = [
+    {
+      id: "filter.v.availability",
+      label: "Availability",
+      type: "boolean",
+      values: [
+        { label: "In stock", value: "true" },
+        { label: "Out of stock", value: "false" },
+      ],
+    },
+  ];
+  const count = async (query: string) =>
+    (await renderTheme(theme, `/collections/sop-catalog${query}`, { snapshot: value })).html
+      .replace(/<\/?div[^>]*>/g, "")
+      .split(";")[0];
+  assert.equal(await count("?filter.v.availability=true"), "40/40/40");
+  assert.equal(await count("?filter.v.availability=1"), "40/40/40");
+  assert.equal(await count("?filter.v.availability=false"), "1/40/40");
+});
+
+test("tag and metafield filter operators come from the snapshot, never a guess", async () => {
+  const tags = (operator?: "AND" | "OR") => {
+    const value = snapshot();
+    value.filters = [
+      {
+        id: "filter.p.tag",
+        label: "Tag",
+        type: "list",
+        ...(operator ? { operator } : {}),
+        values: [
+          { label: "red", value: "red" },
+          { label: "sop-fixture", value: "sop-fixture" },
+        ],
+      },
+    ];
+    return value;
+  };
+  const view = async (operator: "AND" | "OR" | undefined, query: string) => {
+    const result = await renderTheme(theme, `/collections/sop-catalog${query}`, {
+      snapshot: tags(operator),
+    });
+    const html = result.html.replace(/<\/?div[^>]*>/g, "");
+    return { head: html.slice(0, html.indexOf(";", html.indexOf(";") + 1) + 1), result };
+  };
+  const both = "?filter.p.tag=red&filter.p.tag=sop-fixture";
+  let { head, result } = await view("AND", both);
+  assert.ok(head.startsWith("20/40/40;filter.p.tag:AND:2:"), head);
+  assert.ok(head.includes("[red=20:true:") && head.includes("[sop-fixture=20:true:"), head);
+  assert.deepEqual(result.diagnostics, []);
+  ({ head, result } = await view("OR", both));
+  assert.ok(head.startsWith("40/40/40;filter.p.tag:OR:2:"), head);
+  assert.deepEqual(result.diagnostics, []);
+  ({ head, result } = await view(undefined, both));
+  assert.ok(head.startsWith("40/40/40;filter.p.tag::2:"), head);
+  assert.deepEqual(
+    result.diagnostics.map((d) => [d.code, d.message]),
+    [
+      [
+        "missing-resource",
+        "The operator of storefront filter filter.p.tag is absent from the snapshot; selected values are combined with OR.",
+      ],
+      ["missing-resource", "Object property filter.operator is absent from the snapshot."],
+    ],
+  );
+  const vendor = snapshot();
+  vendor.filters = [
+    { id: "filter.p.vendor", label: "Vendor", type: "list", operator: "AND", values: [] },
+  ];
+  assert.throws(() => parseSnapshot(JSON.stringify(vendor)), /configurable operator/);
 });

@@ -2121,6 +2121,13 @@
               "price_range"
             ]
           },
+          "operator": {
+            "type": "string",
+            "enum": [
+              "AND",
+              "OR"
+            ]
+          },
           "values": {
             "type": "array",
             "items": {
