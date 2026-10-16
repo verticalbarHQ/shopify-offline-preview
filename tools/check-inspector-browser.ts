@@ -221,14 +221,42 @@ try {
           `(async()=>{document.querySelector('#path').value='/products/sop-matrix-needle';document.querySelector('#scenario').value='default';document.querySelector('#controls').requestSubmit();await (${wait})(()=>document.querySelector('#status').dataset.state==='ready');window.SOP_INSPECTOR_STATE.runtime=[];return document.querySelector('#preview').src;})()`,
         ),
       );
+    // Click only after the form's own custom element (product-form, product-form-component)
+    // is upgraded; earlier, the browser submits the form natively instead of running the
+    // theme's script. Other ancestors may depend on Shopify's CDN and stay undefined offline.
     const clicked = await inPreview(
       previewUrl,
-      `(()=>{if(location.href!==${JSON.stringify(previewUrl)}||!document.getElementById('sop-diagnostic-badges'))return null;const button=document.querySelector('form[action="/cart/add"] button[type=submit]');if(!button||button.disabled)return 'unavailable';button.click();return 'clicked';})()`,
+      `(()=>{if(location.href!==${JSON.stringify(previewUrl)}||!document.getElementById('sop-diagnostic-badges'))return null;const button=document.querySelector('form[action="/cart/add"] button[type=submit]');if(!button||button.disabled)return 'unavailable';let host=button.form?.parentElement;while(host&&!host.localName.includes('-'))host=host.parentElement;if(host&&!customElements.get(host.localName))return null;button.click();return 'clicked';})()`,
     );
-    assert.equal(clicked, "clicked", `${item.name}: product form submit button`);
+    if (clicked !== "clicked") {
+      const state = z
+        .object({ ready: z.string(), form: z.string().nullable(), pending: z.array(z.string()) })
+        .parse(
+          JSON.parse(
+            String(
+              await inPreview(
+                previewUrl,
+                `(()=>{const button=document.querySelector('form[action="/cart/add"] button[type=submit]');let host=button?.form?.parentElement;while(host&&!host.localName.includes('-'))host=host.parentElement;return JSON.stringify({ready:document.readyState,form:host&&!customElements.get(host.localName)?host.localName:null,pending:[...new Set([...document.querySelectorAll(':not(:defined)')].map(e=>e.localName))]});})()`,
+              ),
+            ),
+          ),
+        );
+      // Horizon's module graph imports Shopify's CDN (standard events). Without a network it
+      // never runs, so the button submits natively and no script request can be observed.
+      if (clicked === null && state.ready === "complete" && state.form) {
+        const reason = `theme script did not define <${state.form}> without network access`;
+        rows.push({ theme: item.name, case: "add-to-cart", skipped: reason });
+        console.log(`${item.name}/add-to-cart: skipped; ${reason}`);
+        continue;
+      }
+      assert.fail(
+        `${item.name}: product form submit button was not clicked: ${JSON.stringify(state)}`,
+      );
+    }
     const blocked = await client.evaluate(
       attached.sessionId,
-      `(async()=>{await (${wait})(()=>window.SOP_INSPECTOR_STATE.runtime.some(d=>d.code==='blocked-endpoint'));return window.SOP_INSPECTOR_STATE.runtime.filter(d=>d.code==='blocked-endpoint').map(d=>d.message);})()`,
+      // Themes may report other blocked requests (Horizon's section refresh) first.
+      `(async()=>{try{await (${wait})(()=>window.SOP_INSPECTOR_STATE.runtime.some(d=>d.code==='blocked-endpoint'&&(d.message.startsWith('/cart/add: ')||d.message.startsWith('/cart/add.js: '))))}catch{}return window.SOP_INSPECTOR_STATE.runtime.filter(d=>d.code==='blocked-endpoint').map(d=>d.message);})()`,
     );
     const messages = z.array(z.string()).parse(blocked);
     assert.ok(
@@ -238,6 +266,10 @@ try {
     rows.push({ theme: item.name, case: "add-to-cart", blockedEndpoints: messages });
     console.log(`${item.name}/add-to-cart: ${messages.join("; ")}`);
   }
+  assert.ok(
+    rows.some((row) => row.case === "add-to-cart" && "blockedEndpoints" in row),
+    "No theme exercised the add-to-cart blocked-endpoint path",
+  );
   await writeFile(
     ".local/results/inspector-browser-summary.json",
     `${JSON.stringify(
