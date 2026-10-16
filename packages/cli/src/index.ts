@@ -6,6 +6,7 @@ import { applyScenario, validateSnapshotReferences } from "../../data/src/scenar
 import { parseSnapshot } from "../../data/src/schema.js";
 import { startDevServer } from "../../dev/src/server.js";
 import { type RenderResult, renderTheme } from "../../render/src/index.js";
+import { rendererRegistration } from "../../render/src/registration.js";
 import { resolveRoute } from "../../render/src/routes.js";
 import { templateConfig } from "../../render/src/theme-config.js";
 import { registry } from "../../spec/src/index.js";
@@ -196,7 +197,7 @@ async function main(args: string[]): Promise<number> {
     return 2;
   }
   try {
-    const result = await checkTheme(new NodeThemeFileSystem(target));
+    const result = await checkTheme(new NodeThemeFileSystem(target), await rendererRegistration());
     if (flags.includes("--json")) console.log(JSON.stringify(result));
     else {
       console.log(

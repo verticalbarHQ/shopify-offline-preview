@@ -118,7 +118,7 @@ test("missing structured metadata remains diagnosed and unrelated input is blank
     `/products/${product.handle}`,
     { snapshot },
   );
-  assert.equal(result.diagnostics.filter((d) => d.code === "not-implemented").length, 2);
+  assert.equal(result.diagnostics.filter((d) => d.code === "missing-resource").length, 2);
   assert.ok(!("productGroupID" in data(result.html)));
   const invalid = await renderTheme(
     theme('{{nil|structured_data}}{{"text"|structured_data}}{{product.title|structured_data}}'),

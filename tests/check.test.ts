@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { checkTheme } from "../packages/check/src/index.js";
+import { rendererRegistration } from "../packages/render/src/registration.js";
 import { MemoryThemeFileSystem } from "../packages/theme/src/index.js";
 import { theme } from "./fixtures.js";
 
@@ -42,6 +43,16 @@ test("unknown filters are captured while comments and raw blocks are ignored", a
   const features = result.pages.flatMap((p) => p.features);
   assert.equal(features.find((f) => f.name === "unknown_filter")?.known, false);
   assert.ok(!features.some((f) => f.name === "not_a_filter" || f.name === "not_real"));
+});
+
+test("inline comments are neither unparsed markup nor incomplete coverage", async () => {
+  const files = theme();
+  files["sections/header.liquid"] =
+    "{% # inline note | not_a_filter %}{% liquid\n  # line comment\n  echo shop.name\n%}";
+  const result = await checkTheme(new MemoryThemeFileSystem(files));
+  assert.equal(result.summary.complete, true);
+  assert.ok(!result.diagnostics.some((d) => d.code === "unparsed-tag-markup"));
+  assert.ok(!result.pages.flatMap((p) => p.features).some((f) => f.name === "not_a_filter"));
 });
 
 test("dynamic render and unresolved argument types keep coverage incomplete", async () => {
@@ -652,4 +663,18 @@ test("excessive snippet context growth is reported as incomplete rather than sil
       (d) => d.code === "unresolved-object" && d.file === "snippets/many-contexts.liquid",
     ),
   );
+});
+
+test("renderer registration marks implemented filters, tags and object properties without claiming oracle coverage", async () => {
+  const files = theme();
+  files["sections/header.liquid"] =
+    "{{ shop.name | upcase }}{{ product.title }}{{ product.not_a_property }}{{ 'x' | camelize }}{% form 'product', product %}{{ form.id }}{% endform %}";
+  const result = await checkTheme(new MemoryThemeFileSystem(files), await rendererRegistration());
+  const features = new Map(result.pages.flatMap((p) => p.features).map((f) => [f.name, f]));
+  for (const name of ["upcase", "form", "product.title", "form.id", "shop"])
+    assert.equal(features.get(name)?.registered, true, name);
+  for (const name of ["product.not_a_property", "camelize"])
+    assert.equal(features.get(name)?.registered, false, name);
+  assert.ok(result.pages.flatMap((p) => p.features).every((f) => !f.implemented));
+  assert.equal(result.summary.unimplementedCount, result.summary.featureCount);
 });

@@ -26,8 +26,8 @@ export function registerStructuredDataFilter(
     const required = (object: Record<string, unknown>, property: string) => {
       if (!(property in object))
         diagnostic(
-          "not-implemented",
-          `Structured data source metadata ${property} is unavailable.`,
+          "missing-resource",
+          `Structured data source metadata ${property} is absent from the snapshot.`,
           this.token.file ?? null,
           this.token.getPosition()[0] ?? null,
         );

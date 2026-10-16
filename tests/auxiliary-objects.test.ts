@@ -95,5 +95,5 @@ test("comment settings and counts use provided values, with missing metadata sti
     "/blogs/news/story-1",
     { snapshot },
   );
-  assert.equal(missing.diagnostics.filter((d) => d.code === "not-implemented").length, 2);
+  assert.equal(missing.diagnostics.filter((d) => d.code === "missing-resource").length, 2);
 });

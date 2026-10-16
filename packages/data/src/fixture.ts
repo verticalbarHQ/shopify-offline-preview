@@ -7,13 +7,33 @@ export const imageFiles = Array.from(
   { length: 16 },
   (_, i) => `pattern-${String(i + 1).padStart(2, "0")}.png`,
 );
-function image(index: number) {
+/** A pattern image with a synthetic resource-specific ID and no focal point set. */
+function image(index: number, id: number) {
   return {
     file: imageFiles[index] ?? "pattern-01.png",
     alt: `Synthetic pattern ${index + 1}`,
+    id: String(id),
     width: 64,
     height: 64,
+    focalPoint: null,
   };
+}
+/** Product images and their media entries have separate IDs, unique per product image. */
+function productImage(index: number, product: number, position: number) {
+  const id = 600001 + product * 20 + position;
+  return { ...image(index, id), mediaId: String(id + 100000) };
+}
+/** Synthetic option value IDs, unique per product, and no configured swatches. */
+function optionMetadata(
+  options: { name: string; values: string[] }[],
+  product: number,
+): Snapshot["products"][number]["options"] {
+  let next = 900001 + product * 10;
+  return options.map((option) => ({
+    ...option,
+    valueIds: option.values.map(() => String(next++)),
+    swatches: option.values.map(() => null),
+  }));
 }
 function variantMetadata() {
   return {
@@ -51,7 +71,7 @@ export function defaultFixture(): Snapshot {
     productType: "Test Goods",
     tags: ["sop-fixture", i % 2 ? "blue" : "red"],
     templateSuffix: null,
-    options: [{ name: "Title", values: ["Default Title"] }],
+    options: optionMetadata([{ name: "Title", values: ["Default Title"] }], i),
     variants: [
       {
         ...variantMetadata(),
@@ -65,7 +85,7 @@ export function defaultFixture(): Snapshot {
         image: imageFiles[i % 16] ?? null,
       },
     ],
-    images: [image(i % 16)],
+    images: [productImage(i % 16, i, 0)],
     metafields: {},
     giftCard: false,
     requiresSellingPlan: false,
@@ -74,11 +94,14 @@ export function defaultFixture(): Snapshot {
   }));
   const main = products[0];
   if (!main) throw new Error("Fixture product is missing");
-  main.options = [
-    { name: "Color", values: ["Red", "Blue"] },
-    { name: "Size", values: ["Small", "Large"] },
-    { name: "Material", values: ["Cotton", "Linen"] },
-  ];
+  main.options = optionMetadata(
+    [
+      { name: "Color", values: ["Red", "Blue"] },
+      { name: "Size", values: ["Small", "Large"] },
+      { name: "Material", values: ["Cotton", "Linen"] },
+    ],
+    0,
+  );
   main.variants =
     main.options[0]?.values.flatMap(
       (color, c) =>
@@ -105,7 +128,7 @@ export function defaultFixture(): Snapshot {
             }) ?? [],
         ) ?? [],
     ) ?? [];
-  main.images = [image(0), image(1)];
+  main.images = [productImage(0, 0, 0), productImage(1, 0, 1)];
   const snapshot: Snapshot = {
     meta: { now: fixtureNow, schemaVersion: "1.0" },
     shop: {
@@ -118,11 +141,26 @@ export function defaultFixture(): Snapshot {
       money_with_currency_format: "USD {{amount}}",
       timezone: "UTC",
       description: "A synthetic catalog for local theme development.",
+      socialSharingImage: null,
       customer_accounts_enabled: false,
       customer_accounts_optional: true,
       enabled_payment_types: [],
       features: { "follow_on_shop?": false },
       policies: [],
+    },
+    localization: {
+      availableCountries: [
+        {
+          isoCode: "US",
+          name: "United States",
+          currency: { isoCode: "USD", symbol: "$", name: "United States Dollar" },
+        },
+      ],
+      availableLanguages: [
+        { isoCode: "en", name: "English", endonymName: "English", primary: true, rootUrl: "/" },
+      ],
+      country: "US",
+      language: "en",
     },
     products,
     collections: [
@@ -132,7 +170,7 @@ export function defaultFixture(): Snapshot {
         handle: "sop-catalog",
         title: "Example Catalog",
         descriptionHtml: "<p>Original synthetic collection.</p>",
-        image: image(0),
+        image: image(0, 650001),
         products: products.map((p) => p.handle),
         sortOrder: "manual",
         templateSuffix: null,
@@ -171,7 +209,7 @@ export function defaultFixture(): Snapshot {
           createdAt: fixtureNow,
           updatedAt: fixtureNow,
           publishedAt: fixtureNow,
-          image: i === 1 ? null : image(i),
+          image: i === 1 ? null : image(i, 660001 + i),
           tags: ["example"],
           templateSuffix: null,
           metafields: {},
@@ -201,6 +239,12 @@ export function defaultFixture(): Snapshot {
         ],
       },
       { handle: "footer", title: "Footer", links: [] },
+      // Shopify creates this menu for every store; themes read it for account navigation.
+      {
+        handle: "customer-account-main-menu",
+        title: "Customer account main menu",
+        links: [{ title: "Shop", url: "/", type: "http_link", resourceHandle: null, links: [] }],
+      },
     ],
     metaobjects: [],
     cart: { lines: [], note: "", taxesIncluded: false, dutiesIncluded: false },
@@ -218,7 +262,7 @@ export function defaultFixture(): Snapshot {
   const firstVariant = main.variants[0];
   if (!firstVariant) throw new Error("Fixture variants are missing");
   const single = structuredClone(main);
-  single.options = [{ name: "Title", values: ["Default Title"] }];
+  single.options = optionMetadata([{ name: "Title", values: ["Default Title"] }], 0);
   single.variants = [
     { ...firstVariant, optionValues: [{ name: "Title", value: "Default Title" }] },
   ];
@@ -230,7 +274,7 @@ export function defaultFixture(): Snapshot {
   const long = structuredClone(main);
   long.title = "SOP Matrix Needle — ".repeat(12).trim();
   long.descriptionHtml = `<p>${"Original long-content example. ".repeat(80)}</p>`;
-  long.images = imageFiles.map((_, i) => image(i));
+  long.images = imageFiles.map((_, i) => productImage(i, 0, i));
   snapshot.scenarios = snapshotSchema.shape.scenarios.parse({
     "sold-out": overlayProduct(soldOut),
     "single-variant": overlayProduct(single),
@@ -268,7 +312,7 @@ export function defaultFixture(): Snapshot {
       blogs: snapshot.blogs.map((blog) => ({
         ...blog,
         articles: blog.articles.map((article, i) =>
-          i === 0 ? { ...article, image: image(0) } : article,
+          i === 0 ? { ...article, image: image(0, 660001) } : article,
         ),
       })),
     },

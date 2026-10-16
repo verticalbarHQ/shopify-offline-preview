@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Liquid } from "liquidjs";
 import { defaultFixture } from "../packages/data/src/fixture.js";
+import { objectTracker } from "../packages/data/src/objects.js";
 import { renderTheme } from "../packages/render/src/index.js";
 import { registerShopifyTags } from "../packages/render/src/shopify-tags.js";
 import { MemoryThemeFileSystem } from "../packages/theme/src/index.js";
@@ -10,6 +11,12 @@ function engine(path = "/") {
   const engine = new Liquid();
   registerShopifyTags(engine, {
     path,
+    track: objectTracker({
+      read() {},
+      unsupported(type, property) {
+        throw new Error(`${type}.${property}`);
+      },
+    }),
     unsupported(message) {
       throw new Error(message);
     },

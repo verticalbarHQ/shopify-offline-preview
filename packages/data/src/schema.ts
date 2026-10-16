@@ -47,13 +47,71 @@ const localization = z
 const imagePathPattern =
   // biome-ignore lint/suspicious/noControlCharactersInRegex: NUL must be rejected in local file paths and their published JSON Schema.
   /^(?!\/)(?!.*[\\\u0000])(?!.*(?:^|\/)\.{1,2}(?:\/|$))(?!.*\/\/)(?!.*\/$).+$/;
+const fraction = z
+  .string()
+  .max(30)
+  .regex(/^(?:0(?:\.\d+)?|1(?:\.0+)?)$/);
 const image = z.strictObject({
   file: z.string().min(1).regex(imagePathPattern),
   alt: z.string().nullable(),
   id: z.string().min(1).nullable().optional(),
   width: z.number().int().positive(),
   height: z.number().int().positive(),
+  // Exact decimal fractions of the width and height; null when the merchant set none.
+  focalPoint: z.strictObject({ x: fraction, y: fraction }).nullable().optional(),
 });
+const localFile = z.string().min(1).regex(imagePathPattern);
+const mediaBase = {
+  id: z.string().min(1).optional(),
+  alt: z.string().nullable(),
+  previewImage: image,
+};
+/**
+ * Product media in storefront order. Image entries name a product image by file; other media keep
+ * their local source files under `images/`, like images.
+ */
+const productMedia = z.discriminatedUnion("mediaType", [
+  z.strictObject({ mediaType: z.literal("image"), file: localFile }),
+  z.strictObject({
+    mediaType: z.literal("video"),
+    ...mediaBase,
+    duration: z.number().int().nonnegative().optional(),
+    sources: z
+      .array(
+        z.strictObject({
+          file: localFile,
+          format: z.string().min(1),
+          mimeType: z.string().min(1),
+          width: z.number().int().positive(),
+          height: z.number().int().positive(),
+        }),
+      )
+      .min(1),
+  }),
+  z.strictObject({
+    mediaType: z.literal("external_video"),
+    ...mediaBase,
+    host: z.enum(["youtube", "vimeo"]),
+    externalId: z
+      .string()
+      .min(1)
+      .regex(/^[\w-]+$/),
+  }),
+  z.strictObject({
+    mediaType: z.literal("model"),
+    ...mediaBase,
+    sources: z
+      .array(
+        z.strictObject({
+          file: localFile,
+          format: z.string().min(1),
+          mimeType: z.string().min(1),
+        }),
+      )
+      .min(1),
+  }),
+]);
+export type ProductMedia = z.infer<typeof productMedia>;
 const variant = z.strictObject({
   id: z.string().min(1),
   optionValues: z.array(z.strictObject({ name: z.string(), value: z.string() })),
@@ -107,7 +165,32 @@ const product = z.strictObject({
   productType: z.string(),
   tags: z.array(z.string()),
   templateSuffix: z.string().nullable(),
-  options: z.array(z.strictObject({ name: z.string(), values: z.array(z.string()) })),
+  options: z.array(
+    z
+      .strictObject({
+        name: z.string(),
+        values: z.array(z.string()),
+        // Per value, in `values` order: Shopify option value IDs and swatches (null: none).
+        valueIds: z.array(z.string().min(1)).optional(),
+        swatches: z
+          .array(
+            z
+              .strictObject({
+                color: z.string().nullable(),
+                image: image.nullable(),
+              })
+              .nullable(),
+          )
+          .optional(),
+      })
+      .refine(
+        (option) =>
+          [option.valueIds, option.swatches].every(
+            (list) => list === undefined || list.length === option.values.length,
+          ),
+        "Option value IDs and swatches must list one entry per value",
+      ),
+  ),
   variants: z.array(variant).min(1),
   images: z.array(
     image.extend({
@@ -116,6 +199,8 @@ const product = z.strictObject({
       previewAlt: z.string().nullable().optional(),
     }),
   ),
+  // Omitted: the product's media are its images, in order.
+  media: z.array(productMedia).optional(),
   metafields,
   giftCard: z.boolean().optional(),
   requiresSellingPlan: z.boolean().optional(),
@@ -178,6 +263,8 @@ export const snapshotSchema = z.strictObject({
     money_format: z.string(),
     money_with_currency_format: z.string(),
     description: z.string().optional(),
+    // Online Store social sharing image (`page_image` outside resource pages); null when unset.
+    socialSharingImage: image.nullable().optional(),
     customer_accounts_enabled: z.boolean().optional(),
     customer_accounts_optional: z.boolean().optional(),
     enabled_payment_types: z.array(z.string().min(1)).optional(),
@@ -204,6 +291,8 @@ export const snapshotSchema = z.strictObject({
   placeholderSvgs: z
     .partialRecord(z.enum(placeholderNames), z.string().min(1).max(2_000_000))
     .optional(),
+  // Payment icon SVGs keyed by `shop.enabled_payment_types` entries, prepared like placeholders.
+  paymentTypeSvgs: z.record(z.string().min(1), z.string().min(1).max(2_000_000)).optional(),
   localization: localization.optional(),
   images: z
     .array(
@@ -213,18 +302,6 @@ export const snapshotSchema = z.strictObject({
           .min(1)
           // biome-ignore lint/suspicious/noControlCharactersInRegex: Store filenames must reject NUL and line breaks in runtime and JSON Schema.
           .regex(/^(?!\.{1,2}$)[^/\\\u0000\r\n]+$/),
-        focalPoint: z
-          .strictObject({
-            x: z
-              .string()
-              .max(30)
-              .regex(/^(?:0(?:\.\d+)?|1(?:\.0+)?)$/),
-            y: z
-              .string()
-              .max(30)
-              .regex(/^(?:0(?:\.\d+)?|1(?:\.0+)?)$/),
-          })
-          .optional(),
       }),
     )
     .optional(),

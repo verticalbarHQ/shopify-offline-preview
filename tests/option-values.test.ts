@@ -35,7 +35,8 @@ test("option values are product_option_value objects derived from the selected v
 test("option value availability follows earlier selections and missing ids stay diagnosed", async () => {
   const snapshot = defaultFixture();
   const product = snapshot.products[0];
-  assert.ok(product);
+  assert.ok(product?.options[0]);
+  delete product.options[0].valueIds;
   for (const variant of product.variants)
     variant.available = variant.optionValues.some((value) => value.value === "Blue");
   const result = await renderTheme(
@@ -49,7 +50,7 @@ test("option value availability follows earlier selections and missing ids stay 
   assert.ok(result.html.includes("[Red:false:false][Blue:true:true]"), result.html);
   assert.deepEqual(
     result.diagnostics.map((d) => d.message),
-    ["Object property product_option_value.id is not available offline."],
+    ["Object property product_option_value.id is absent from the snapshot."],
   );
   assert.ok(Object.values(result.dataUsed).flat().includes("products[0].options[0].values[0]"));
 });

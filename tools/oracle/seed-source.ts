@@ -377,7 +377,7 @@ function compareOracleSeedSource(
     const options = [...actual.options].sort((a, b) => a.position - b.position);
     same(
       options.map((o) => ({ name: o.name, values: o.optionValues.map((v) => v.name) })),
-      wanted.options,
+      wanted.options.map((o) => ({ name: o.name, values: o.values })),
     );
     same(
       options.map((o) => o.position),

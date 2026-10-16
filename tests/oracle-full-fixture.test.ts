@@ -78,7 +78,7 @@ test("unmodified forty-product fixture traverses all seven real driver states, r
       const record = inspectVerifiedSeedState(result.resourceState);
       assert.equal(record.stateHash, state.hash);
       assert.equal(record.fixtureHash, store.plan.fixtureHash);
-      assert.equal(record.taskKeys.length, 64);
+      assert.equal(record.taskKeys.length, 65);
       assert.equal(result.generated.length, 46);
       for (const receipt of result.generated)
         assert.equal(inspectVerifiedSeedGenerated(receipt).stateHash, state.hash);
@@ -101,7 +101,7 @@ test("unmodified forty-product fixture traverses all seven real driver states, r
       assert.deepEqual(repeated.counts, {
         created: 0,
         updated: 0,
-        reused: 64,
+        reused: 65,
         reordered: 0,
         published: 0,
       });
@@ -116,7 +116,7 @@ test("unmodified forty-product fixture traverses all seven real driver states, r
     assert.equal(store.mutationCounts().get("collectionUpdate"), 2);
     assert.equal(store.mutationCounts().get("articleCreate"), 3);
     assert.equal(store.mutationCounts().get("articleUpdate"), 1);
-    assert.equal(created, 64);
+    assert.equal(created, 65);
     assert.ok(updated > 0);
     assert.ok(reordered > 0);
     for (const request of store.plan.requests) {

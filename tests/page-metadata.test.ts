@@ -78,7 +78,7 @@ test("missing resolved metadata stays diagnosed, non-English system labels discl
   assert.ok(product);
   delete product.seo;
   const missing = await renderTheme(theme(), `/products/${product.handle}`, { snapshot });
-  assert.equal(missing.diagnostics.filter((d) => d.code === "not-implemented").length, 2);
+  assert.equal(missing.diagnostics.filter((d) => d.code === "missing-resource").length, 2);
   assert.ok(missing.html.includes(product.title));
   snapshot.shop.locale = "fr";
   const localized = await renderTheme(theme(), "/cart", { snapshot });

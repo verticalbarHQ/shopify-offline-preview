@@ -128,10 +128,8 @@ test("canonical_url drops view parameters except the page and page_image uses th
   assert.ok(
     result.html.includes("https://example.test/collections/sop-catalog?page=2|/sop/images/"),
   );
+  // The fixture declares no social sharing image, so the home page has none.
   result = await renderTheme(theme(source), "/", { snapshot: defaultFixture() });
   assert.ok(result.html.includes("https://example.test/|none"), result.html);
-  assert.deepEqual(
-    result.diagnostics.map((d) => d.message),
-    ["The shop's social sharing image is absent from the snapshot; page_image is nil."],
-  );
+  assert.deepEqual(result.diagnostics, []);
 });

@@ -103,7 +103,7 @@ test("missing media IDs are observed instead of copied from the classic image, a
   assert.ok(
     result.diagnostics.some(
       (diagnostic) =>
-        diagnostic.code === "not-implemented" && diagnostic.message.includes("image.id"),
+        diagnostic.code === "missing-resource" && diagnostic.message.includes("image.id"),
     ),
   );
   first.id = null;

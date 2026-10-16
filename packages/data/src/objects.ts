@@ -1,12 +1,19 @@
 import { Drop } from "liquidjs";
 import { handleize } from "./handle.js";
-import { ImageDirectory } from "./images.js";
-import type { MenuLink, Snapshot } from "./schema.js";
+import { ImageDirectory, localImageUrl } from "./images.js";
+import { focalPoint, ScalarDrop } from "./scalar-drop.js";
+import type { MenuLink, ProductMedia, Snapshot } from "./schema.js";
 import { type SearchCandidate, searchResults } from "./search.js";
 import { storefrontQuery } from "./storefront-filters.js";
 
+export { ScalarDrop };
 export type LiquidRecord = Record<string, unknown>;
 const objectKinds = new WeakMap<object, string>();
+const mediaTitles = new WeakMap<object, string>();
+/** The title of the product that owns video, external video or model media. */
+export function mediaProductTitle(media: object): string | undefined {
+  return mediaTitles.get(media);
+}
 export function liquidObjectKind(value: unknown): string | undefined {
   return value !== null && typeof value === "object" ? objectKinds.get(value) : undefined;
 }
@@ -37,30 +44,145 @@ const routePaths = {
   cart_update_url: "/cart/update",
   product_recommendations_url: "/recommendations/products",
 } as const;
-/** A Liquid object that outputs and compares as a scalar, like Shopify's `template` drop. */
-export class ScalarDrop extends Drop {
-  readonly #scalar: unknown;
-  readonly #missing: ((property: string) => void) | undefined;
-  constructor(fields: LiquidRecord, scalar: unknown, missing?: (property: string) => void) {
-    super();
-    Object.defineProperties(this, Object.getOwnPropertyDescriptors(fields));
-    this.#scalar = scalar;
-    this.#missing = missing;
-  }
-  valueOf() {
-    return this.#scalar;
-  }
-  override liquidMethodMissing(property: string | number) {
-    this.#missing?.(String(property));
-    return undefined;
-  }
-}
 export interface ObjectHooks {
   read(path: string): void;
   unsupported(type: string, property: string): void;
   unsupportedOperation?(message: string): void;
-  /** A source reference names a resource absent from the snapshot; it resolves to nil. */
+  /** Data the snapshot does not supply, or a reference to an absent resource; it resolves to nil. */
   missing?(message: string): void;
+  /** Converts a source color string into the renderer's Liquid color object. */
+  color?(value: string): unknown;
+  /** Output only Shopify's servers can produce; it is omitted offline. */
+  serverOnly?(message: string): void;
+}
+/** Records the reads of a Liquid object and diagnoses properties it does not have. */
+export type ObjectTracker = <T extends object>(
+  value: T,
+  type: string,
+  path?: string | null,
+  sourceKeys?: Readonly<Record<string, string | null>>,
+) => T;
+// Properties LiquidJS probes on its own (generator results, thenables, the Comparable protocol).
+const internalKeys = new Set([
+  "next",
+  "then",
+  "toLiquid",
+  "toJSON",
+  "constructor",
+  "__proto__",
+  "prototype",
+  "equals",
+  "gt",
+  "geq",
+  "lt",
+  "leq",
+]);
+// Lookups by merchant-defined keys: an absent key is ordinary nil, not a missing feature.
+const openTypes = new Set(["settings", "dictionary", "metafields", "metaobject"]);
+const absentMarker = "sop:absent";
+/**
+ * Defined values only. The names of omitted source fields travel with the record (object spread
+ * copies the enumerable symbol), so reading one reports missing data rather than a missing feature.
+ */
+export function availableFields(values: LiquidRecord): LiquidRecord {
+  const result: LiquidRecord = {};
+  const absent: string[] = [];
+  for (const [key, value] of Object.entries(values))
+    if (value === undefined) absent.push(key);
+    else result[key] = value;
+  if (absent.length)
+    Object.defineProperty(result, Symbol(absentMarker), { value: absent, enumerable: true });
+  return result;
+}
+function absentFields(target: object): string[] {
+  return Object.getOwnPropertySymbols(target).flatMap((symbol) => {
+    const keys: unknown = symbol.description === absentMarker ? Reflect.get(target, symbol) : [];
+    return Array.isArray(keys) ? keys.map(String) : [];
+  });
+}
+let typeRecorder: ((type: string, keys: readonly string[]) => void) | undefined;
+/** Runs `run` while reporting the type and own properties of every newly tracked object. */
+export async function recordObjectTypes<T>(
+  record: (type: string, keys: readonly string[]) => void,
+  run: () => Promise<T>,
+): Promise<T> {
+  const previous = typeRecorder;
+  typeRecorder = record;
+  try {
+    return await run();
+  } finally {
+    typeRecorder = previous;
+  }
+}
+/**
+ * Proxies record snapshot reads (a null path records none) and report every other property: an
+ * omitted source field as missing data, anything else as not available offline.
+ */
+export function objectTracker(hooks: ObjectHooks): ObjectTracker {
+  const cache = new WeakMap<object, Map<string, object>>();
+  return function tracked<T extends object>(
+    value: T,
+    type: string,
+    path: string | null = null,
+    sourceKeys?: Readonly<Record<string, string | null>>,
+  ): T {
+    let entries = cache.get(value);
+    if (!entries) {
+      entries = new Map();
+      cache.set(value, entries);
+    }
+    const cached = entries.get(`${type}:${path ?? ""}`);
+    // Cache keys identify the same object and wrapper type; Proxy<T> preserves T's shape.
+    if (cached) return cached as T;
+    typeRecorder?.(
+      type,
+      Reflect.ownKeys(value).filter((key): key is string => typeof key === "string"),
+    );
+    const result = new Proxy(value, {
+      getOwnPropertyDescriptor(target, key) {
+        const descriptor = Reflect.getOwnPropertyDescriptor(target, key);
+        if (
+          !descriptor &&
+          typeof key === "string" &&
+          !internalKeys.has(key) &&
+          !Array.isArray(target) &&
+          !openTypes.has(type)
+        ) {
+          if (hooks.missing && absentFields(target).includes(key))
+            hooks.missing(`Object property ${type}.${key} is absent from the snapshot.`);
+          else hooks.unsupported(type, key);
+        }
+        return descriptor;
+      },
+      get(target, key, receiver) {
+        if (typeof key !== "string") return Reflect.get(target, key, receiver);
+        // `paginate.next` is Liquid data; only engine probes for methods are hidden.
+        if (
+          internalKeys.has(key) &&
+          (!Object.hasOwn(target, key) || typeof Reflect.get(target, key) === "function")
+        )
+          return undefined;
+        if (Object.hasOwn(target, key)) {
+          const source = sourceKeys && Object.hasOwn(sourceKeys, key) ? sourceKeys[key] : key;
+          if (source !== null && path !== null)
+            hooks.read(Array.isArray(target) ? `${path}[${source}]` : `${path}.${source}`);
+          return Reflect.get(target, key, receiver);
+        }
+        if (Array.isArray(target) || openTypes.has(type)) return Reflect.get(target, key, receiver);
+        // Drops keep their scalar conversion and missing-property protocol behind the proxy.
+        if (target instanceof Drop && (key === "valueOf" || key === "liquidMethodMissing")) {
+          const method: unknown = Reflect.get(target, key);
+          return typeof method === "function" ? method.bind(target) : method;
+        }
+        // LiquidJS probes iterator/thenable properties directly; missing Liquid
+        // properties are diagnosed by its own-property descriptor lookup above.
+        return undefined;
+      },
+    });
+    entries.set(`${type}:${path ?? ""}`, result);
+    objectKinds.set(result, type);
+    return result;
+  };
 }
 export interface RouteContext {
   pageType: string;
@@ -73,6 +195,25 @@ export interface RouteContext {
   designMode: boolean;
 }
 
+// Primary languages written right to left (CLDR character order), as `shop_locale.direction`.
+const rightToLeft = new Set([
+  "ar",
+  "arc",
+  "ckb",
+  "dv",
+  "fa",
+  "he",
+  "iw",
+  "ks",
+  "ps",
+  "sd",
+  "ug",
+  "ur",
+  "yi",
+]);
+function direction(isoCode: string): "rtl" | "ltr" {
+  return rightToLeft.has(isoCode.split("-")[0]?.toLowerCase() ?? "") ? "rtl" : "ltr";
+}
 /** Shopify Liquid uses hundredths for JPY/KRW too. Values above safe numeric precision fail. */
 export function liquidPrice(value: string): number {
   const [whole = "", fraction = ""] = value.split(".");
@@ -87,11 +228,18 @@ function id(value: string): number | string {
   const number = Number(value);
   return /^\d+$/.test(value) && Number.isSafeInteger(number) ? number : value;
 }
-function availableFields(values: LiquidRecord): LiquidRecord {
-  return Object.fromEntries(Object.entries(values).filter(([, value]) => value !== undefined));
+function sourceId(value: string | null | undefined): number | string | null | undefined {
+  return value === undefined || value === null ? value : id(value);
 }
-function image(
-  value: Snapshot["products"][number]["images"][number],
+
+type SourceImage = Snapshot["products"][number]["images"][number];
+// Shopify reports the image center when no focal point is set.
+const unsetFocalPoint = { x: "0.5", y: "0.5" };
+/** Image fields shared by product, collection, article, media preview and shop images. */
+function imageFields(
+  value: SourceImage,
+  path: string,
+  tracked: ObjectTracker,
   index: number | null = null,
 ): LiquidRecord {
   const src = `/sop/images/${value.file.split("/").map(encodeURIComponent).join("/")}`;
@@ -100,7 +248,6 @@ function image(
     alt: value.alt,
     width: value.width,
     height: value.height,
-    ...(value.id === undefined ? {} : { id: value.id === null ? null : id(value.id) }),
     src,
     url: src,
     aspect_ratio: value.width / value.height,
@@ -110,84 +257,120 @@ function image(
     "attached_to_variant?": null,
     media_type: null,
     preview_image: null,
+    ...availableFields({
+      presentation:
+        value.focalPoint === undefined
+          ? undefined
+          : tracked(
+              {
+                focal_point: tracked(
+                  focalPoint(value.focalPoint ?? unsetFocalPoint),
+                  "focal_point",
+                  `${path}.focalPoint`,
+                  { x: null, y: null },
+                ),
+              },
+              "image_presentation",
+              path,
+              { focal_point: "focalPoint" },
+            ),
+    }),
   };
 }
-
+/** A standalone snapshot image, such as the shop's social sharing image. */
+export function imageObject(value: SourceImage, path: string, tracked: ObjectTracker): object {
+  return tracked(
+    { ...imageFields(value, path, tracked), ...availableFields({ id: sourceId(value.id) }) },
+    "image",
+    path,
+  );
+}
 /** Source-backed fields plus explicit derivation; omitted fields are observed, never invented. */
 export function liquidObjects(
   snapshot: Snapshot,
   route: RouteContext,
   hooks: ObjectHooks,
+  tracked: ObjectTracker = objectTracker(hooks),
 ): LiquidRecord {
-  const cache = new WeakMap<object, Map<string, object>>();
-  const internal = new Set([
-    "next", // LiquidJS probes this descriptor when resolving generator results.
-    "then",
-    "toLiquid",
-    "toJSON",
-    "constructor",
-    "__proto__",
-    "prototype",
-    "equals", // LiquidJS probes its public Comparable protocol during comparisons.
-    "gt",
-    "geq",
-    "lt",
-    "leq",
-  ]);
-  function tracked<T extends object>(
-    value: T,
-    type: string,
+  function absent(type: string, property: string) {
+    if (hooks.missing)
+      hooks.missing(`Object property ${type}.${property} is absent from the snapshot.`);
+    else hooks.unsupported(type, property);
+  }
+  const image = (value: SourceImage, path: string, index: number | null = null) =>
+    imageFields(value, path, tracked, index);
+  /** Video, external video and 3D model media; their preview images have no ID. */
+  function otherMedia(
+    entry: Exclude<ProductMedia, { mediaType: "image" }>,
     path: string,
-    sourceKeys?: Readonly<Record<string, string | null>>,
-  ): T {
-    let entries = cache.get(value);
-    if (!entries) {
-      entries = new Map();
-      cache.set(value, entries);
-    }
-    const cached = entries.get(`${type}:${path}`);
-    // Cache keys identify the same object and wrapper type; Proxy<T> preserves T's shape.
-    if (cached) return cached as T;
-    const result = new Proxy(value, {
-      getOwnPropertyDescriptor(target, key) {
-        const descriptor = Reflect.getOwnPropertyDescriptor(target, key);
-        if (
-          !descriptor &&
-          typeof key === "string" &&
-          !internal.has(key) &&
-          !Array.isArray(target) &&
-          !["settings", "dictionary", "metafields", "metaobject"].includes(type)
-        )
-          hooks.unsupported(type, key);
-        return descriptor;
-      },
-      get(target, key, receiver) {
-        if (typeof key !== "string") return Reflect.get(target, key, receiver);
-        if (internal.has(key)) return undefined;
-        if (Object.hasOwn(target, key)) {
-          const source = sourceKeys && Object.hasOwn(sourceKeys, key) ? sourceKeys[key] : key;
-          if (source !== null)
-            hooks.read(Array.isArray(target) ? `${path}[${source}]` : `${path}.${source}`);
-          return Reflect.get(target, key, receiver);
-        }
-        if (
-          Array.isArray(target) ||
-          ["settings", "dictionary", "metafields", "metaobject"].includes(type)
-        )
-          return Reflect.get(target, key, receiver);
-        // Drops keep their scalar conversion and missing-property protocol behind the proxy.
-        if (target instanceof Drop && (key === "valueOf" || key === "liquidMethodMissing")) {
-          const method: unknown = Reflect.get(target, key);
-          return typeof method === "function" ? method.bind(target) : method;
-        }
-        // LiquidJS probes iterator/thenable properties directly; missing Liquid
-        // properties are diagnosed by its own-property descriptor lookup above.
-        return undefined;
-      },
-    });
-    entries.set(`${type}:${path}`, result);
-    objectKinds.set(result, type);
+    index: number,
+    title: string,
+  ): object {
+    const result = mediaObject(entry, path, index);
+    mediaTitles.set(result, title);
     return result;
+  }
+  function mediaObject(
+    entry: Exclude<ProductMedia, { mediaType: "image" }>,
+    path: string,
+    index: number,
+  ): object {
+    const preview = tracked(
+      { ...image(entry.previewImage, `${path}.previewImage`), id: null },
+      "image",
+      `${path}.previewImage`,
+      { id: null },
+    );
+    const common = {
+      ...availableFields({ id: sourceId(entry.id) }),
+      alt: entry.alt,
+      media_type: entry.mediaType,
+      position: index + 1,
+      preview_image: preview,
+    };
+    const keys = { media_type: "mediaType", position: null, preview_image: "previewImage" };
+    if (entry.mediaType === "external_video")
+      return tracked(
+        {
+          ...common,
+          host: entry.host,
+          external_id: entry.externalId,
+          aspect_ratio: entry.previewImage.width / entry.previewImage.height,
+        },
+        "external_video",
+        path,
+        { ...keys, external_id: "externalId", aspect_ratio: "previewImage" },
+      );
+    const sources = tracked(
+      entry.sources.map((source, sourceIndex) =>
+        tracked(
+          {
+            url: localImageUrl(source.file),
+            format: source.format,
+            mime_type: source.mimeType,
+            ...("width" in source ? { width: source.width, height: source.height } : {}),
+          },
+          entry.mediaType === "video" ? "video_source" : "model_source",
+          `${path}.sources[${sourceIndex}]`,
+          { url: "file", mime_type: "mimeType" },
+        ),
+      ),
+      entry.mediaType === "video" ? "video_source" : "model_source",
+      `${path}.sources`,
+    );
+    if (entry.mediaType === "model") return tracked({ ...common, sources }, "model", path, keys);
+    const first = entry.sources[0];
+    return tracked(
+      {
+        ...common,
+        sources,
+        aspect_ratio: first ? first.width / first.height : null,
+        ...availableFields({ duration: entry.duration }),
+      },
+      "video",
+      path,
+      { ...keys, aspect_ratio: "sources" },
+    );
   }
   function trackedJson(value: unknown, type: string, path: string): unknown {
     if (Array.isArray(value))
@@ -276,56 +459,91 @@ export function liquidObjects(
     ["created-ascending", "Date, old to new"],
     ["created-descending", "Date, new to old"],
   ].map(([value, name]) => ({ value, name }));
-  function collectionSortOptions(supplied?: Snapshot["collections"][number]["sortOptions"]) {
-    if (supplied) return supplied;
-    if (snapshot.shop.locale.split("-")[0] !== "en")
-      hooks.unsupportedOperation?.(
-        "Localized collection sort labels are missing; English is used.",
+  function collectionSortOptions(
+    supplied: Snapshot["collections"][number]["sortOptions"],
+    path: string,
+  ) {
+    if (supplied)
+      return tracked(
+        supplied.map((option, index) =>
+          tracked({ ...option }, "sort_option", `${path}.sortOptions[${index}]`),
+        ),
+        "sort_option",
+        `${path}.sortOptions`,
       );
-    return sortOptions;
+    if (snapshot.shop.locale.split("-")[0] !== "en")
+      hooks.missing?.(
+        "Localized collection sort labels are absent from the snapshot; English is used.",
+      );
+    return sortOptions.map((option) => tracked({ ...option }, "sort_option"));
   }
   for (const [productIndex, source] of snapshot.products.entries()) {
     const path = `products[${productIndex}]`;
     const images = source.images.map((value, index) =>
-        tracked(image(value, index), "image", `${path}.images[${index}]`),
+        tracked(
+          {
+            ...image(value, `${path}.images[${index}]`, index),
+            ...availableFields({ id: sourceId(value.id) }),
+          },
+          "image",
+          `${path}.images[${index}]`,
+        ),
       ),
-      media = source.images.map((value, index) => {
+      // With explicit media, an image's media position is its place among all media.
+      mediaPosition = (index: number) => {
+        const file = source.images[index]?.file;
+        const position = source.media?.findIndex(
+          (entry) => entry.mediaType === "image" && entry.file === file,
+        );
+        return position === undefined || position < 0 ? index : position;
+      },
+      mediaImages = source.images.map((value, index) => {
+        const imagePath = `${path}.images[${index}]`;
         const preview = tracked(
-            {
-              ...image(value),
-              id: null,
-              alt:
-                value.previewAlt === undefined
-                  ? value.mediaAlt === undefined
-                    ? value.alt
-                    : value.mediaAlt
-                  : value.previewAlt,
-            },
-            "image",
-            `${path}.images[${index}]`,
-            {
-              id: null,
-              alt:
-                value.previewAlt !== undefined
-                  ? "previewAlt"
-                  : value.mediaAlt !== undefined
-                    ? "mediaAlt"
-                    : "alt",
-            },
-          ),
-          record = image(value, index);
-        delete record.id;
-        if (value.mediaId !== undefined) record.id = id(value.mediaId);
-        record.alt = value.mediaAlt === undefined ? value.alt : value.mediaAlt;
-        record.media_type = "image";
-        record.preview_image = preview;
-        const result = tracked(record, "image", `${path}.images[${index}]`, {
+          {
+            ...image(value, imagePath),
+            id: null,
+            alt:
+              value.previewAlt === undefined
+                ? value.mediaAlt === undefined
+                  ? value.alt
+                  : value.mediaAlt
+                : value.previewAlt,
+          },
+          "image",
+          imagePath,
+          {
+            id: null,
+            alt:
+              value.previewAlt !== undefined
+                ? "previewAlt"
+                : value.mediaAlt !== undefined
+                  ? "mediaAlt"
+                  : "alt",
+          },
+        );
+        // A media ID is never inferred from the classic image ID.
+        const record: LiquidRecord = {
+          ...image(value, imagePath, mediaPosition(index)),
+          ...availableFields({ id: sourceId(value.mediaId) }),
+          alt: value.mediaAlt === undefined ? value.alt : value.mediaAlt,
+          media_type: "image",
+          preview_image: preview,
+        };
+        const result = tracked(record, "image", imagePath, {
           id: "mediaId",
           alt: value.mediaAlt === undefined ? "alt" : "mediaAlt",
         });
         objectKinds.set(result, "media_image");
         return result;
-      });
+      }),
+      media = source.media
+        ? source.media.map((entry, index) =>
+            entry.mediaType === "image"
+              ? mediaImages[source.images.findIndex((value) => value.file === entry.file)]
+              : otherMedia(entry, `${path}.media[${index}]`, index, source.title),
+          )
+        : mediaImages;
     const variants = source.variants.map((variant, index) => {
       const options = source.options.map(
         (option) => variant.optionValues.find((value) => value.name === option.name)?.value ?? "",
@@ -361,7 +579,7 @@ export function liquidObjects(
           url: `/products/${source.handle}?variant=${encodeURIComponent(variant.id)}`,
           image: images.find((i) => i.file === variant.image) ?? null,
           featured_image: images.find((i) => i.file === variant.image) ?? null,
-          featured_media: media.find((i) => i.file === variant.image) ?? null,
+          featured_media: mediaImages.find((i) => i.file === variant.image) ?? null,
           ...availableFields({
             quantity_rule: trackedJson(
               variant.quantityRule,
@@ -419,7 +637,7 @@ export function liquidObjects(
           enumerable: true,
           get: () => {
             if (source.id === undefined) {
-              hooks.unsupported("image", "product_id");
+              absent("image", "product_id");
               return undefined;
             }
             return id(source.id);
@@ -459,6 +677,8 @@ export function liquidObjects(
               const match = isSelected
                 ? current
                 : variants[optionRows.findIndex((row) => row.every((v, i) => v === swapped[i]))];
+              const swatch = option.swatches?.[valueIndex];
+              const swatchPath = `${path}.options[${index}].swatches[${valueIndex}]`;
               const fields: LiquidRecord = {
                 name: value,
                 selected: isSelected,
@@ -471,6 +691,32 @@ export function liquidObjects(
                 variant: match ?? null,
                 // Snapshots have no combined listings, so no value points at another product.
                 product_url: null,
+                ...availableFields({
+                  id: sourceId(option.valueIds?.[valueIndex]),
+                  swatch:
+                    swatch === undefined || swatch === null
+                      ? swatch
+                      : tracked(
+                          {
+                            color:
+                              swatch.color === null
+                                ? null
+                                : (hooks.color?.(swatch.color) ?? swatch.color),
+                            image: swatch.image
+                              ? tracked(
+                                  {
+                                    ...image(swatch.image, `${swatchPath}.image`),
+                                    ...availableFields({ id: sourceId(swatch.image.id) }),
+                                  },
+                                  "image",
+                                  `${swatchPath}.image`,
+                                )
+                              : null,
+                          },
+                          "swatch",
+                          swatchPath,
+                        ),
+                }),
               };
               // Horizon measures option labels with `value.size`, the name's length.
               Object.defineProperty(fields, "size", { value: value.length, enumerable: false });
@@ -485,6 +731,8 @@ export function liquidObjects(
                   variant: null,
                   product_url: null,
                   size: `values[${valueIndex}]`,
+                  id: `valueIds[${valueIndex}]`,
+                  swatch: `swatches[${valueIndex}]`,
                 },
               );
             }),
@@ -588,6 +836,16 @@ export function liquidObjects(
       return product ? [product] : [];
     });
     const query = collectionQuery(source.handle, source.products, source.sortOrder);
+    const collectionImage = source.image
+      ? tracked(
+          {
+            ...image(source.image, `collections[${collectionIndex}].image`),
+            ...availableFields({ id: sourceId(source.image.id) }),
+          },
+          "image",
+          `collections[${collectionIndex}].image`,
+        )
+      : null;
     collections.set(
       source.handle,
       tracked(
@@ -604,13 +862,15 @@ export function liquidObjects(
             return query().products.length;
           },
           all_products_count: members.length,
-          image: source.image
-            ? tracked(image(source.image), "image", `collections[${collectionIndex}].image`)
-            : null,
+          image: collectionImage,
+          // The collection image, else the first product's featured image.
+          get featured_image() {
+            return collectionImage ?? members[0]?.featured_image ?? null;
+          },
           template_suffix: source.templateSuffix,
           default_sort_by: source.sortOrder,
           get sort_options() {
-            return collectionSortOptions(source.sortOptions);
+            return collectionSortOptions(source.sortOptions, `collections[${collectionIndex}]`);
           },
           results_count: null,
           terms: null,
@@ -674,10 +934,13 @@ export function liquidObjects(
           all_products_count: members.length,
           url: "/collections/all",
           image: null,
+          get featured_image() {
+            return members[0]?.featured_image ?? null;
+          },
           template_suffix: null,
           default_sort_by: "title-ascending",
           get sort_options() {
-            return collectionSortOptions();
+            return collectionSortOptions(undefined, "collections.all");
           },
           results_count: null,
           terms: null,
@@ -755,7 +1018,10 @@ export function liquidObjects(
                 published_at: article.publishedAt,
                 image: article.image
                   ? tracked(
-                      image(article.image),
+                      {
+                        ...image(article.image, `blogs[${blogIndex}].articles[${index}].image`),
+                        ...availableFields({ id: sourceId(article.image.id) }),
+                      },
                       "image",
                       `blogs[${blogIndex}].articles[${index}].image`,
                     )
@@ -987,6 +1253,7 @@ export function liquidObjects(
       )
       .join(" / ");
     const lineImage = source.images.find((image) => image.file === variantSource.image);
+    const variantPath = `products[${snapshot.products.indexOf(source)}].variants[${variantIndex}]`;
     return tracked(
       {
         id: id(line.variantId),
@@ -1003,10 +1270,22 @@ export function liquidObjects(
         vendor: source.vendor,
         sku: variantSource.sku,
         image: lineImage
-          ? image(lineImage, source.images.indexOf(lineImage))
+          ? ((Array.isArray(product.images)
+              ? product.images[source.images.indexOf(lineImage)]
+              : null) ?? null)
           : product.featured_image,
         url: `/products/${source.handle}?variant=${encodeURIComponent(line.variantId)}`,
-        options_with_values: variantSource.optionValues,
+        options_with_values: tracked(
+          variantSource.optionValues.map((value, valueIndex) =>
+            tracked(
+              { ...value },
+              "option_with_value",
+              `${variantPath}.optionValues[${valueIndex}]`,
+            ),
+          ),
+          "option_with_value",
+          `${variantPath}.optionValues`,
+        ),
         original_price: price,
         final_price: price,
         price,
@@ -1055,6 +1334,13 @@ export function liquidObjects(
     items.reduce((sum, item) => sum + BigInt(Number(item.final_line_price)), 0n),
   );
   const count = amount(snapshot.cart.lines.reduce((sum, line) => sum + BigInt(line.quantity), 0n));
+  // The selected country's currency supplies names when it is the shop currency.
+  const shopCurrency = [
+    ...(snapshot.localization?.availableCountries.filter(
+      (country) => country.isoCode === snapshot.localization?.country,
+    ) ?? []),
+    ...(snapshot.localization?.availableCountries ?? []),
+  ].find((country) => country.currency?.isoCode === snapshot.shop.currency)?.currency;
   const cart = tracked(
     {
       items,
@@ -1068,17 +1354,25 @@ export function liquidObjects(
       cart_level_discount_applications: [],
       discount_applications: [],
       attributes: {},
-      currency: {
-        iso_code: snapshot.shop.currency,
-        symbol:
-          new Intl.NumberFormat("en", {
-            style: "currency",
-            currency: snapshot.shop.currency,
-            currencyDisplay: "narrowSymbol",
-          })
-            .formatToParts(0)
-            .find((part) => part.type === "currency")?.value ?? snapshot.shop.currency,
-      },
+      currency: tracked(
+        {
+          iso_code: snapshot.shop.currency,
+          symbol:
+            shopCurrency?.symbol ??
+            new Intl.NumberFormat("en", {
+              style: "currency",
+              currency: snapshot.shop.currency,
+              currencyDisplay: "narrowSymbol",
+            })
+              .formatToParts(0)
+              .find((part) => part.type === "currency")?.value ??
+            snapshot.shop.currency,
+          ...availableFields({ name: shopCurrency?.name }),
+        },
+        "currency",
+        "shop",
+        { iso_code: "currency", symbol: null, name: null },
+      ),
       ...availableFields({
         taxes_included: snapshot.cart.taxesIncluded,
         duties_included: snapshot.cart.dutiesIncluded,
@@ -1188,7 +1482,7 @@ export function liquidObjects(
         { name: "Relevance", value: "relevance" },
         { name: "Price, low to high", value: "price-ascending" },
         { name: "Price, high to low", value: "price-descending" },
-      ],
+      ].map((option) => tracked(option, "sort_option")),
       get filters() {
         const query = new URL(route.path, "https://offline.invalid").searchParams;
         if (
@@ -1219,15 +1513,99 @@ export function liquidObjects(
     "search",
     "search",
   );
-  const globals: LiquidRecord = {
-    images: new ImageDirectory(snapshot.images, hooks.read, (property) =>
-      hooks.unsupported("image", property),
+  const languages = (snapshot.localization?.availableLanguages ?? []).map((language, index) =>
+    tracked(
+      {
+        iso_code: language.isoCode,
+        direction: direction(language.isoCode),
+        ...availableFields({
+          name: language.name,
+          endonym_name: language.endonymName,
+          primary: language.primary,
+          root_url: language.rootUrl,
+        }),
+      },
+      "shop_locale",
+      `localization.availableLanguages[${index}]`,
+      {
+        iso_code: "isoCode",
+        direction: "isoCode",
+        endonym_name: "endonymName",
+        root_url: "rootUrl",
+      },
     ),
+  );
+  let localization: LiquidRecord | undefined;
+  if (snapshot.localization) {
+    const source = snapshot.localization;
+    const countries = source.availableCountries.map((country, index) =>
+      tracked(
+        {
+          iso_code: country.isoCode,
+          ...availableFields({
+            name: country.name,
+            currency: country.currency
+              ? tracked(
+                  {
+                    iso_code: country.currency.isoCode,
+                    ...availableFields({
+                      symbol: country.currency.symbol,
+                      name: country.currency.name,
+                    }),
+                  },
+                  "currency",
+                  `localization.availableCountries[${index}].currency`,
+                  { iso_code: "isoCode" },
+                )
+              : undefined,
+          }),
+        },
+        "country",
+        `localization.availableCountries[${index}]`,
+        { iso_code: "isoCode" },
+      ),
+    );
+    localization = tracked(
+      {
+        available_countries: countries,
+        available_languages: languages,
+        country: countries.find((country) => country.iso_code === source.country),
+        language: languages.find((language) => language.iso_code === source.language),
+      },
+      "localization",
+      "localization",
+      { available_countries: "availableCountries", available_languages: "availableLanguages" },
+    );
+  }
+  // The request locale is the shop's language entry when the snapshot lists its languages.
+  const requestLocale =
+    languages.find((language) => language.iso_code === snapshot.shop.locale) ??
+    tracked(
+      {
+        iso_code: snapshot.shop.locale,
+        direction: direction(snapshot.shop.locale),
+        ...availableFields({
+          name: undefined,
+          endonym_name: undefined,
+          primary: undefined,
+          root_url: undefined,
+        }),
+      },
+      "shop_locale",
+      "shop",
+      { iso_code: "locale", direction: "locale" },
+    );
+  const globals: LiquidRecord = {
+    images: new ImageDirectory(snapshot.images, {
+      read: hooks.read,
+      unsupported: (property) => hooks.unsupported("image", property),
+      missing: (property) => absent("image", property),
+    }),
     shop: tracked(
       {
         ...Object.fromEntries(
           Object.entries(snapshot.shop).filter(
-            ([key]) => !["seo", "permanentDomain"].includes(key),
+            ([key]) => !["seo", "permanentDomain", "socialSharingImage"].includes(key),
           ),
         ),
         ...availableFields({
@@ -1245,7 +1623,7 @@ export function liquidObjects(
                 class Policy extends Drop {
                   #field(key: "id" | "title" | "body" | "url") {
                     hooks.read(`shop.policies[${index}].${key}`);
-                    if (!Object.hasOwn(source, key)) hooks.unsupported("policy", key);
+                    if (!Object.hasOwn(source, key)) absent("policy", key);
                     return key === "id" && source.id ? id(source.id) : source[key];
                   }
                   get id() {
@@ -1264,11 +1642,13 @@ export function liquidObjects(
                     return this.body;
                   }
                   liquidMethodMissing(key: string) {
-                    if (!internal.has(key)) hooks.unsupported("policy", key);
+                    if (!internalKeys.has(key)) hooks.unsupported("policy", key);
                     return undefined;
                   }
                 }
-                return new Policy();
+                const policy = new Policy();
+                objectKinds.set(policy, "policy");
+                return policy;
               }),
             }
           : {}),
@@ -1292,7 +1672,7 @@ export function liquidObjects(
         page_type: route.pageType,
         design_mode: route.designMode,
         visual_preview_mode: false,
-        locale: { iso_code: snapshot.shop.locale },
+        locale: requestLocale,
         host: snapshot.shop.domain,
         origin: `https://${snapshot.shop.domain}`,
       },
@@ -1307,71 +1687,16 @@ export function liquidObjects(
       Object.fromEntries(Object.keys(routePaths).map((key) => [key, null])),
     ),
   };
-  if (snapshot.localization) {
-    const source = snapshot.localization;
-    const countries = source.availableCountries.map((country, index) =>
-      tracked(
-        {
-          iso_code: country.isoCode,
-          ...availableFields({ name: country.name }),
-          ...(country.currency
-            ? {
-                currency: tracked(
-                  {
-                    iso_code: country.currency.isoCode,
-                    ...availableFields({
-                      symbol: country.currency.symbol,
-                      name: country.currency.name,
-                    }),
-                  },
-                  "currency",
-                  `localization.availableCountries[${index}].currency`,
-                  { iso_code: "isoCode" },
-                ),
-              }
-            : {}),
-        },
-        "country",
-        `localization.availableCountries[${index}]`,
-        { iso_code: "isoCode" },
-      ),
-    );
-    const languages = source.availableLanguages.map((language, index) =>
-      tracked(
-        {
-          iso_code: language.isoCode,
-          ...availableFields({
-            name: language.name,
-            endonym_name: language.endonymName,
-            primary: language.primary,
-            root_url: language.rootUrl,
-          }),
-        },
-        "shop_locale",
-        `localization.availableLanguages[${index}]`,
-        { iso_code: "isoCode", endonym_name: "endonymName", root_url: "rootUrl" },
-      ),
-    );
-    globals.localization = tracked(
-      {
-        available_countries: countries,
-        available_languages: languages,
-        country: countries.find((country) => country.iso_code === source.country),
-        language: languages.find((language) => language.iso_code === source.language),
-      },
-      "localization",
-      "localization",
-      { available_countries: "availableCountries", available_languages: "availableLanguages" },
-    );
-  } else {
+  if (localization) globals.localization = localization;
+  else
     Object.defineProperty(globals, "localization", {
       enumerable: true,
       get() {
-        hooks.unsupportedOperation?.("Localization availability is absent from the snapshot.");
+        if (hooks.missing) hooks.missing("Localization availability is absent from the snapshot.");
+        else hooks.unsupportedOperation?.("Localization availability is absent from the snapshot.");
         return null;
       },
     });
-  }
   if (snapshot.shop.policies !== undefined) {
     const shop = globals.shop;
     if (
@@ -1417,9 +1742,66 @@ export function liquidObjects(
       page: globals.page ?? null,
       blog: globals.blog ?? null,
       article: globals.article ?? null,
+      // Metaobject pages are not rendered offline.
+      metaobject: null,
     },
     "closest",
     "closest",
   );
+  // Documented globals beyond the resources: nil where the preview has no such state, and a
+  // diagnostic where the value exists on Shopify but not offline.
+  Object.assign(globals, {
+    articles: tracked(
+      Object.fromEntries(
+        [...articles].flatMap(([blog, entries]) =>
+          [...entries].map(([handle, value]) => [`${blog}/${handle}`, value]),
+        ),
+      ),
+      "dictionary",
+      "articles",
+    ),
+    handle: route.resourceHandle,
+    customer: null, // No customer session exists offline.
+    self: null, // Metaobject templates are not rendered.
+    current_tags: null, // Tag-filtered collection and blog URLs are not routed.
+    // Product recommendations come from a separate storefront request; a page render has none.
+    recommendations: tracked(
+      { "performed?": false, products: [], products_count: 0, intent: null },
+      "recommendations",
+    ),
+  });
+  for (const [key, value, message] of [
+    [
+      "additional_checkout_buttons",
+      false,
+      "Accelerated checkout buttons are omitted; they require Shopify's live checkout.",
+    ],
+    [
+      "content_for_additional_checkout_buttons",
+      "",
+      "Accelerated checkout buttons are omitted; they require Shopify's live checkout.",
+    ],
+  ] as const)
+    Object.defineProperty(globals, key, {
+      enumerable: true,
+      get() {
+        hooks.serverOnly?.(message);
+        return value;
+      },
+    });
+  for (const key of [
+    "all_country_option_tags",
+    "country_option_tags",
+    "content_for_index",
+    "scripts",
+    "theme",
+  ])
+    Object.defineProperty(globals, key, {
+      enumerable: true,
+      get() {
+        hooks.unsupportedOperation?.(`Global object ${key} is not available offline.`);
+        return null;
+      },
+    });
   return globals;
 }

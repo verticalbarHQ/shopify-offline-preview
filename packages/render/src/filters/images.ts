@@ -147,6 +147,7 @@ export function imageFilters(snapshot: Snapshot, read: (path: string) => void = 
     input: unknown,
     args: unknown[],
     unsupported: (message: string) => void = () => {},
+    missing: (message: string) => void = unsupported,
   ): string {
     const presentation =
       input instanceof ImageUrlDrop ? (input.metadata?.presentation ?? false) : true;
@@ -162,7 +163,7 @@ export function imageFilters(snapshot: Snapshot, read: (path: string) => void = 
       Object.entries(namedArgs(args)).map(([key, value]) => [key, toValue(value) ?? null]),
     );
     if (presentation && "filename" in image && !Object.hasOwn(image, "focalPoint"))
-      unsupported("Uploaded image presentation metadata is absent from the snapshot.");
+      missing("Uploaded image presentation metadata is absent from the snapshot.");
     const sourceWidth = Number(url.searchParams.get("crop_width") ?? image.width);
     const sourceHeight = Number(url.searchParams.get("crop_height") ?? image.height);
     const requestedWidth = url.searchParams.get("width"),

@@ -10,7 +10,11 @@ import {
   toPromise,
   type ValueToken,
 } from "liquidjs";
-import { liquidObjectKind, preserveLiquidObjectKind } from "../../data/src/objects.js";
+import {
+  liquidObjectKind,
+  type ObjectTracker,
+  preserveLiquidObjectKind,
+} from "../../data/src/objects.js";
 import { evalNumericValue } from "./numbers.js";
 
 const formKinds = new WeakMap<object, string>();
@@ -43,9 +47,31 @@ function record(value: unknown): value is Record<string, unknown> {
 }
 interface TagHooks {
   path: string;
+  track: ObjectTracker;
   unsupported(message: string): void;
   paginationOverlay?(original: Record<string, unknown>, overlay: Record<string, unknown>): void;
 }
+// Documented `form` properties that echo a submission; every form type reads them as nil here.
+const postedFields = [
+  "id",
+  "address1",
+  "address2",
+  "author",
+  "body",
+  "city",
+  "company",
+  "country",
+  "email",
+  "first_name",
+  "last_name",
+  "password_needed",
+  "phone",
+  "province",
+  "set_as_default_checkbox",
+  "name",
+  "message",
+  "zip",
+];
 export function registerShopifyTags(engine: Liquid, hooks: TagHooks): void {
   engine.registerTag(
     "form",
@@ -91,6 +117,11 @@ export function registerShopifyTags(engine: Liquid, hooks: TagHooks): void {
           cart: { action: "/cart", id: "cart_form", class: "shopify-cart-form", multipart: true },
           contact: { action: "/contact", id: "contact_form", class: "contact-form" },
           customer: { action: "/contact", id: "contact_form", class: "contact-form" },
+          new_comment: {
+            action: `${record(target) ? String(target.url ?? "") : ""}/comments`,
+            id: "comment_form",
+            class: "comment-form",
+          },
           localization: {
             action: "/localization",
             id: "localization_form",
@@ -99,14 +130,17 @@ export function registerShopifyTags(engine: Liquid, hooks: TagHooks): void {
           },
         };
         const config = configuration[kind];
+        if (kind === "new_comment" && liquidObjectKind(target) !== "article")
+          throw new Error("new_comment form requires an article");
         if (!config) {
           hooks.unsupported(`Form type ${kind} is not implemented.`);
           return `[not implemented: form ${escapeHtml(kind)}]`;
         }
         const args: Record<string, unknown> = await toPromise(this.hash.render(context));
         const id = args.id ?? config.id;
-        const action =
-          kind === "contact" || kind === "customer" ? `${config.action}#${id}` : config.action;
+        const action = ["contact", "customer", "new_comment"].includes(kind)
+          ? `${config.action}#${id}`
+          : config.action;
         const attributes: Record<string, unknown> = {
           method: "post",
           action,
@@ -133,7 +167,15 @@ export function registerShopifyTags(engine: Liquid, hooks: TagHooks): void {
             );
         else if (args.return_to !== undefined)
           before += hidden("return_to", args.return_to === true ? hooks.path : args.return_to);
-        const form = { errors: null, "posted_successfully?": false, email: null };
+        // Nothing is posted offline: no errors, no submitted values, no posted form id.
+        const form = hooks.track(
+          {
+            errors: null,
+            "posted_successfully?": false,
+            ...Object.fromEntries(postedFields.map((field) => [field, null])),
+          },
+          "form",
+        );
         formKinds.set(form, kind);
         context.push({ form });
         let output: string;
@@ -232,17 +274,23 @@ export function registerShopifyTags(engine: Liquid, hooks: TagHooks): void {
           });
           previous = index;
         }
-        const paginate = {
-          page_size: size,
-          current_page: page,
-          current_offset: offset,
-          items: total,
-          pages,
-          page_param: "page",
-          parts,
-          previous: page > 1 ? { title: "Previous", is_link: true, url: link(page - 1) } : null,
-          next: page < pages ? { title: "Next", is_link: true, url: link(page + 1) } : null,
-        };
+        const part = (value: { title: string; is_link: boolean; url: string | null }) =>
+          hooks.track(value, "part");
+        const paginate = hooks.track(
+          {
+            page_size: size,
+            current_page: page,
+            current_offset: offset,
+            items: total,
+            pages,
+            page_param: "page",
+            parts: parts.map(part),
+            previous:
+              page > 1 ? part({ title: "Previous", is_link: true, url: link(page - 1) }) : null,
+            next: page < pages ? part({ title: "Next", is_link: true, url: link(page + 1) }) : null,
+          },
+          "paginate",
+        );
         if (!root || !property) throw new Error("Invalid pagination path");
         const slice = array.slice(offset, offset + size);
         let local: unknown = slice;

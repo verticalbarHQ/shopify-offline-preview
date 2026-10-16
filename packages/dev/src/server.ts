@@ -4,7 +4,7 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defaultFixture } from "../../data/src/fixture.js";
-import { snapshotImages } from "../../data/src/images.js";
+import { snapshotImages, snapshotMediaFiles } from "../../data/src/images.js";
 import { applyScenario, validateSnapshotReferences } from "../../data/src/scenarios.js";
 import { parseSnapshot, type Snapshot } from "../../data/src/schema.js";
 import { type RenderResult, renderTheme } from "../../render/src/index.js";
@@ -41,6 +41,12 @@ const mime: Record<string, string> = {
   ".webp": "image/webp",
   ".avif": "image/avif",
   ".gif": "image/gif",
+  ".mp4": "video/mp4",
+  ".webm": "video/webm",
+  ".mov": "video/quicktime",
+  ".m3u8": "application/x-mpegURL",
+  ".glb": "model/gltf-binary",
+  ".usdz": "model/vnd.usdz+zip",
   ".woff": "font/woff",
   ".woff2": "font/woff2",
   ".ttf": "font/ttf",
@@ -276,7 +282,10 @@ export async function startDevServer(options: DevOptions): Promise<DevSession> {
       const data = await snapshot();
       const images = snapshotImages(data);
       try {
-        if (!images.some((image) => image.file === file))
+        if (
+          !images.some((image) => image.file === file) &&
+          !snapshotMediaFiles(data).includes(file)
+        )
           throw new Error("Image is absent from the snapshot");
         const fs = new NodeThemeFileSystem(
           options.dataDirectory ? join(options.dataDirectory, "images") : fixtureImages,

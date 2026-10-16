@@ -96,6 +96,9 @@ test("cart forms generate scoped multipart HTML while absent source flags and ke
   );
   assert.ok(result.html.includes('name="form_type" value="cart"'));
   assert.ok(result.html.includes("false</form>|Outer"));
-  assert.equal(result.diagnostics.filter((d) => d.code === "not-implemented").length, 4);
+  const absent = result.diagnostics.filter((d) => d.code === "missing-resource");
+  assert.equal(absent.length, 4);
+  assert.ok(absent.every((d) => d.message.endsWith("is absent from the snapshot.")));
+  assert.ok(!result.diagnostics.some((d) => d.code === "not-implemented"));
   assert.ok(!result.diagnostics.some((d) => d.code === "liquid-error"));
 });

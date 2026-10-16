@@ -13,7 +13,14 @@ import { z } from "zod";
 import type { Diagnostic } from "../../check/src/contracts.js";
 import { defaultFixture } from "../../data/src/fixture.js";
 import { ImageDirectory, NamedImageDrop } from "../../data/src/images.js";
-import { type LiquidRecord, liquidObjects, ScalarDrop } from "../../data/src/objects.js";
+import {
+  imageObject,
+  type LiquidRecord,
+  liquidObjects,
+  type ObjectHooks,
+  objectTracker,
+  ScalarDrop,
+} from "../../data/src/objects.js";
 import { applyScenario, validateSnapshotReferences } from "../../data/src/scenarios.js";
 import { type Snapshot, snapshotSchema } from "../../data/src/schema.js";
 import { registry } from "../../spec/src/index.js";
@@ -90,6 +97,21 @@ function escapeHtml(value: string): string {
       ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] ??
       character,
   );
+}
+
+let engineObserver: ((engine: Liquid, stubbed: ReadonlySet<string>) => void) | undefined;
+/** Runs `run` while reporting each render's configured engine and its stub filters. */
+export async function observeEngines<T>(
+  observe: (engine: Liquid, stubbed: ReadonlySet<string>) => void,
+  run: () => Promise<T>,
+): Promise<T> {
+  const previous = engineObserver;
+  engineObserver = observe;
+  try {
+    return await run();
+  } finally {
+    engineObserver = previous;
+  }
 }
 
 /** Initial assembly. Shopify fidelity is pending oracle verification; diagnostics expose gaps. */
@@ -185,6 +207,25 @@ export async function renderTheme(
     }
     paths.add(dataPath);
   }
+  const objectHooks: ObjectHooks = {
+    read: readSnapshot,
+    unsupportedOperation(message) {
+      diagnostic("not-implemented", message);
+    },
+    missing(message) {
+      diagnostic("missing-resource", message);
+    },
+    unsupported(type, property) {
+      diagnostic(
+        "not-implemented",
+        `Object property ${type}.${property} is not available offline.`,
+      );
+    },
+    color: (value) => colorSetting(value, (message) => diagnostic("not-implemented", message)),
+    serverOnly: (message) => diagnostic("shopify-server-only", message, "info"),
+  };
+  // Documented objects built during rendering share the snapshot objects' diagnostics.
+  const track = objectTracker(objectHooks);
   const globals = liquidObjects(
     snapshot,
     {
@@ -197,21 +238,8 @@ export async function renderTheme(
       ...(route.resource?.blogHandle ? { blogHandle: route.resource.blogHandle } : {}),
       designMode: options.designMode ?? false,
     },
-    {
-      read: readSnapshot,
-      unsupportedOperation(message) {
-        diagnostic("not-implemented", message);
-      },
-      missing(message) {
-        diagnostic("missing-resource", message);
-      },
-      unsupported(type, property) {
-        diagnostic(
-          "not-implemented",
-          `Object property ${type}.${property} is not available offline.`,
-        );
-      },
-    },
+    objectHooks,
+    track,
   );
   const templates = Object.fromEntries(
     [...files]
@@ -263,6 +291,7 @@ export async function renderTheme(
   registerCycleTag(engine);
   registerShopifyTags(engine, {
     path: route.path,
+    track,
     unsupported: (message) => diagnostic("not-implemented", message),
     paginationOverlay(original, overlay) {
       const owner = blockOwners.get(original);
@@ -344,8 +373,10 @@ export async function renderTheme(
         ...args,
       );
     });
+  const stubbed = new Set<string>();
   for (const name of Object.keys(registry.filters)) {
     if (Object.hasOwn(engine.filters, name)) continue;
+    stubbed.add(name);
     engine.registerFilter(name, function () {
       const previous = location;
       location = {
@@ -529,6 +560,32 @@ export async function renderTheme(
     );
     return null;
   }
+  /** YouTube and Vimeo URLs expose their video `id` and `type`, and output the URL. */
+  function videoUrlSetting(raw: unknown, key: string): unknown {
+    if (typeof raw !== "string" || !raw) return null;
+    let video: { id: string; type: string } | null = null;
+    try {
+      const url = new URL(raw);
+      const host = url.hostname.replace(/^(?:www|m)\./, "");
+      const path = url.pathname.split("/").filter(Boolean);
+      if (host === "youtube.com" && path[0] === "watch" && url.searchParams.get("v"))
+        video = { id: url.searchParams.get("v") ?? "", type: "youtube" };
+      else if (host === "youtube.com" && ["embed", "shorts"].includes(path[0] ?? "") && path[1])
+        video = { id: path[1], type: "youtube" };
+      else if (host === "youtu.be" && path[0]) video = { id: path[0], type: "youtube" };
+      else if (host === "vimeo.com" && /^\d+$/.test(path[0] ?? ""))
+        video = { id: path[0] ?? "", type: "vimeo" };
+      else if (host === "player.vimeo.com" && path[0] === "video" && /^\d+$/.test(path[1] ?? ""))
+        video = { id: path[1] ?? "", type: "vimeo" };
+    } catch {
+      video = null;
+    }
+    if (!video) {
+      diagnostic("not-implemented", `Setting ${key} is not a recognized YouTube or Vimeo URL.`);
+      return raw;
+    }
+    return track(new ScalarDrop(video, raw), "video_url");
+  }
   let globalSettingsContext: Context;
   const colorGroups = new Map<string, ColorSchemeGroup>();
   function settings(
@@ -542,6 +599,30 @@ export async function renderTheme(
       if (!definition.id) continue;
       const key = definition.id;
       const raw = Object.hasOwn(configured, key) ? configured[key] : definition.default;
+      // A `liquid` setting holds code that renders in its section or block scope when read.
+      if (definition.type === "liquid" && typeof raw === "string" && raw) {
+        if (!dynamicContext) {
+          result[key] = null;
+          diagnostic("not-implemented", `Liquid setting ${key} cannot render in this scope.`);
+          continue;
+        }
+        let rendering = false;
+        Object.defineProperty(result, key, {
+          enumerable: true,
+          configurable: true,
+          get() {
+            if (rendering) throw new Error("Cyclic Liquid setting reference");
+            rendering = true;
+            const templates = parseLiquid(engine, raw, `settings.${key}`, (error, token) => {
+              liquidError(error, token.file ?? `settings.${key}`, token.getPosition()[0] ?? 1);
+            });
+            return engine.render(templates, dynamicContext()).finally(() => {
+              rendering = false;
+            });
+          },
+        });
+        continue;
+      }
       if (typeof raw === "string" && raw.includes("{%")) {
         result[key] = null;
         diagnostic("not-implemented", `Liquid logic in setting ${key} is unsupported.`);
@@ -680,9 +761,8 @@ export async function renderTheme(
             "missing-resource",
             `Setting ${key} references a resource absent from the snapshot.`,
           );
-      } else if (
-        ["video", "video_url", "metaobject", "metaobject_list"].includes(definition.type)
-      ) {
+      } else if (definition.type === "video_url") result[key] = videoUrlSetting(raw, key);
+      else if (["video", "metaobject", "metaobject_list"].includes(definition.type)) {
         result[key] = null;
         if (raw)
           diagnostic("not-implemented", `Setting type ${definition.type} is not implemented.`);
@@ -770,14 +850,12 @@ export async function renderTheme(
     },
   });
   const templateSuffix = route.template.slice(10, -5).split(".")[1] ?? null;
-  globals.template = new ScalarDrop(
-    { name: route.pageType, suffix: templateSuffix, directory: null },
-    templateSuffix ? `${route.pageType}.${templateSuffix}` : route.pageType,
-    (property) =>
-      diagnostic(
-        "not-implemented",
-        `Object property template.${property} is not available offline.`,
-      ),
+  globals.template = track(
+    new ScalarDrop(
+      { name: route.pageType, suffix: templateSuffix, directory: null },
+      templateSuffix ? `${route.pageType}.${templateSuffix}` : route.pageType,
+    ),
+    "template",
   );
   globals.current_page = Number(route.query.page ?? 1);
   const systemText = translateFactory(files, snapshot.shop.locale, () => undefined);
@@ -798,6 +876,8 @@ export async function renderTheme(
   registerPageMetadata(globals, snapshot, route, {
     read: readSnapshot,
     unsupported: (message) => diagnostic("not-implemented", message),
+    missing: (message) => diagnostic("missing-resource", message),
+    image: (value, path) => imageObject(value, path, track),
   });
   async function section(
     id: string,
@@ -840,18 +920,21 @@ export async function renderTheme(
             "not-implemented",
             `Block type ${configBlock.type} has no classic block schema.`,
           );
-        const blockData = {
-          id: blockId,
-          type: isApp ? "@app" : configBlock.type,
-          settings: settings(
-            schemaBlock?.settings ?? [],
-            configBlock.settings,
-            () => sectionContext,
-          ),
-          shopify_attributes: options.designMode
-            ? `data-shopify-editor-block="${escapeHtml(JSON.stringify({ id: blockId, type: configBlock.type }))}"`
-            : "",
-        };
+        const blockData = track(
+          {
+            id: blockId,
+            type: isApp ? "@app" : configBlock.type,
+            settings: settings(
+              schemaBlock?.settings ?? [],
+              configBlock.settings,
+              () => sectionContext,
+            ),
+            shopify_attributes: options.designMode
+              ? `data-shopify-editor-block="${escapeHtml(JSON.stringify({ id: blockId, type: configBlock.type }))}"`
+              : "",
+          },
+          "block",
+        );
         if (!isThemeBlock)
           classicBlocks.set(blockData, {
             type: isApp ? "@app" : configBlock.type,
@@ -871,19 +954,25 @@ export async function renderTheme(
         : configFile.startsWith("templates/")
           ? `template--0__${id}`
           : id;
-      const sectionData = {
-        id: sectionId,
-        settings: settings(
-          schema.settings,
-          config.settings,
-          () => sectionContext,
-          () => sectionContext.spawn({ closest: globals.closest }),
-        ),
-        blocks,
-        index: options.designMode ? null : index,
-        index0: options.designMode || index === null ? null : index - 1,
-        location: groupType ?? (index === null ? "static" : "template"),
-      };
+      const sectionData = track(
+        {
+          id: sectionId,
+          settings: settings(
+            schema.settings,
+            config.settings,
+            () => sectionContext,
+            () => sectionContext.spawn({ closest: globals.closest }),
+          ),
+          blocks,
+          index: options.designMode ? null : index,
+          index0: options.designMode || index === null ? null : index - 1,
+          location: groupType ?? (index === null ? "static" : "template"),
+          // Undocumented, but read by themes; outside the editor it adds nothing. The editor's
+          // section attributes are not reproduced, so design mode leaves it diagnosed.
+          ...(options.designMode ? {} : { shopify_attributes: "" }),
+        },
+        "section",
+      );
       const sectionGlobals = Object.defineProperties({}, Object.getOwnPropertyDescriptors(globals));
       Object.defineProperty(sectionGlobals, "section", { value: sectionData, enumerable: true });
       const closest = closestSettings(schema.settings, sectionData.settings, globals.closest);
@@ -971,19 +1060,22 @@ export async function renderTheme(
           });
       const parameters: LiquidRecord = {};
       let blockContext: Context;
-      const blockData = {
-        id,
-        type: config.type,
-        settings: settings(
-          schema.settings,
-          config.settings,
-          () => blockContext,
-          () => blockContext.spawn({ closest: resourceParent }),
-        ),
-        shopify_attributes: options.designMode
-          ? `data-shopify-editor-block="${escapeHtml(JSON.stringify({ id, type: config.type }))}"`
-          : "",
-      };
+      const blockData = track(
+        {
+          id,
+          type: config.type,
+          settings: settings(
+            schema.settings,
+            config.settings,
+            () => blockContext,
+            () => blockContext.spawn({ closest: resourceParent }),
+          ),
+          shopify_attributes: options.designMode
+            ? `data-shopify-editor-block="${escapeHtml(JSON.stringify({ id, type: config.type }))}"`
+            : "",
+        },
+        "block",
+      );
       const closest = closestSettings(schema.settings, blockData.settings, inherited);
       for (const [key, value] of Object.entries(args)) {
         if (key.startsWith("closest."))
@@ -1074,6 +1166,7 @@ export async function renderTheme(
       }
     },
   );
+  engineObserver?.(engine, stubbed);
   const config = templateConfig(source(route.template), route.template);
   let html: string;
   if (config.layout === false) html = await assembly(route.template);
