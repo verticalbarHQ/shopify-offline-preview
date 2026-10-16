@@ -1,0 +1,4 @@
+{
+  "sections": { "main": { "type": "main-blog" } },
+  "order": ["main"]
+}

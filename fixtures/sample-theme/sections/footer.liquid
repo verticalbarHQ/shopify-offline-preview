@@ -1,0 +1,44 @@
+<footer class="site-footer">
+  <div class="page-width site-footer__grid">
+    {%- for block in section.blocks -%}
+      <div class="site-footer__block" {{ block.shopify_attributes }}>
+        {%- if block.settings.heading != blank -%}<h2 class="site-footer__heading">{{ block.settings.heading | escape }}</h2>{%- endif -%}
+        {%- case block.type -%}
+          {%- when 'text' -%}
+            <div class="rte">{{ block.settings.body }}</div>
+          {%- when 'menu' -%}
+            <ul class="plain-list">
+              {%- for link in block.settings.menu.links -%}
+                <li><a href="{{ link.url }}">{{ link.title | escape }}</a></li>
+              {%- endfor -%}
+            </ul>
+        {%- endcase -%}
+      </div>
+    {%- endfor -%}
+  </div>
+  <p class="page-width site-footer__legal">&copy; {{ 'now' | date: '%Y' }} {{ shop.name }}</p>
+</footer>
+
+{% schema %}
+{
+  "name": "Footer",
+  "blocks": [
+    {
+      "type": "text",
+      "name": "Text",
+      "settings": [
+        { "type": "text", "id": "heading", "label": "Heading" },
+        { "type": "richtext", "id": "body", "label": "Body" }
+      ]
+    },
+    {
+      "type": "menu",
+      "name": "Menu",
+      "settings": [
+        { "type": "text", "id": "heading", "label": "Heading" },
+        { "type": "link_list", "id": "menu", "label": "Menu", "default": "footer" }
+      ]
+    }
+  ]
+}
+{% endschema %}

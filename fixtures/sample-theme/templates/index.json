@@ -1,0 +1,50 @@
+{
+  "sections": {
+    "hero": {
+      "type": "hero",
+      "settings": { "collection": "sop-catalog", "alignment": "left" },
+      "blocks": {
+        "heading": { "type": "heading", "settings": { "text": "Preview a theme without a store" } },
+        "text": {
+          "type": "text",
+          "settings": {
+            "text": "<p>This sample theme renders against a synthetic snapshot, entirely in your browser. Open your own theme zip or folder to replace it.</p>"
+          }
+        },
+        "button": {
+          "type": "button",
+          "settings": { "label": "Browse the catalog", "link": "/collections/sop-catalog" }
+        }
+      },
+      "block_order": ["heading", "text", "button"]
+    },
+    "featured": {
+      "type": "featured-collection",
+      "settings": {
+        "heading": "Featured products",
+        "collection": "sop-catalog",
+        "products_to_show": 8,
+        "columns": 4
+      }
+    },
+    "story": {
+      "type": "rich-text",
+      "settings": { "alignment": "center" },
+      "blocks": {
+        "heading": { "type": "heading", "settings": { "text": "Sections, blocks and snippets" } },
+        "text": {
+          "type": "text",
+          "settings": {
+            "text": "<p>Use the inspector on the right to see which section, block or snippet produced each part of the page, and the snapshot data it read.</p>"
+          }
+        },
+        "button": {
+          "type": "button",
+          "settings": { "label": "Open a product", "link": "/products/sop-matrix-needle" }
+        }
+      },
+      "block_order": ["heading", "text", "button"]
+    }
+  },
+  "order": ["hero", "featured", "story"]
+}

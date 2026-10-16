@@ -1,0 +1,33 @@
+[
+  {
+    "name": "theme_info",
+    "theme_name": "Offline Sample",
+    "theme_version": "1.0.0",
+    "theme_author": "Vertical Bar",
+    "theme_documentation_url": "https://github.com/verticalbarHQ/shopify-offline-preview",
+    "theme_support_url": "https://github.com/verticalbarHQ/shopify-offline-preview/issues"
+  },
+  {
+    "name": "Colors",
+    "settings": [
+      { "type": "color", "id": "color_background", "label": "Background", "default": "#fbfaf7" },
+      { "type": "color", "id": "color_text", "label": "Text", "default": "#1f2328" },
+      { "type": "color", "id": "color_accent", "label": "Accent", "default": "#2f5d50" }
+    ]
+  },
+  {
+    "name": "Layout",
+    "settings": [
+      {
+        "type": "range",
+        "id": "corner_radius",
+        "label": "Corner radius",
+        "min": 0,
+        "max": 16,
+        "step": 2,
+        "unit": "px",
+        "default": 8
+      }
+    ]
+  }
+]

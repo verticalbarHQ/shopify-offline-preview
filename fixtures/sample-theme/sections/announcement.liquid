@@ -1,0 +1,12 @@
+{%- if section.settings.text != blank -%}
+  <div class="announcement" {{ section.shopify_attributes }}>{{ section.settings.text | escape }}</div>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Announcement",
+  "settings": [
+    { "type": "text", "id": "text", "label": "Text", "default": "Free shipping on every order" }
+  ]
+}
+{% endschema %}

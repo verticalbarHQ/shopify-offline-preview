@@ -1,0 +1,65 @@
+{%- assign hero_collection = section.settings.collection -%}
+<section class="hero hero--{{ section.settings.alignment }}" {{ section.shopify_attributes }}>
+  <div class="hero__content">
+    {%- for block in section.blocks -%}
+      {%- case block.type -%}
+        {%- when 'heading' -%}
+          <h1 class="hero__heading" {{ block.shopify_attributes }}>{{ block.settings.text | escape }}</h1>
+        {%- when 'text' -%}
+          <div class="hero__text rte" {{ block.shopify_attributes }}>{{ block.settings.text }}</div>
+        {%- when 'button' -%}
+          <a class="button" href="{{ block.settings.link | default: routes.all_products_collection_url }}" {{ block.shopify_attributes }}>{{ block.settings.label | escape }}</a>
+      {%- endcase -%}
+    {%- endfor -%}
+  </div>
+  {%- if hero_collection.products.size > 0 -%}
+    <div class="hero__mosaic" aria-hidden="true">
+      {%- for product in hero_collection.products limit: 4 -%}
+        {%- if product.featured_image -%}
+          {{ product.featured_image | image_url: width: 400 | image_tag: loading: 'lazy', alt: '' }}
+        {%- endif -%}
+      {%- endfor -%}
+    </div>
+  {%- endif -%}
+</section>
+
+{% schema %}
+{
+  "name": "Hero",
+  "settings": [
+    { "type": "collection", "id": "collection", "label": "Mosaic collection" },
+    {
+      "type": "select",
+      "id": "alignment",
+      "label": "Alignment",
+      "options": [
+        { "value": "left", "label": "Left" },
+        { "value": "center", "label": "Center" }
+      ],
+      "default": "left"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "heading",
+      "name": "Heading",
+      "limit": 1,
+      "settings": [{ "type": "text", "id": "text", "label": "Text", "default": "Hello, offline" }]
+    },
+    {
+      "type": "text",
+      "name": "Text",
+      "settings": [{ "type": "richtext", "id": "text", "label": "Text" }]
+    },
+    {
+      "type": "button",
+      "name": "Button",
+      "settings": [
+        { "type": "text", "id": "label", "label": "Label", "default": "Shop now" },
+        { "type": "url", "id": "link", "label": "Link" }
+      ]
+    }
+  ],
+  "presets": [{ "name": "Hero", "blocks": [{ "type": "heading" }, { "type": "button" }] }]
+}
+{% endschema %}

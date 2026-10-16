@@ -1,0 +1,22 @@
+<header class="site-header">
+  <div class="page-width site-header__inner">
+    <a class="site-header__logo" href="{{ routes.root_url }}">{{ shop.name }}</a>
+    <nav class="site-header__nav" aria-label="{{ 'general.main_menu' | t }}">
+      {%- for link in section.settings.menu.links -%}
+        <a href="{{ link.url }}"{% if link.active %} aria-current="page"{% endif %}>{{ link.title | escape }}</a>
+      {%- endfor -%}
+    </nav>
+    <a class="site-header__cart" href="{{ routes.cart_url }}">
+      {{ 'general.cart' | t }} <span class="badge">{{ cart.item_count }}</span>
+    </a>
+  </div>
+</header>
+
+{% schema %}
+{
+  "name": "Header",
+  "settings": [
+    { "type": "link_list", "id": "menu", "label": "Menu", "default": "main-menu" }
+  ]
+}
+{% endschema %}

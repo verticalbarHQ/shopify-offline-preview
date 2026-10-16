@@ -52,6 +52,7 @@ const browser = async (...args: string[]) =>
 let client: BrowserProtocol | undefined;
 const rows = [];
 const requests: { url: string; method: string; body: string; sessionId: string }[] = [];
+const exceptions: string[] = [];
 try {
   await browser("open", origin);
   client = await BrowserProtocol.connect((await browser("get", "cdp-url")).trim());
@@ -67,6 +68,13 @@ try {
     .object({ sessionId: z.string() })
     .parse(await c.call("Target.attachToTarget", { targetId: page.targetId, flatten: true }));
   c.on((event) => {
+    if (event.method === "Runtime.exceptionThrown")
+      exceptions.push(JSON.stringify(event.params).slice(0, 300));
+    if (
+      event.method === "Runtime.consoleAPICalled" &&
+      z.object({ type: z.string() }).parse(event.params).type === "error"
+    )
+      exceptions.push(JSON.stringify(event.params).slice(0, 300));
     if (event.method === "Network.requestWillBeSent") {
       const data = z
         .object({
@@ -93,7 +101,8 @@ try {
         .parse(event.params);
       if (attached.targetInfo.type === "iframe")
         void c
-          .call("Network.enable", {}, attached.sessionId)
+          .call("Runtime.enable", {}, attached.sessionId)
+          .then(() => c.call("Network.enable", {}, attached.sessionId))
           .then(() =>
             attached.waitingForDebugger
               ? c.call("Runtime.runIfWaitingForDebugger", {}, attached.sessionId)
@@ -102,6 +111,7 @@ try {
     }
   });
   await c.call("Network.enable", {}, sessionId);
+  await c.call("Runtime.enable", {}, sessionId);
   await c.call("Page.enable", {}, sessionId);
   await c.call(
     "Target.setAutoAttach",
@@ -109,11 +119,41 @@ try {
     sessionId,
   );
   await c.call("Page.navigate", { url: origin }, sessionId);
-  await c.evaluate(
-    sessionId,
-    `(async()=>{const until=Date.now()+10000;while(!document.querySelector('#input-status')?.textContent.includes('Open a theme')){if(Date.now()>until)throw new Error('Playground did not initialize');await new Promise(r=>setTimeout(r,20));}return true;})()`,
-  );
   const wait = `async predicate=>{const until=Date.now()+10000;while(!predicate()){if(Date.now()>until)throw new Error('Playground not ready: '+document.querySelector('#status')?.textContent);await new Promise(r=>setTimeout(r,20));}}`;
+  // First visit: the bundled sample theme renders with the default fixture, without errors.
+  const sampleFiles = z
+    .array(z.string())
+    .parse(JSON.parse(await readFile(join(root, "sample-theme/manifest.json"), "utf8")));
+  const sampleTheme = new NodeThemeFileSystem("fixtures/sample-theme");
+  for (const [index, entry] of benchmarkMatrix.entries()) {
+    const expected = await renderTheme(sampleTheme, entry.path, {
+      snapshot: defaultFixture(),
+      scenario: entry.scenario,
+      inspect: true,
+    });
+    const unexpected = expected.diagnostics.filter((d) => d.code !== "shopify-server-only");
+    assert.deepEqual(unexpected, [], `sample/${entry.id} diagnostics`);
+    const sample = z.object({ hash: z.string(), nodes: z.number(), text: z.string() }).parse(
+      await c.evaluate(
+        sessionId,
+        `(async()=>{
+    await (${wait})(()=>document.querySelector('#status').dataset.state==='ready'&&document.querySelector('#input-status').textContent.startsWith(${JSON.stringify(`${sampleFiles.length} sample theme files`)}));
+    if(${index}>0){document.querySelector('#path').value=${JSON.stringify(entry.path)};document.querySelector('#scenario').value=${JSON.stringify(entry.scenario)};document.querySelector('#controls').requestSubmit();await (${wait})(()=>document.querySelector('#status').dataset.state==='ready'&&window.SOP_INSPECTOR_STATE.result);}
+    const result=window.SOP_INSPECTOR_STATE.result;
+    const hash=[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(result))))].map(b=>b.toString(16).padStart(2,'0')).join('');
+    return {hash,nodes:document.querySelectorAll('.tree-node').length,text:document.querySelector('#input-status').textContent};})()`,
+      ),
+    );
+    assert.equal(
+      sample.hash,
+      createHash("sha256").update(JSON.stringify(expected)).digest("hex"),
+      `sample/${entry.id} core result`,
+    );
+    assert.ok(sample.nodes > 0, `sample/${entry.id} tree`);
+    console.log(`sample/${entry.id}: renders on load, core result, no diagnostics PASS`);
+  }
+  const sampleExceptions = exceptions.length;
+  assert.equal(sampleExceptions, 0, `Sample theme raised console errors: ${exceptions.join("; ")}`);
   const manifest = z
     .array(z.object({ name: z.string(), path: z.string(), commit: z.string() }))
     .parse(JSON.parse(await readFile(".local/benchmark-paths.json", "utf8")));
@@ -183,6 +223,7 @@ try {
   const report = {
     status: "pass",
     coverage: "Current renderer only; Shopify parity remains pending",
+    sampleTheme: { cases: benchmarkMatrix.length, renderedOnLoad: true, consoleErrors: 0 },
     rows,
     parentRequests: parentRequests.length,
     noUploads: true,

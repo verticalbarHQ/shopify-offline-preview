@@ -1,0 +1,37 @@
+{
+  "general": {
+    "skip_to_content": "Skip to content",
+    "main_menu": "Main menu",
+    "cart": "Cart",
+    "pagination": "Pagination",
+    "not_found": "Page not found",
+    "continue_shopping": "Continue shopping"
+  },
+  "products": {
+    "add_to_cart": "Add to cart",
+    "sold_out": "Sold out",
+    "quantity": "Quantity",
+    "from_price": "From {{ price }}",
+    "no_image": "No image"
+  },
+  "collections": {
+    "view_all": "View all",
+    "empty": "No products in this collection yet.",
+    "count": {
+      "one": "{{ count }} product",
+      "other": "{{ count }} products"
+    }
+  },
+  "search": {
+    "title": "Search",
+    "submit": "Search",
+    "results": "{{ count }} results for “{{ terms }}”"
+  },
+  "cart": {
+    "subtotal": "Subtotal",
+    "empty": "Your cart is empty."
+  },
+  "blogs": {
+    "empty": "No articles yet."
+  }
+}

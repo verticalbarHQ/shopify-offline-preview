@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { defaultFixture } from "../../data/src/fixture.js";
 import { snapshotImages } from "../../data/src/images.js";
 import { applyScenario, validateSnapshotReferences } from "../../data/src/scenarios.js";
@@ -8,6 +9,7 @@ import { MemoryThemeFileSystem } from "../../theme/src/index.js";
 import {
   type BrowserFiles,
   type DirectoryHandle,
+  normalizeFiles,
   readDirectory,
   readSelectedFiles,
 } from "./files.js";
@@ -61,12 +63,12 @@ async function mount() {
     await import("../../dev/src/inspector.js");
   } else changed();
 }
-async function setTheme(files: BrowserFiles) {
+async function setTheme(files: BrowserFiles, label = "theme files") {
   errors.theme = null;
   themeFiles = files;
   theme = new MemoryThemeFileSystem(files);
   revision++;
-  notify(`${Object.keys(files).length} theme files · processed in this browser`);
+  notify(`${Object.keys(files).length} ${label} · processed in this browser`);
   await mount();
 }
 async function setSnapshot(files: BrowserFiles) {
@@ -135,6 +137,7 @@ async function loadInput(
   kind: "theme" | "snapshot",
   read: () => Promise<BrowserFiles>,
   handle?: DirectoryHandle,
+  label?: string,
 ) {
   const sequence = ++selections[kind];
   if (kind === "theme") themeHandle = handle;
@@ -143,7 +146,7 @@ async function loadInput(
   try {
     const files = await read();
     if (sequence !== selections[kind]) return;
-    if (kind === "theme") await setTheme(files);
+    if (kind === "theme") await setTheme(files, label);
     else await setSnapshot(files);
   } catch (error) {
     if (sequence === selections[kind]) fail(kind, error);
@@ -211,4 +214,23 @@ document.addEventListener("drop", (event) => {
   if (!files?.length) return;
   void loadInput("theme", () => readSelectedFiles(files, "layout/theme.liquid"));
 });
-notify("Open a theme zip or folder. Your files stay in this browser.");
+/** The original sample theme ships as static files next to the playground. */
+async function readSampleTheme(): Promise<BrowserFiles> {
+  const response = await fetch(new URL("sample-theme/manifest.json", staticRoot));
+  if (!response.ok) throw new Error("Sample theme unavailable");
+  const names = z.array(z.string()).parse(await response.json());
+  const entries = await Promise.all(
+    names.map(async (name) => {
+      const file = await fetch(new URL(`sample-theme/${name}`, staticRoot));
+      if (!file.ok) throw new Error(`Sample theme file unavailable: ${name}`);
+      return [name, new Uint8Array(await file.arrayBuffer())] as [string, Uint8Array];
+    }),
+  );
+  return normalizeFiles(entries, "layout/theme.liquid");
+}
+function loadSampleTheme() {
+  void loadInput("theme", readSampleTheme, undefined, "sample theme files");
+}
+document.querySelector("#sample-theme")?.addEventListener("click", loadSampleTheme);
+notify("Loading the sample theme. Open your own theme zip or folder to replace it.");
+loadSampleTheme();

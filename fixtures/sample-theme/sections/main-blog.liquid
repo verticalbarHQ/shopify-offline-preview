@@ -1,0 +1,18 @@
+<section class="section narrow" {{ section.shopify_attributes }}>
+  <h1>{{ blog.title | escape }}</h1>
+  {%- paginate blog.articles by 6 -%}
+    {%- for article in blog.articles -%}
+      <article class="article-teaser">
+        <h2><a href="{{ article.url }}">{{ article.title | escape }}</a></h2>
+        <p class="muted">{{ article.published_at | date: '%B %-d, %Y' }}</p>
+        <p>{{ article.content | strip_html | truncatewords: 30 }}</p>
+      </article>
+    {%- else -%}
+      <p class="muted">{{ 'blogs.empty' | t }}</p>
+    {%- endfor -%}
+  {%- endpaginate -%}
+</section>
+
+{% schema %}
+{ "name": "Blog posts" }
+{% endschema %}
