@@ -205,7 +205,10 @@ Third-party theme requests remain visible separately. Core render output is pres
 
 Scoped import maps and circular CSS imports currently fail explicitly rather than changing their
 meaning. These are preview-adapter limitations; Shopify rendering parity is still pending.
-GitHub Pages has not been configured or deployed.
+A hosted copy is published from `main` to GitHub Pages at
+<https://verticalbarhq.github.io/shopify-offline-preview/>. It is the same static build: themes and
+snapshots stay in your browser, and the only bundled data is the synthetic default fixture (no
+benchmark theme files). Rendering is approximate; Shopify parity is still pending.
 
 ## Generated Shopify documentation
 
