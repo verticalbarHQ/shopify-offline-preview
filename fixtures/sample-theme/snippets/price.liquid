@@ -1,0 +1,14 @@
+{%- comment -%} Renders a price for a product or a specific variant. {%- endcomment -%}
+{%- assign target = variant | default: product.selected_or_first_available_variant -%}
+<div class="price{% if target.compare_at_price > target.price %} price--sale{% endif %}{% unless target.available %} price--sold-out{% endunless %}">
+  {%- if product.price_varies and variant == blank -%}
+    {%- assign min_price = product.price_min | money -%}
+    <span>{{ 'products.from_price' | t: price: min_price }}</span>
+  {%- else -%}
+    <span class="price__current">{{ target.price | money }}</span>
+  {%- endif -%}
+  {%- if target.compare_at_price > target.price -%}
+    <s class="price__compare muted">{{ target.compare_at_price | money }}</s>
+  {%- endif -%}
+  {%- unless target.available -%}<span class="badge badge--muted">{{ 'products.sold_out' | t }}</span>{%- endunless -%}
+</div>

@@ -1,0 +1,13 @@
+<article class="section narrow" {{ section.shopify_attributes }}>
+  {%- if article.image -%}
+    {{ article.image | image_url: width: 1200 | image_tag: class: 'article__image' }}
+  {%- endif -%}
+  <h1>{{ article.title | escape }}</h1>
+  <p class="muted">{{ article.published_at | date: '%B %-d, %Y' }}{% if article.author != blank %} · {{ article.author | escape }}{% endif %}</p>
+  <div class="rte">{{ article.content }}</div>
+  <p><a href="{{ blog.url }}">&larr; {{ blog.title | escape }}</a></p>
+</article>
+
+{% schema %}
+{ "name": "Article" }
+{% endschema %}

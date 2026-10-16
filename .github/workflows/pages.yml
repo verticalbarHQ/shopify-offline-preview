@@ -23,17 +23,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm generate
       - run: pnpm build
-      - name: Reject theme files in the static site
-        run: |
-          find dist/playground -type f | sort
-          if find dist/playground \( -name '*.liquid' -o -name 'settings_schema.json' \) | grep -q .; then
-            echo "Theme files found in dist/playground" >&2
-            exit 1
-          fi
-          if grep -rliE 'dawn|horizon' dist/playground; then
-            echo "Benchmark theme content found in dist/playground" >&2
-            exit 1
-          fi
+      - run: pnpm benchmarks:fetch
+      - name: Check the artifact ships no benchmark theme files
+        run: pnpm pages:artifact-check
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:

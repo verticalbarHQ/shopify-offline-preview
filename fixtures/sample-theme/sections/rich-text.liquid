@@ -1,0 +1,51 @@
+<section class="section rich-text rich-text--{{ section.settings.alignment }}" {{ section.shopify_attributes }}>
+  {%- for block in section.blocks -%}
+    {%- case block.type -%}
+      {%- when 'heading' -%}
+        <h2 {{ block.shopify_attributes }}>{{ block.settings.text | escape }}</h2>
+      {%- when 'text' -%}
+        <div class="rte" {{ block.shopify_attributes }}>{{ block.settings.text }}</div>
+      {%- when 'button' -%}
+        <a class="button button--secondary" href="{{ block.settings.link | default: routes.root_url }}" {{ block.shopify_attributes }}>{{ block.settings.label | escape }}</a>
+    {%- endcase -%}
+  {%- endfor -%}
+</section>
+
+{% schema %}
+{
+  "name": "Rich text",
+  "settings": [
+    {
+      "type": "select",
+      "id": "alignment",
+      "label": "Alignment",
+      "options": [
+        { "value": "left", "label": "Left" },
+        { "value": "center", "label": "Center" }
+      ],
+      "default": "center"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "heading",
+      "name": "Heading",
+      "settings": [{ "type": "text", "id": "text", "label": "Text", "default": "Talk about your brand" }]
+    },
+    {
+      "type": "text",
+      "name": "Text",
+      "settings": [{ "type": "richtext", "id": "text", "label": "Text" }]
+    },
+    {
+      "type": "button",
+      "name": "Button",
+      "settings": [
+        { "type": "text", "id": "label", "label": "Label", "default": "Learn more" },
+        { "type": "url", "id": "link", "label": "Link" }
+      ]
+    }
+  ],
+  "presets": [{ "name": "Rich text", "blocks": [{ "type": "heading" }, { "type": "text" }] }]
+}
+{% endschema %}

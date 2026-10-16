@@ -1,0 +1,12 @@
+{
+  "type": "header",
+  "name": "Header group",
+  "sections": {
+    "announcement": {
+      "type": "announcement",
+      "settings": { "text": "Offline sample theme · rendered entirely in your browser" }
+    },
+    "header": { "type": "header", "settings": { "menu": "main-menu" } }
+  },
+  "order": ["announcement", "header"]
+}
