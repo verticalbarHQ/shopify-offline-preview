@@ -174,8 +174,9 @@ Exit codes:
 - **Design mode toggle.** Sets `request.design_mode = true`, as Shopify's theme editor does, so themes
   show their own placeholder content for empty settings. It is off by default.
 - **Badges.** These conditions are badged in the page and listed in diagnostics:
-  - `missing-resource`: a setting points to a handle that is not in the snapshot;
-  - `unimplemented`: a filter, tag, or object property has no implementation;
+  - `missing-resource`: a setting points to a handle that is not in the snapshot, or the snapshot
+    omits data the theme reads;
+  - `not-implemented`: a filter, tag, or object property has no implementation;
   - `liquid-error`;
   - `app-placeholder`;
   - `blocked-endpoint`: theme JavaScript called an unsupported server endpoint;
@@ -199,7 +200,8 @@ Exit codes:
      defect.
 3. **Missing data.** A setting that references an absent resource resolves to nil, as on Shopify. The
    page renders as Shopify would and a `missing-resource` diagnostic is recorded. Nothing is
-   synthesized.
+   synthesized. An optional snapshot field that a theme reads but the snapshot omits is reported
+   the same way, separately from features that have no implementation (`not-implemented`).
 4. **Errors.** Liquid errors render inline the way Shopify renders them (`Liquid error (<file> line
    <n>): …`) and rendering continues. Each one is also recorded as a diagnostic.
 5. **Determinism.**
@@ -284,19 +286,20 @@ The repository is a pnpm workspace. It publishes **one** npm package with subpat
 ```
 packages/
   spec/        generated from theme-liquid-docs (types, registry, corpus inputs)
-  dialect/     Shopify filters/tags/objects as liquidjs plugins — one file + test per filter
-  theme/       ThemeFileSystem, JSONC, layout/template/section-group/section/block/snippet assembly,
-               compiled {% stylesheet %}/{% javascript %} assets
-  data/        snapshot schema (zod → JSON Schema), derivation of Liquid objects, scenarios, default fixture
-  render/      route → template → context → render → RenderResult {html, tree, diagnostics, dataUsed}
+  theme/       ThemeFileSystem, JSONC, theme paths
+  data/        snapshot schema (zod → JSON Schema), scenarios, default fixture, derivation of Liquid objects
+  render/      routes, assembly, Shopify filters/tags/objects on liquidjs, RenderResult, renderer registration
   check/       static coverage over reachable files
-  server/      Node dev server (two origins, watcher, image route, blocked endpoints)
-  inspector/   web UI shared by server and playground
+  dev/         Node dev server (two origins, watcher, image route, blocked endpoints) and the inspector UI
   playground/  static site (zip/folder loading, browser runtime)
   cli/         dev | render | check | schema
 tools/oracle/  seeding, instrumentation, capture, normalization, comparison, golden PRs (not published)
 benchmarks.json  pinned benchmark themes: { name, repo, commit }
 ```
+
+The dialect (Shopify filters, tags and objects) lives in `render/` and `data/`, and the inspector UI
+is shared by `dev/` and `playground/`; there are no separate `dialect`, `server` or `inspector`
+packages.
 
 ### 8.4 Data model — snapshot (source-shaped)
 
@@ -308,7 +311,8 @@ is the verification harness's direction, not a restriction on where user snapsho
 The library does not implement live-store collection or provider-specific export conversion.
 
 - `meta`: `now`, `schemaVersion`
-- `shop`: name, domain, locale, currency, `money_format`, `money_with_currency_format`, timezone.
+- `shop`: name, domain, locale, currency, `money_format`, `money_with_currency_format`, timezone,
+  and optional metadata such as policies and the social sharing image.
   For benchmarks these are mirrored *from* the oracle store, because some of them cannot be set
   through the API.
 - `products[]`: handle, title, `descriptionHtml`, vendor, `productType`, tags, `templateSuffix`,
@@ -317,15 +321,21 @@ The library does not implement live-store collection or provider-specific export
     `barcode`, and `image`. Source `price` and non-null `compareAtPrice` are decimal strings in the
     shop currency; derived Liquid prices are calculated later. Cart lines refer to `productHandle`
     and `variantId`.
-  - Each image has `file`, `alt`, `width`, and `height`.
+  - Each image has `file`, `alt`, `width`, and `height`, and optional `id` and focal point (`null`
+    when the merchant set none).
+  - Options may list Shopify option value IDs and swatches per value.
+  - Optional `media` lists the product's media in order: image entries by file, and videos, external
+    videos and 3D models with their preview images and local source files.
+  - `metafields` values written as `{type, value}` are typed metafields; other JSON values are
+    legacy metafields exposed unchanged. Metaobject fields follow the same rule.
 - `collections[]`: handle, title, `descriptionHtml`, image, ordered product handles, sort order,
   `templateSuffix`.
 - `pages[]`, `blogs[]` (each with `articles[]`), `menus[]` (nested link lists), `metaobjects[]`.
 - Optional `images[]`: uploads identified by their original filename, with local file, alt text,
   dimensions and optional source id/focal-point coordinates. These supply global filename lookups
   and image picker settings. Product images do not stand in for unspecified uploads.
-- Optional `placeholderSvgs`: externally prepared SVG strings keyed by documented placeholder
-  names. The strings contain the base SVG output without a root class. The renderer consumes them
+- Optional `placeholderSvgs` and `paymentTypeSvgs`: externally prepared SVG strings keyed by
+  documented placeholder names and by payment types. The strings contain the base SVG output without a root class. The renderer consumes them
   offline and applies class arguments without changing artwork bytes. Platform artwork is not
   redistributed with the library; absent entries produce `missing-resource` diagnostics.
 - `cart`: lines (variant reference and quantity), note.
@@ -512,6 +522,8 @@ Categories:
   fixture equivalents.
 - A filter, tag, or object property counts as **implemented** only when it is registered **and**
   covered by at least one oracle-verified corpus case. A registered stub does not count.
+  **Registered** means the offline renderer provides it: a non-stub filter or tag, or a property
+  that the renderer's objects expose (`check` reports it from the renderer's own registration).
 
 ### 9.11 Coverage
 
