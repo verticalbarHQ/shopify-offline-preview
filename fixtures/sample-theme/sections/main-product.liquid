@@ -1,0 +1,70 @@
+{%- assign current_variant = product.selected_or_first_available_variant -%}
+{%- assign form_id = 'product-form-' | append: section.id -%}
+<section class="product" {{ section.shopify_attributes }}>
+  <div class="product__media">
+    {%- if product.images.size > 0 -%}
+      {%- for image in product.images -%}
+        {{ image | image_url: width: 900 | image_tag: loading: 'lazy', class: 'product__image' }}
+      {%- endfor -%}
+    {%- else -%}
+      <div class="placeholder">{{ 'products.no_image' | t }}</div>
+    {%- endif -%}
+  </div>
+  <div class="product__info">
+    {%- for block in section.blocks -%}
+      {%- case block.type -%}
+        {%- when 'vendor' -%}
+          <p class="product__vendor muted" {{ block.shopify_attributes }}>{{ product.vendor | escape }}</p>
+        {%- when 'title' -%}
+          <h1 class="product__title" {{ block.shopify_attributes }}>{{ product.title | escape }}</h1>
+        {%- when 'price' -%}
+          <div {{ block.shopify_attributes }}>{% render 'price', product: product, variant: current_variant %}</div>
+        {%- when 'variant_picker' -%}
+          {%- unless product.has_only_default_variant -%}
+            <div class="variant-picker" {{ block.shopify_attributes }}>
+              {%- for option in product.options_with_values -%}
+                <fieldset class="variant-picker__option">
+                  <legend>{{ option.name | escape }}</legend>
+                  {%- for value in option.values -%}
+                    <label class="pill">
+                      <input type="radio" form="{{ form_id }}" name="options[{{ option.name | escape }}]" value="{{ value | escape }}"{% if option.selected_value == value %} checked{% endif %}>
+                      <span>{{ value | escape }}</span>
+                    </label>
+                  {%- endfor -%}
+                </fieldset>
+              {%- endfor -%}
+            </div>
+          {%- endunless -%}
+        {%- when 'buy_buttons' -%}
+          <div {{ block.shopify_attributes }}>
+            {%- form 'product', product, id: form_id, class: 'product-form' -%}
+              <input type="hidden" name="id" value="{{ current_variant.id }}">
+              <label class="product-form__quantity">
+                {{ 'products.quantity' | t }}
+                <input type="number" name="quantity" value="1" min="1">
+              </label>
+              <button type="submit" class="button"{% unless current_variant.available %} disabled{% endunless %}>
+                {%- if current_variant.available -%}{{ 'products.add_to_cart' | t }}{%- else -%}{{ 'products.sold_out' | t }}{%- endif -%}
+              </button>
+            {%- endform -%}
+          </div>
+        {%- when 'description' -%}
+          <div class="product__description rte" {{ block.shopify_attributes }}>{{ product.description }}</div>
+      {%- endcase -%}
+    {%- endfor -%}
+  </div>
+</section>
+
+{% schema %}
+{
+  "name": "Product information",
+  "blocks": [
+    { "type": "vendor", "name": "Vendor", "limit": 1 },
+    { "type": "title", "name": "Title", "limit": 1 },
+    { "type": "price", "name": "Price", "limit": 1 },
+    { "type": "variant_picker", "name": "Variant picker", "limit": 1 },
+    { "type": "buy_buttons", "name": "Buy buttons", "limit": 1 },
+    { "type": "description", "name": "Description", "limit": 1 }
+  ]
+}
+{% endschema %}

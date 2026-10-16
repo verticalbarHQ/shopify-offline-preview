@@ -1,0 +1,22 @@
+<section class="section narrow" {{ section.shopify_attributes }}>
+  <h1>{{ 'general.cart' | t }}</h1>
+  {%- if cart.item_count > 0 -%}
+    <table class="cart-table">
+      {%- for item in cart.items -%}
+        <tr>
+          <td><a href="{{ item.url }}">{{ item.product.title | escape }}</a>{% unless item.product.has_only_default_variant %}<br><small class="muted">{{ item.variant.title | escape }}</small>{% endunless %}</td>
+          <td>&times; {{ item.quantity }}</td>
+          <td class="right">{{ item.final_line_price | money }}</td>
+        </tr>
+      {%- endfor -%}
+      <tr><th colspan="2">{{ 'cart.subtotal' | t }}</th><td class="right">{{ cart.total_price | money }}</td></tr>
+    </table>
+  {%- else -%}
+    <p class="muted">{{ 'cart.empty' | t }}</p>
+    <a class="button" href="{{ routes.all_products_collection_url }}">{{ 'general.continue_shopping' | t }}</a>
+  {%- endif -%}
+</section>
+
+{% schema %}
+{ "name": "Cart" }
+{% endschema %}

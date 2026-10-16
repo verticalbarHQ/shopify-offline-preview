@@ -191,9 +191,11 @@ unchanged. The inspector rejects cross-origin requests and filesystem escapes.
 ## Browser playground
 
 `pnpm build` writes the static site to `dist/playground/`. Serve that directory locally with any static
-HTTP server; it also works under a static hosting subdirectory. Open a theme zip, drop it onto the
-page, or choose a folder. Supply a snapshot zip/folder containing `snapshot.json` and `images/`, or
-use the bundled fixture. Theme and snapshot files are processed in browser memory and are never
+HTTP server; it also works under a static hosting subdirectory. On first visit it renders the bundled
+sample theme (`fixtures/sample-theme/`, an original MIT-licensed theme written for this project, not
+derived from any Shopify theme) with the default fixture; **Sample theme** reloads it. Open a theme
+zip, drop it onto the page, or choose a folder to replace it. Supply a snapshot zip/folder containing
+`snapshot.json` and `images/`, or use the bundled fixture. Theme and snapshot files are processed in browser memory and are never
 uploaded. A folder opened through File System Access can be read again with **Reload folder**;
 there is no file watcher. Browsers without that API can use the folder input or zip input.
 
@@ -207,8 +209,9 @@ Scoped import maps and circular CSS imports currently fail explicitly rather tha
 meaning. These are preview-adapter limitations; Shopify rendering parity is still pending.
 A hosted copy is published from `main` to GitHub Pages at
 <https://verticalbarhq.github.io/shopify-offline-preview/>. It is the same static build: themes and
-snapshots stay in your browser, and the only bundled data is the synthetic default fixture (no
-benchmark theme files). Rendering is approximate; Shopify parity is still pending.
+snapshots stay in your browser, and the only bundled content is the synthetic default fixture and the
+original sample theme (no benchmark theme files; `pnpm pages:artifact-check` enforces this before upload). Rendering is
+approximate; Shopify parity is still pending.
 
 ## Generated Shopify documentation
 

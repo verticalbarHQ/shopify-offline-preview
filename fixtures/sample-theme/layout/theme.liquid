@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="{{ request.locale.iso_code }}">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ page_title }}{% unless page_title contains shop.name %} · {{ shop.name }}{% endunless %}</title>
+    {% if page_description %}<meta name="description" content="{{ page_description | escape }}">{% endif %}
+    {{ content_for_header }}
+    <style>
+      :root {
+        --color-bg: {{ settings.color_background }};
+        --color-text: {{ settings.color_text }};
+        --color-accent: {{ settings.color_accent }};
+        --radius: {{ settings.corner_radius }}px;
+      }
+    </style>
+    {{ 'theme.css' | asset_url | stylesheet_tag }}
+  </head>
+  <body class="template-{{ template.name }}">
+    <a class="skip-link" href="#main">{{ 'general.skip_to_content' | t }}</a>
+    {% sections 'header-group' %}
+    <main id="main" class="page-width">
+      {{ content_for_layout }}
+    </main>
+    {% sections 'footer-group' %}
+  </body>
+</html>

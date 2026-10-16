@@ -143,8 +143,9 @@ try {
   const wait = `async predicate=>{const until=Date.now()+10000;while(!predicate()){if(Date.now()>until)throw new Error('Interaction timed out: '+document.querySelector('#status')?.textContent);await new Promise(r=>setTimeout(r,20));}}`;
   const parent = (code: string) => c.evaluate(sessionId, code);
   await browser("upload", "#theme-zip", themeZip);
+  // The sample theme loads on first visit; wait until the uploaded theme has replaced it.
   await parent(
-    `(async()=>{await (${wait})(()=>document.querySelector('#status').dataset.state==='ready');return true;})()`,
+    `(async()=>{await (${wait})(()=>document.querySelector('#status').dataset.state==='ready'&&document.querySelector('#input-status').textContent.startsWith(${JSON.stringify(`${Object.keys(files).length} theme files`)}));return true;})()`,
   );
   async function frame(code: string) {
     for (let i = 0; i < 50; i++) {

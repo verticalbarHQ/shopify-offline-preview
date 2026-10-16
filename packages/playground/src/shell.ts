@@ -11,10 +11,10 @@ export const inspectorHtml = shell
   )
   .replace(
     '<form id="controls">',
-    '<div id="inputs"><label>Theme zip<input id="theme-zip" type="file" accept=".zip"></label><button id="open-theme-folder" type="button">Theme folder</button><input id="theme-folder" type="file" webkitdirectory multiple><label>Snapshot zip<input id="snapshot-zip" type="file" accept=".zip"></label><button id="open-snapshot-folder" type="button">Snapshot folder</button><input id="snapshot-folder" type="file" webkitdirectory multiple><button id="default-snapshot" type="button">Default fixture</button><button id="reload-folder" type="button" disabled>Reload folder</button><span id="input-status" role="status"></span></div><form id="controls">',
+    '<div id="inputs"><button id="sample-theme" type="button">Sample theme</button><label>Theme zip<input id="theme-zip" type="file" accept=".zip"></label><button id="open-theme-folder" type="button">Theme folder</button><input id="theme-folder" type="file" webkitdirectory multiple><label>Snapshot zip<input id="snapshot-zip" type="file" accept=".zip"></label><button id="open-snapshot-folder" type="button">Snapshot folder</button><input id="snapshot-folder" type="file" webkitdirectory multiple><button id="default-snapshot" type="button">Default fixture</button><button id="reload-folder" type="button" disabled>Reload folder</button><span id="input-status" role="status"></span></div><form id="controls">',
   )
   .replace(
     'sandbox="allow-scripts allow-same-origin allow-forms"',
     'sandbox="allow-scripts allow-forms"',
   )
-  .replace('data-state="loading">Starting…', 'data-state="idle">Choose a theme to start.');
+  .replace('data-state="loading">Starting…', 'data-state="idle">Loading the sample theme…');

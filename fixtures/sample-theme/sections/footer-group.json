@@ -1,0 +1,21 @@
+{
+  "type": "footer",
+  "name": "Footer group",
+  "sections": {
+    "footer": {
+      "type": "footer",
+      "blocks": {
+        "about": {
+          "type": "text",
+          "settings": {
+            "heading": "About this sample",
+            "body": "<p>An original MIT-licensed theme that ships with the playground.</p>"
+          }
+        },
+        "links": { "type": "menu", "settings": { "heading": "Shop", "menu": "main-menu" } }
+      },
+      "block_order": ["about", "links"]
+    }
+  },
+  "order": ["footer"]
+}

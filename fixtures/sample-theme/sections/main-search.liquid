@@ -1,0 +1,19 @@
+<section class="section" {{ section.shopify_attributes }}>
+  <h1>{{ 'search.title' | t }}</h1>
+  <form action="{{ routes.search_url }}" method="get" class="search-form">
+    <input type="search" name="q" value="{{ search.terms | escape }}" aria-label="{{ 'search.title' | t }}">
+    <button class="button" type="submit">{{ 'search.submit' | t }}</button>
+  </form>
+  {%- if search.performed -%}
+    <p class="muted">{{ 'search.results' | t: count: search.results_count, terms: search.terms }}</p>
+    <ul class="product-grid" style="--columns: 4">
+      {%- for item in search.results -%}
+        {%- if item.object_type == 'product' -%}<li>{% render 'product-card', product: item %}</li>{%- endif -%}
+      {%- endfor -%}
+    </ul>
+  {%- endif -%}
+</section>
+
+{% schema %}
+{ "name": "Search results" }
+{% endschema %}
