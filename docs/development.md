@@ -1,80 +1,104 @@
 # Development
 
-Requires Node.js 22 or newer and pnpm 10.34.7. Docker is needed for the network-off and browser
-lanes.
+You need Node.js 22 or newer and pnpm 10.34.7. The container checks also need Docker.
 
 ```sh
 pnpm install --frozen-lockfile
-pnpm generate        # generated spec, JSON Schemas and the default fixture
-pnpm verify          # generate:check, typecheck, lint, build, unit tests
+pnpm generate        # generated Shopify data, JSON Schemas and the sample store
+pnpm verify          # generate:check, typecheck, lint, build and unit tests
 ```
 
 ## Layout
 
 | Path | Contents |
 |---|---|
-| `packages/spec` | Data generated from `Shopify/theme-liquid-docs`: object types, the filter/tag/object registry, corpus inputs, system translations. |
-| `packages/theme` | `ThemeFileSystem` (memory and Node), JSONC parsing, theme paths. |
-| `packages/data` | Snapshot schema (zod → JSON Schema), scenarios, the default fixture, and derivation of Liquid objects. |
-| `packages/render` | Routes, assembly, Shopify filters/tags/objects on `liquidjs`, the render result, renderer registration for `check`. |
-| `packages/check` | Static coverage of reachable files and features. |
-| `packages/dev` | Dev server (two origins, file watcher, image route, blocked endpoints) and the inspector. |
-| `packages/playground` | Static browser playground. |
-| `packages/cli` | `render`, `check`, `dev`, `schema`. |
-| `tools/` | Build, checks, benchmark fetching; `tools/oracle/` holds the Shopify comparison harness ([oracle.md](oracle.md)). |
-| `fixtures/` | Generated default fixture (`fixtures/default`) and the original MIT sample theme. |
-| `schemas/` | Published JSON Schemas for render, check and snapshot. |
+| `packages/spec` | Data generated from `Shopify/theme-liquid-docs`: object types, the filter/tag/object registry, filter examples and system translations. |
+| `packages/theme` | `ThemeFileSystem` (in memory and Node), JSONC parsing, theme paths. |
+| `packages/data` | The snapshot schema (zod, exported as JSON Schema), scenarios, the sample store, and the Liquid objects built from a snapshot. |
+| `packages/render` | Routes, page assembly, Shopify filters, tags and objects on `liquidjs`, and the render result. |
+| `packages/check` | Static analysis behind `check`. |
+| `packages/dev` | The dev server and the inspector. |
+| `packages/playground` | The browser playground. |
+| `packages/cli` | The `render`, `check`, `dev` and `schema` commands. |
+| `tools/` | Build scripts, checks and benchmark fetching. `tools/oracle/` holds the Shopify comparison tools. |
+| `fixtures/` | The sample store (`fixtures/default`, generated) and the sample theme. |
+| `schemas/` | The published JSON Schemas. |
 
-The core (spec, theme, data, render, check) has no Node-only dependencies; file access goes through
-`ThemeFileSystem`, so the same code runs in the playground.
+The core packages (spec, theme, data, render, check) use no Node-only APIs. File access goes
+through `ThemeFileSystem`, so the same code runs in the playground.
 
-## Generated Shopify documentation
+## Generated Shopify data
 
-`upstream.json` pins `Shopify/theme-liquid-docs` (MIT). Its raw files and license are kept in
-`vendor/theme-liquid-docs/`. `pnpm generate` writes the registry, object types, corpus inputs
-(without expected results) and system translations under `packages/spec/src/generated/`;
-`pnpm generate:check` fails on drift. Documentation types are optional and nullable; untyped
-properties stay `unknown`.
+`upstream.json` pins `Shopify/theme-liquid-docs` (MIT), whose files are kept in
+`vendor/theme-liquid-docs/`. `pnpm generate` writes the generated data to
+`packages/spec/src/generated/`, and `pnpm generate:check` fails if it is out of date.
 
-## Benchmarks
+## Benchmark themes
 
-`benchmarks.json` pins Shopify's Dawn and Horizon themes. `pnpm benchmarks:fetch` downloads them at
-those commits into a temporary directory outside the project and writes an ignored manifest
-(`.local/benchmark-paths.json`). They are never committed or packaged; `pnpm license-guard` fails if
-any project file matches a benchmark file hash, and checks the README disclaimer.
+`benchmarks.json` pins Shopify's Dawn and Horizon themes. `pnpm benchmarks:fetch` downloads them
+into a temporary directory outside the repository. Their licenses do not allow redistribution, so
+they are never committed or packaged. `pnpm license-guard` fails if any repository file matches a
+benchmark file, or if the README's first line is not the disclaimer.
 
-The fixture matrix renders 18 pages per theme ([SPEC §9.3](../SPEC.md#93-fixture-and-scenario-matrix)).
+The benchmark checks render 18 pages per theme: home, product, collection, page, search, cart, 404,
+blog and article, in several scenarios of the sample store.
 
 ## Checks
 
-| Command | What it verifies |
+| Command | What it checks |
 |---|---|
-| `pnpm test` | Unit tests (`tests/*.test.ts`). Run `pnpm build` first; some tests load the browser bundle. |
-| `pnpm benchmarks:check` | Deterministic static `check` output for both benchmarks with valid contracts and no parse or missing-reference errors. |
-| `pnpm benchmarks:render-check` | All 36 matrix renders: repeat-run determinism and byte-identical Node and browser output, reporting Liquid errors and unsupported features. |
-| `pnpm agent:contract-check` | The agent contract: copy Dawn, edit a section, find the change in `render --json`; an unknown filter makes `check --strict` exit 5; usage/input/fatal failures emit schema-valid JSON with no TTY. |
-| `pnpm oracle:offline-check` | The comparison pipeline (instrumented copies, tree/text summaries, double-capture stability) on offline renders. Local pipeline evidence, never a Shopify golden. |
-| `pnpm browser:playground-check` | Playground e2e over the matrix: inspector tree, diagnostics, sandbox isolation and no uploads. |
-| `pnpm browser:inspector-check` | Dev inspector e2e over the matrix, plus a theme add-to-cart click recorded as `blocked-endpoint`. |
-| `pnpm browser:render-smoke` | A loopback page that renders the matrix in the browser. |
-| `pnpm language:check --suite-dir <dir>` | Pinned `Shopify/liquid-spec` basics through the real renderer (needs Git and Ruby's YAML loader). |
-| `pnpm test:network-off` | Builds `tools/ci/Dockerfile` and runs the foundation checks with `--network none`. |
-| `pnpm test:browser-offline` | Builds `tools/ci/browser.Dockerfile` (Chromium installed at build time) and runs every browser check with networking disabled. |
+| `pnpm test` | Unit tests in `tests/`. Run `pnpm build` first; some tests load the browser bundle. |
+| `pnpm benchmarks:check` | `check` output for both benchmark themes is deterministic, matches its schema, and has no parse or missing-file errors. |
+| `pnpm benchmarks:render-check` | All 36 benchmark renders are repeatable and byte-identical between Node and the browser build. |
+| `pnpm agent:contract-check` | The CLI contract: copy Dawn, edit a section, and find the edit in `render --json`; `check --strict` exits 5 on an unknown filter; every failure prints schema-valid JSON without a TTY. |
+| `pnpm browser:playground-check` | The playground across the benchmark pages: inspector tree, diagnostics, sandboxing, and no uploads. |
+| `pnpm browser:inspector-check` | The dev inspector across the benchmark pages, including an add-to-cart click recorded as `blocked-endpoint`. |
+| `pnpm browser:render-smoke` | A local page that renders the benchmark pages in the browser. |
+| `pnpm language:check --suite-dir <dir>` | Basic `Shopify/liquid-spec` cases through the renderer. Needs Git and Ruby. |
+| `pnpm oracle:offline-check` | The comparison pipeline (instrumented copies, summaries, repeat stability) on offline renders. |
+| `pnpm test:network-off` | Runs the main checks in a Docker container with networking disabled. |
+| `pnpm test:browser-offline` | Runs the browser checks in a Docker container with networking disabled. |
 
 `tools/check-playground-interactions.ts` and `tools/check-inspector-interactions.ts` cover the
-interactive flows (zip and folder input, hot reload, highlighting, design mode, 501 endpoints).
-
-None of these checks compares output with Shopify. `pnpm parity:check` does, against captured
-goldens; it fails until real captures exist ([oracle.md](oracle.md#parity-check)).
+interactive flows: zip and folder input, hot reload, highlighting, design mode and blocked
+endpoints.
 
 ## CI
 
-`.github/workflows/ci.yml` runs on pull requests and `main`:
+`.github/workflows/ci.yml` runs on pull requests and on `main`:
 
-- `unit`: `pnpm verify`, `benchmarks:fetch`, `agent:contract-check`;
-- `network-off`: the foundation checks in a container with `--network none`;
-- `license-guard`;
-- `browser`: the browser checks in a container with `--network none`.
+- `unit`: `pnpm verify`, `benchmarks:fetch` and `agent:contract-check`;
+- `network-off`: the main checks in a container without networking;
+- `browser`: the browser checks in a container without networking;
+- `license-guard`.
 
-`.github/workflows/pages.yml` publishes the playground from `main` after
-`pnpm pages:artifact-check` confirms the artifact contains no benchmark theme files.
+`.github/workflows/pages.yml` publishes the playground from `main`. Before that,
+`pnpm pages:artifact-check` confirms that the artifact contains no benchmark theme files.
+
+## Shopify comparison tools
+
+`tools/oracle/` holds the tools for comparing the preview with real Shopify output. They are
+development tools and are not part of the package. [SPEC §9](../SPEC.md#9-verification-system)
+describes the design, which has four steps:
+
+1. Seed a dedicated Shopify development store from the sample store.
+2. Push instrumented copies of the benchmark themes as unpublished themes.
+3. Capture each benchmark page twice.
+4. Compare the captures with the preview's own renders.
+
+None of the commands below contacts a store.
+
+| Command | Purpose |
+|---|---|
+| `pnpm oracle:seed-prepare` | Plans the store state for the benchmark pages from a snapshot and its images. |
+| `pnpm oracle:seed-requests-prepare` | Compiles that plan into Admin API requests and validates them against an Admin API schema. |
+| `pnpm oracle:backup-audit`, `pnpm oracle:supplemental-backup-audit` | Audit the store exports taken before the store is wiped. |
+| `pnpm oracle:corpus-prepare` | Builds a theme that runs the documented filter examples, so Shopify's outputs can be captured. |
+| `pnpm parity:check` | Compares the preview's renders with the captured pages in `oracle/goldens/`. |
+
+The modules that do talk to a store follow these rules:
+
+- Before every operation, they confirm the pinned development store and its marker metafield
+  `sop.oracle_store = "true"`.
+- They push themes unpublished and never publish or delete them.
+- They keep raw store responses in owner-only files under the ignored `.local/` directory.

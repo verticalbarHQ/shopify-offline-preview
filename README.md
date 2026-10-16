@@ -2,105 +2,168 @@ Unofficial — not affiliated with or endorsed by Shopify
 
 # shopify-offline-preview
 
-Open a Shopify Online Store 2.0 theme without a store, an account, or an internet connection. The
-tool renders the theme's pages from a local data snapshot, shows how each page is assembled
-(layout, section groups, sections, blocks, snippets and the data they read), and marks every place
-where it cannot reproduce Shopify instead of hiding it. People use it through a dev server and a
-browser playground; coding agents use a non-interactive CLI with JSON output.
+Preview a Shopify Online Store 2.0 theme on your own machine, with no store, no Shopify account and
+no internet connection. It renders the theme's pages from local store data. For each part of a
+page it shows which section, block or snippet produced it and which data it read. Wherever the
+preview cannot render what Shopify would, it flags the spot instead of leaving it out silently.
 
-**Status.** Rendering, the dev inspector and the browser playground work locally on the pinned Dawn
-and Horizon benchmarks. Output is an approximation: no page has yet been compared with a real
-Shopify render, so no feature is claimed as Shopify-verified ([SPEC §9](SPEC.md#9-verification-system)).
-The npm package is private during development and has not been published.
+There are three ways to use it:
+
+- a **browser playground**, with nothing to install;
+- a **dev server** with an inspector, while you work on a theme;
+- a **CLI** with JSON output, for scripts, CI and coding agents.
 
 ## Try it
 
-- **In the browser:** <https://verticalbarhq.github.io/shopify-offline-preview/> opens the bundled
-  sample theme. Drop a theme zip or folder (and optionally a snapshot) onto the page. Everything is
-  processed in the browser; nothing is uploaded.
-- **Locally** (Node.js 22+, pnpm 10.34.7):
+### In your browser
 
-  ```sh
-  pnpm install --frozen-lockfile
-  pnpm generate && pnpm build
-  node dist/cli.js dev /path/to/theme --data /path/to/snapshot   # inspector + preview
-  node dist/cli.js render /path/to/theme /products/example --json  # one page as JSON
-  node dist/cli.js check /path/to/theme --json                     # static feature coverage
-  node dist/cli.js schema snapshot                                 # input JSON Schema
-  ```
+Open <https://verticalbarhq.github.io/shopify-offline-preview/>. It starts with a small sample
+theme. To see your own theme, choose **Theme zip** or **Theme folder**, or drop a zip onto the page.
+Your files are processed in the browser and are never uploaded.
 
-Without `--data`, a bundled synthetic store (40 products, a collection, a page, a blog, menus and
-a cart scenario) is used.
+### On your machine
 
-## Reading the result
+The package is not on npm yet, so build it from source. You need Node.js 22 or newer and pnpm 10.
 
-Every render returns diagnostics. They appear as badges in the inspector and in `render --json`.
+```sh
+git clone https://github.com/verticalbarHQ/shopify-offline-preview.git
+cd shopify-offline-preview
+pnpm install --frozen-lockfile
+pnpm generate && pnpm build
+node dist/cli.js dev fixtures/sample-theme
+```
+
+Open the inspector at <http://127.0.0.1:3000/>. To preview your own theme, replace
+`fixtures/sample-theme` with your theme folder. Saving a theme file reloads the preview.
+
+Until you add your own data, pages render with a bundled sample store. It has 40 products, a
+collection, a page, a blog with three articles, menus and a cart.
+
+## The inspector
+
+The page is on the left. The panel on the right has these parts:
+
+- **Theme tree**: the layout, section groups, sections and blocks in render order, with snippets
+  listed under the file that rendered them. Hover over a node to outline it on the page. Hover over
+  the page to select a node.
+- **Diagnostics**: everything the preview flagged on this page (see below).
+- **Page activity**: blocked endpoint calls and requests to other sites, recorded while the page
+  runs.
+- **Data used**: the snapshot paths the selected node read, such as `products[0].variants[0].price`.
+- **Source**: the file behind the selected node.
+
+The toolbar has these controls:
+
+- a path field, to go to another page;
+- page width: mobile, tablet, desktop or full;
+- a scenario selector (see [Use your own store data](#use-your-own-store-data));
+- design mode, which sets `request.design_mode` as Shopify's theme editor does, so themes show
+  their placeholder content.
+
+The page runs on its own origin, so theme JavaScript cannot reach the inspector.
+
+## Reading diagnostics
+
+Each diagnostic has a code, a severity, the source file and line, and a message. Diagnostics are
+listed in the inspector panel and in `render --json`. Most are also shown as badges on the page.
 
 | Code | Meaning | What to do |
 |---|---|---|
-| `not-implemented` | A Shopify filter, tag, object property or behaviour has no offline implementation. Filters print `[not implemented: …]` where they would output. | Nothing in the theme is wrong; the preview differs here. |
-| `missing-resource` | The snapshot does not supply the data or resource the theme asked for (a handle, an optional field, a translation, placeholder artwork). The value is nil, as Shopify renders a missing resource. | Add the data to the snapshot if the page depends on it. |
-| `shopify-server-only` | Output only Shopify's servers can produce (checkout buttons, `content_for_header` scripts, font CDN URLs). It is omitted. | Expected; informational. |
-| `app-placeholder` | An app block or embed, shown as a labelled placeholder. | Expected; apps do not run offline. |
-| `liquid-error` | A Liquid error, rendered inline the way Shopify renders it. | Fix the theme code. |
-| `blocked-endpoint` | Theme JavaScript called a server endpoint (`/cart/add`, Section Rendering API, …). It returns HTTP 501 offline. | Expected; endpoints are not emulated. |
-| `external-request` | The page loaded a third-party resource (fonts, scripts). | Informational. |
+| `missing-resource` | The theme asked for data that the snapshot doesn't have, such as a product handle, a menu, an image file, an optional field or a translation. The value is empty, as it would be on a store without that data. | Add the data to your snapshot if the page should show it. |
+| `not-implemented` | The theme uses a Shopify filter, tag or object property that the preview does not provide. The filter's output is replaced with `[not implemented: …]`. | Nothing. Your theme is fine; the preview differs from Shopify here. |
+| `liquid-error` | A Liquid error, shown inline the way Shopify shows it: `Liquid error (sections/hero.liquid line 12): …`. | Fix the theme code. |
+| `shopify-server-only` | Content that only Shopify's servers produce, such as checkout buttons and `content_for_header` scripts. It is left out. | Nothing. |
+| `app-placeholder` | An app block or app embed. It is shown as a labelled placeholder. | Nothing. |
+| `blocked-endpoint` | Theme JavaScript called a Shopify server endpoint, such as `/cart/add` or the Section Rendering API. The call returns HTTP 501. | Nothing. |
+| `external-request` | The page loaded something from another site, such as fonts or scripts. | Nothing. |
 
-## Your own data
+## Use your own store data
 
-A snapshot is a folder with `snapshot.json` and an `images/` folder, following
-`schemas/snapshot.schema.json` (`node dist/cli.js schema snapshot`). Prepare it with any export or
-collection tool; the library never contacts a store. See [docs/snapshot.md](docs/snapshot.md) for
-the format, including typed metafields, product media, localization and the optional fields that
-remove `missing-resource` diagnostics.
+Store data comes from a **snapshot**: a folder with a `snapshot.json` file and an `images/` folder.
+
+```sh
+node dist/cli.js dev path/to/theme --data path/to/snapshot
+```
+
+The tool never connects to a store. Get your data out with any export tool, then convert it to the
+snapshot format. The quickest way to start is to copy the bundled sample store in
+`fixtures/default/` and edit it. If a snapshot is invalid, rendering stops and the error names the
+field at fault (exit code 3).
+
+A snapshot can also define **scenarios**: named variations of the data, such as a sold-out product
+or a full cart. Choose one with `--scenario <name>` or in the inspector.
+
+[docs/snapshot.md](docs/snapshot.md) describes every field. `node dist/cli.js schema snapshot`
+prints the JSON Schema.
 
 ## Commands
 
-| Command | Purpose |
+```text
+shopify-offline-preview dev    <theme> [--data <dir>] [--scenario <name>] [--design-mode] [--port <n>]
+shopify-offline-preview render <theme> <path> [--data <dir>] [--scenario <name>] [--design-mode] [--json] [--out <file>]
+shopify-offline-preview check  <theme> [--json] [--strict]
+shopify-offline-preview schema <render|check|snapshot>
+```
+
+In a source checkout, run each command as `node dist/cli.js <command> …`.
+
+**`dev`** starts the inspector on `127.0.0.1:<port>` and the preview on the next port. The default
+port is 3000. It re-renders when theme or snapshot files change.
+
+**`render`** renders one storefront path. It prints the HTML to stdout and the diagnostics to
+stderr. `--out <file>` writes the HTML to a file instead.
+
+- **Paths.** These paths render:
+  - `/`;
+  - `/products/<handle>`;
+  - `/collections/<handle>` and `/collections/all`;
+  - `/pages/<handle>`;
+  - `/blogs/<blog>` and `/blogs/<blog>/<article>`;
+  - `/search?q=…`;
+  - `/cart`.
+
+  Any other path renders the 404 template.
+- **Query parameters.** `?variant=`, `?page=`, `?sort_by=`, `?filter.…=` and `?view=` work as they
+  do on a store.
+- **JSON output.** `--json` prints a single object instead:
+  - `html`;
+  - `tree`: the section and block tree;
+  - `diagnostics`;
+  - `dataUsed`: the snapshot paths each tree node read;
+  - `route`: the path, page type and template.
+
+**`check`** reads a theme without rendering it. For each template it lists:
+
+- the files the template reaches;
+- the Shopify filters, tags, objects and properties those files use, with file and line.
+
+Each feature has two flags:
+
+- `registered`: the preview provides the feature.
+- `implemented`: the feature is registered **and** has a test case confirmed against Shopify's own
+  output.
+
+**`schema`** prints the JSON Schema for `render --json`, `check --json` or the snapshot.
+
+Commands never prompt for input. With `--json`, a command prints exactly one JSON document that
+matches its schema, even when it fails. Messages go to stderr.
+
+| Exit code | Meaning |
 |---|---|
-| `render <theme> <path> [--data <dir>] [--scenario <name>] [--design-mode] [--json] [--out <file>]` | Renders one storefront path. `--json` prints `{schemaVersion, html, tree, diagnostics, dataUsed, route}`; `--out` writes the HTML to a file. |
-| `check <theme> [--json] [--strict]` | Lists the filters, tags, objects and properties reachable from each JSON template, with source lines. `registered` says whether the offline renderer provides a feature; `implemented` additionally requires a Shopify oracle case, so it is `false` until oracle results exist. |
-| `dev <theme> [--data <dir>] [--scenario <name>] [--design-mode] [--port <n>]` | Starts the inspector and the preview on two loopback origins, with hot reload. |
-| `schema <render\|check\|snapshot>` | Prints the published JSON Schema. |
+| 0 | Success. Diagnostics may still be present. |
+| 2 | Usage error. |
+| 3 | The theme or snapshot could not be loaded or is invalid. |
+| 4 | Rendering failed. |
+| 5 | `check --strict` found one of these: a reachable feature that is not implemented, or part of the theme it could not analyse. |
 
-All commands are non-interactive. With `--json`, a command prints exactly one schema-valid JSON
-document, also on failure; human-readable errors go to stderr. Exit codes: `0` success
-(diagnostics may still be present), `2` usage error, `3` invalid theme or snapshot, `4` fatal render
-failure, `5` `check --strict` found unimplemented features or incomplete coverage.
+## Contributing
 
-## Inspector and playground
-
-`dev` shows the page in an iframe next to the section/block tree, the diagnostics and the snapshot
-paths each node read. Hover a section or block to highlight it on the page; snippets are listed
-under their callers. Width presets (mobile, tablet, desktop, full), the scenario selector and the
-design-mode toggle re-render locally, and theme or snapshot edits reload the preview. The page runs
-on its own origin, so theme JavaScript cannot reach the inspector; unsupported Shopify endpoints
-answer HTTP 501 and are badged.
-
-`pnpm build` also writes the static playground to `dist/playground/`. It shares the inspector and
-runs the theme in an opaque sandboxed iframe. Theme assets and snapshot images become data URLs and
-module imports use an import map. Scoped import maps and circular CSS imports fail explicitly.
-
-## How rendering works
-
-[docs/rendering.md](docs/rendering.md) describes what the renderer derives from the snapshot, how
-templates, settings and blocks are resolved, which Shopify behaviour is reproduced, and what stays
-diagnosed. In short: JSON templates, layouts, section groups, classic and theme blocks, snippets,
-forms, pagination, collection sorting and filtering, search, menus, metafields, product media and
-most display filters run offline; checkout, customer accounts, app code and server-generated
-content do not.
-
-## Development
-
-[docs/development.md](docs/development.md) covers the generated Shopify documentation, the
-benchmark themes, and the checks CI runs (unit, network-off container, browser container, license
-guard). [docs/oracle.md](docs/oracle.md) describes the internal tools for comparing renders with a
-real Shopify development store; they are not part of the published package.
-
-The product specification and acceptance criteria are in [SPEC.md](SPEC.md).
+[docs/development.md](docs/development.md) covers the repository layout, the test suites and CI.
+[SPEC.md](SPEC.md) records the project's goals and design.
 
 ## License
 
-MIT. Shopify's Dawn and Horizon themes are used only as test inputs; they are downloaded at pinned
-commits for checks and are never committed or redistributed. Generated Shopify documentation data
-comes from the MIT-licensed `Shopify/theme-liquid-docs`; see `THIRD_PARTY_NOTICES.md`.
+MIT. Shopify's Dawn and Horizon themes are used only as test inputs. They are downloaded at pinned
+commits when checks run, and are never committed or redistributed. The generated Shopify
+documentation data comes from the MIT-licensed `Shopify/theme-liquid-docs`; see
+`THIRD_PARTY_NOTICES.md`.

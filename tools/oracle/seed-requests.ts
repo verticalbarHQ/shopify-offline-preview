@@ -161,8 +161,8 @@ export function compileSeedTask(
     if (p.sellingPlanGroups?.length || p.requiresSellingPlan || p.quantityPriceBreaksConfigured)
       throw new Error("Selling-plan/quantity-price adapter required");
     if (p.category && !p.category.id) throw new Error("Taxonomy category ID required");
-    // Option value IDs are store-generated and not yet calibrated (docs/oracle.md); set swatches
-    // and focal points have no seeding adapter yet.
+    // Option value IDs are store-generated and not yet calibrated; set swatches and focal points
+    // have no seeding adapter yet.
     if (
       p.options.some((o) => o.swatches?.some((swatch) => swatch !== null)) ||
       p.images.some((i) => i.focalPoint)

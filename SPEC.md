@@ -152,7 +152,7 @@ Exit codes:
 | 2 | Usage error. |
 | 3 | The theme or snapshot failed to load or validate. |
 | 4 | Fatal render failure. |
-| 5 | `check --strict` found unimplemented features that are reachable. |
+| 5 | `check --strict` found reachable features that are not implemented, or parts of the theme it could not analyse statically. |
 
 ### 7.3 Dev server and inspector
 
@@ -244,7 +244,7 @@ Exit codes:
 
 ### 7.5 Browser runtime and playground
 
-- The core (spec, dialect, theme, data, render, check) has no Node-only dependencies. All file access
+- The core (spec, theme, data, render, check) has no Node-only dependencies. All file access
   goes through a `ThemeFileSystem` / `SnapshotSource` interface. Node uses `fs`. The browser uses an
   in-memory tree built from a zip file or from a folder opened with the File System Access API.
 - The **web playground** is a static site on GitHub Pages:
