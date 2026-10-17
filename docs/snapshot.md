@@ -261,7 +261,8 @@ fields are `id`, `seo` and `commentsEnabled`.
 
 **Articles** require these fields: `handle`, `title`, `bodyHtml`, `excerptHtml`, `author`,
 `publishedAt`, `image`, `tags`, `templateSuffix` and `metafields`. The optional fields are `id`,
-`createdAt`, `updatedAt`, `commentsCount` and `seo`.
+`createdAt`, `updatedAt`, `commentsCount` and `seo`. A blog lists its articles newest first by `publishedAt`, as
+Shopify does; articles published at the same moment list the higher `id` first.
 
 **Menus** have `handle`, `title` and `links`. Each link has `title`, `url`, `type`,
 `resourceHandle` and nested `links`. The preview works out these from the URLs and the current

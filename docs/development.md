@@ -110,7 +110,8 @@ The config names the two origins, the widths and the pages:
 
 `passwordEnv` names the environment variable that holds the storefront password. `params` are added
 to every page on that side, which is how the store shows an unpublished theme. `hide` hides elements
-before the capture, such as the preview's diagnostic badges. The report shows benchmark theme
+before the capture, such as the preview's diagnostic badges. `setup` lists paths visited once on that
+side before the captures, such as `/cart/add?id=<variant id>&quantity=2` to fill the cart. The report shows benchmark theme
 output, so keep it out of the repository; `.local/` is ignored.
 
 None of the commands below changes a store.
