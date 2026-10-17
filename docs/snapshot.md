@@ -317,7 +317,8 @@ Totals are the sum of variant prices times quantities. Compare-at prices are not
   and metafield list filters have this setting; other filters always use `OR`.
 
 Collection pages use them for `collection.filters`. They also apply `filter.…` and `sort_by` URL
-parameters to the collection's products.
+parameters to the collection's products. As on Shopify, a collection with no products and a search
+whose terms match no product offer no filters.
 
 ## Shopify artwork
 

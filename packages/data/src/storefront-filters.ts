@@ -176,7 +176,9 @@ export function storefrontQuery(
     return [...list].sort((a, b) => by(a.source, b.source)).map((m) => m.value);
   }
 
-  const filters = snapshot.filters.map((filter, index) => {
+  // Shopify offers no filters when nothing matched before filtering: an empty collection, or
+  // search terms that match no product. Filters that narrow a result to nothing stay offered.
+  const filters = (members.length ? snapshot.filters : []).map((filter, index) => {
     const condition = conditions[index];
     if (filter.type === "price_range") {
       const minimum = `${filter.id}.gte`,
