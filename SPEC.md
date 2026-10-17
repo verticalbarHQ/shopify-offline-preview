@@ -627,15 +627,14 @@ implementation is claimed by M0.
 
 ## 14. Prerequisites (owner actions)
 
-1. The owner has supplied the store domain and admin URL (recorded in the local handoff, not as
-   credentials in this specification). Before any mutation, verify that it is a development store,
-   pin its domain in the oracle configuration, confirm it can be dedicated, export its current data,
-   and obtain confirmation for the first wipe at the time it happens. The store supplied on
-   2026-10-13 is used for other work and is not to be written to (2026-10-17). On 2026-10-17 the
-   owner approved creating a new development store dedicated to the comparison instead; it is the
-   oracle store (§9.1).
-2. Create the custom app. Its credentials and the storefront password stay with the maintainer who
-   runs the comparison.
+1. The oracle store is a development store created for this project (owner decision,
+   2026-10-17). Its domain is recorded in the local handoff, not in this specification. Before any
+   mutation, verify that it is a development store, pin its domain in the oracle configuration and
+   check the marker metafield (§9.1). The store supplied on 2026-10-13 is used for other work and is
+   never written to.
+2. Create two custom apps: the comparison app with the scopes in §9.1, and the setup app installed
+   only on the dedicated stores. Their credentials and the storefront password stay with the
+   maintainer who runs the comparison.
 3. Create the public repository `verticalbarHQ/shopify-offline-preview`.
 4. Set up the npm publishing account and 2FA for `shopify-offline-preview`, and GitHub Pages for the
    playground.
@@ -668,6 +667,6 @@ implementation is claimed by M0.
 | Agent verification | Contract tests gate; real eval is report-only | Eval gates; contract tests only |
 | Engine | liquidjs plus local overrides, no upstream contributions | Fork; own engine |
 | Block comparison | Not compared on their own; block text is part of its section's text (2026-10-17; was an instrumented copy on both sides) | Instrumented copy on both sides; theme-editor capture |
-| Oracle store | Existing dev store, dedicated and wiped | Coexist with prefixes; a new store |
+| Oracle store | Existing dev store, dedicated and wiped. Superseded on 2026-10-17: the store supplied on 2026-10-13 is used for other work, so the owner approved a new development store dedicated to the comparison (§9.1, §14) | Coexist with prefixes; a new store (the 2026-10-13 choice) |
 | Shopify comparison (owner decision, 2026-10-17) | A one-off side-by-side check that a person judges: screenshots of the store and the offline preview at desktop and mobile widths, with text differences extracted to help. Similar means the same sections in the same order, the same main content, and a layout that does not look broken (§9.6). Findings are listed as OK or fix. | Stored goldens gating PRs; weekly recapture; a private raw repository; a numeric pass rate |
 | Implemented and verified (owner decisions, 2026-10-17) | "오프라인 프리뷰는 일단 C+B 승인" (23:2x KST): `check` counts a feature as missing only when the preview neither provides it nor classifies it as server-only. Shopify verification is shown separately. Its evidence includes features that ran in the 72 page pairs judged similar. "C 중에선 쉽고 방법이 명백한것만 지원하고, (b)는 해보는게 좋아보임" (23:4x KST): of the features the preview does not provide, only those that are easy and clearly derivable are implemented. The rest are classified as server-only, and ambiguous ones are classified as server-only too. Features the preview provides but no comparison exercised are all to be tried on the dedicated store. | Implemented only with a Shopify-verified example for every feature (the 2026-10-13 rule, which would have required about 400 authored cases); implementing every feature regardless of whether it can work offline |
