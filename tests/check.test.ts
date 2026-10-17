@@ -749,3 +749,12 @@ test("renderer registration carries server-only features and Shopify comparison 
   for (const entry of entries.values())
     assert.ok(!(entry.registered && entry.serverOnly), `${entry.kind}:${entry.name}`);
 });
+
+test("evidence that is both provided and server-only is rejected", async () => {
+  await assert.rejects(
+    checkTheme(new MemoryThemeFileSystem(theme()), [
+      { kind: "filter", name: "money", registered: true, serverOnly: true, oracleCases: [] },
+    ]),
+    /filter:money cannot be both provided and server-only/,
+  );
+});

@@ -270,3 +270,47 @@ test("browser renderer executes without Node globals and matches Node's HTML/tre
   );
   assert.equal(JSON.stringify(browser), JSON.stringify(node));
 });
+
+test("the published check schema and the parser agree that a provided feature is never server-only", async () => {
+  const { checkSchema } = await import("../packages/check/src/contracts.js");
+  const validate = await validator("check");
+  const result = (registered: boolean, serverOnly: boolean) => ({
+    schemaVersion: "1.0",
+    supported: true,
+    specCommit: "x",
+    pages: [
+      {
+        pageType: "product",
+        template: "templates/product.json",
+        files: [],
+        features: [
+          {
+            kind: "filter",
+            name: "money",
+            known: true,
+            registered,
+            serverOnly,
+            oracleCases: [],
+            implemented: registered,
+            verified: false,
+            occurrences: [],
+          },
+        ],
+        unimplementedCount: 0,
+        complete: true,
+      },
+    ],
+    diagnostics: [],
+    summary: { featureCount: 1, unimplementedCount: 0, complete: true },
+  });
+  for (const [registered, serverOnly, valid] of [
+    [true, false, true],
+    [false, true, true],
+    [false, false, true],
+    [true, true, false],
+  ] as const) {
+    const value = result(registered, serverOnly);
+    assert.equal(validate(value), valid, `${registered}/${serverOnly}`);
+    assert.equal(checkSchema.safeParse(value).success, valid, `${registered}/${serverOnly}`);
+  }
+});
