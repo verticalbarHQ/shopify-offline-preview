@@ -78,3 +78,14 @@ test("the home link is current only on the home page; handles derive from titles
   assert.ok(result.html.includes("[home|null][catalog|null][about|null]"), result.html);
   assert.deepEqual(result.diagnostics, []);
 });
+
+test("a menu prints as its handle, as a link_list setting passed to an attribute does", async () => {
+  const theme = new MemoryThemeFileSystem({
+    "templates/index.json": template,
+    "sections/main.liquid":
+      '<div data-menu="{{ section.settings.menu }}">{{ linklists.footer }}</div>{% schema %}{"name":"Main","settings":[{"type":"link_list","id":"menu","label":"Menu","default":"main-menu"}]}{% endschema %}',
+  });
+  const result = await renderTheme(theme, "/", { snapshot: defaultFixture(), inspect: true });
+  assert.ok(result.html.includes('<div data-menu="main-menu">footer</div>'), result.html);
+  assert.deepEqual(result.diagnostics, []);
+});

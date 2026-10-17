@@ -205,7 +205,7 @@ Exit codes:
 4. **Errors.** Liquid errors render inline the way Shopify renders them (`Liquid error (<file> line
    <n>): …`) and rendering continues. Each one is also recorded as a diagnostic.
 5. **Determinism.**
-   - `now` comes from `snapshot.meta.now`. For benchmarks, this is the golden capture timestamp.
+   - `now` comes from `snapshot.meta.now`. The sample store fixes it, so benchmark renders repeat.
    - The timezone is `shop.timezone`.
    - There are no random sources.
    - The same inputs produce byte-identical HTML in Node and in the browser.
@@ -293,7 +293,7 @@ packages/
   dev/         Node dev server (two origins, watcher, image route, blocked endpoints) and the inspector UI
   playground/  static site (zip/folder loading, browser runtime)
   cli/         dev | render | check | schema
-tools/oracle/  seeding, instrumentation, capture, normalization, comparison, golden PRs (not published)
+tools/oracle/  Shopify comparison: store guard, seeding, theme upload, side-by-side capture (not published)
 benchmarks.json  pinned benchmark themes: { name, repo, commit }
 ```
 
@@ -366,15 +366,17 @@ The same JSON Schema serves the CLI (`render --json`), the inspector, and the pl
 ## 9. Verification system
 
 ```
-fixture (repo) ──seed──► oracle dev store ◄──push unpublished── instrumented theme copy
-                              │                                        ▲
-                       capture server HTML                    benchmarks.json (pinned)
-                              ▼                                        │
-                      normalize → golden summary ──commit (public)     │
-                      raw HTML ──► private store                       │
-                                                                       │
-fixture + theme ──► our renderer ──► normalize → summary ──compare──► PASS / FAIL (+ allowlist)
+fixture (repo) ──seed──► oracle dev store ◄──push unpublished── benchmark theme (pinned)
+                              │                                        │
+                   storefront in a browser                  offline dev server, same fixture
+                              ▼                                        ▼
+                  screenshots + section text ──side by side──► local report ──► findings (OK / fix)
 ```
+
+Comparing with Shopify is a one-off check that a person judges. It is not a gate. The question is
+whether someone looking at both pages would say they are similar (§9.6). A maintainer runs it when a
+fresh look is useful, for example before a release or after a large renderer change. Nothing about
+it runs in CI.
 
 ### 9.1 Oracle store
 
@@ -388,16 +390,17 @@ fixture + theme ──► our renderer ──► normalize → summary ──com
 - **Access.**
   - A custom app with Admin API scopes `write_products`, `write_publications`, `write_content`,
     `write_online_store_navigation`, `write_files`, `write_metaobjects`, and `write_themes`.
-  - A Theme Access token for CLI theme pushes, and the storefront password.
-  - These are stored as GitHub environment secrets that only `main` and scheduled workflows can read.
+  - The storefront password.
+  - The maintainer who runs the comparison holds these locally. They are never stored in the
+    repository or in CI.
 - **Seeding.**
   - Seeding is idempotent and runs from the fixture.
   - Products are published to the Online Store channel.
   - Menus, pages, blogs and articles, and the collection filter configuration are created.
   - Shop-level settings the API cannot set are verified against `snapshot.shop` before capture.
     A mismatch aborts the run.
-- **Themes.** Each instrumented benchmark copy is pushed **unpublished**
-  (`shopify theme push --unpublished`) and captured through the storefront with
+- **Themes.** Each benchmark theme is pushed **unpublished**
+  (`shopify theme push --unpublished`) and viewed through the storefront with
   `preview_theme_id=<id>`. Themes are never published.
 
 ### 9.2 Benchmarks
@@ -432,84 +435,69 @@ Search queries are chosen so that the result set is unambiguous, because Shopify
 reproduced. The cart-with-items capture builds a storefront session cart first and then fetches
 `/cart`.
 
-### 9.4 Instrumented theme copy (comparison mode only)
+### 9.4 Matching sections
 
-Shopify emits no block boundaries outside the theme editor. `block.shopify_attributes` "returns no
-value outside the theme editor". A transformed copy of each benchmark theme is therefore used on
-**both** sides:
+Both sides use the unmodified benchmark theme at its pinned commit. Sections are matched by their
+`shopify-section` wrapper ids, with the numeric part normalized (`template--\d+__x` →
+`template--N__x`). Blocks are not compared on their own; their text is part of their section's text.
 
-1. Every `{{ block.shopify_attributes }}` is replaced with
-   `data-sop-block-id="{{ block.id }}" data-sop-block-type="{{ block.type }}"`. This covers classic
-   blocks.
-2. Every file in `blocks/` is wrapped in
-   `<!--sop:block {{ block.id }} {{ block.type }}-->…<!--/sop:block-->`. This covers theme blocks
-   that lack `shopify_attributes`.
-3. Section boundaries come from Shopify's own `shopify-section` wrappers, which our renderer emits
-   identically.
+### 9.5 Capture
 
-Blocks that are still unmarked after this are counted, reported, and compared only through their
-section's text. Normal user mode never instruments a theme.
+- Both sides load in a real browser at a desktop width (1280 px) and a mobile width (390 px). Theme
+  JavaScript runs on both sides.
+- For each page the capture records a full-page screenshot, the order of the top-level sections, and
+  each section's visible text (`innerText`, NFC-normalized, whitespace collapsed) and height.
+- One scenario per page type is enough: home, product, collection, page, search (a query that
+  matches one product), cart (with items), 404, blog, and article (with an image).
+- `pnpm oracle:visual-compare <config>` runs the capture and writes the report.
+- Screenshots, captured text and the report stay on the maintainer's machine. They show benchmark
+  theme output, so they are never committed.
 
-### 9.5 Capture, normalization, and summaries
+### 9.6 What "similar" means
 
-- **Capture.** GET the storefront HTML, without executing JavaScript, using the CLI-style session:
-  the `_shopify_essential` cookie, the storefront password, and `preview_theme_id`.
-- **Stability.** Each page is captured twice. Any difference between the two captures is either
-  added to normalization or marks the item unstable. Unstable items fail the capture run; they never
-  pass silently.
-- **Tree extraction.** Section nodes come from `shopify-section` wrappers, with template-specific
-  numeric ids normalized (`template--\d+__x` → `template--N__x`). Block nodes come from the `sop`
-  markers. The tree records kind, type, order, and nesting.
-- **Text extraction.** Per section, `textContent` is taken with `script`, `style`, `noscript`,
-  `template`, and comments excluded. Unicode is NFC-normalized and whitespace collapsed.
-- **Public summary.** One file per theme × page × scenario: the tree, plus a SHA-256 hash and a token
-  count of each section's normalized text.
-- **Private raw store.** The raw HTML and readable normalized text, used for debugging by maintainers.
+A page is similar when all three of these hold:
 
-### 9.6 Comparison
+1. **Same sections in the same order.** No section is missing and none has moved.
+2. **Same main content.** Product names, prices, availability labels, menus, collection names and
+   the other text a shopper reads are the same.
+3. **The layout does not look broken.** Nothing overlaps, and there are no large gaps or oddly sized
+   images.
 
-Gating checks:
+These differences are allowed:
 
-- The tree must be equal in node kinds, types, order, and nesting.
-- Each section's normalized text hash must be equal.
+- Fonts.
+- Parts drawn by scripts rather than by the theme's Liquid: product recommendations, dynamic
+  checkout buttons, Shopify's search ranking, and other output only Shopify's servers can produce,
+  such as the Shop login button (`shopify-server-only`).
+- A few pixels of spacing, and differences in image cropping.
 
-Report-only check: screenshot similarity, per section, at fixed desktop and mobile viewports, with
-web fonts and third-party scripts blocked on both sides.
+The report shows, per section, the text found on only one side and the section heights on both. It
+points the reviewer at differences. The judgement stays with the reviewer, and there is no numeric
+pass rate.
 
-### 9.7 Accepted differences
+### 9.7 Findings
 
-Ids, URLs, tokens, and whitespace are handled by the normalization rules in §9.5. Any difference that
-remains needs an entry in `oracle/accepted-differences.yaml`:
+Each difference goes into a findings list as **OK** or **fix**. **OK** is an allowed difference, or
+a gap in the input data rather than in the renderer. **Fix** items are fixed or filed as issues. The
+findings list stays with the maintainer's local results; user documentation does not list them.
 
-`{id, theme, page, scenario, node selector, kind: tree|text, category, reason, evidence}`
+### 9.8 What is not done
 
-Categories:
-
-- `shopify-server-only`: output that only Shopify's servers can produce, such as `payment_button`,
-  `login_button`, and `content_for_header` contents.
-- `pending-implementation`: temporary. **Must be empty at 1.0.**
-
-### 9.8 Golden lifecycle
-
-- **PRs.** PR lanes compare against the committed summaries offline. No secrets are needed, so pull
-  requests from forks are verified too.
-- **Scheduled recapture.** A weekly run on `main` reseeds the store, pushes the themes, and
-  recaptures. If a summary changed, it opens a "golden refresh" PR with a diff report linking to the
-  private raw store. `main` itself never turns red because Shopify changed.
-- **Release.** A release requires a capture no older than 7 days.
+- No stored Shopify results gate pull requests.
+- No scheduled recapture.
+- No private repository for raw captures.
 
 ### 9.9 CI lanes
 
 | Lane | Trigger | Network | Gates |
 |---|---|---|---|
 | `unit` | PR | on | Unit tests, typecheck, lint, generated-spec drift check |
-| `parity` | PR | **off** (container `--network none`) | The full matrix for both benchmarks: tree and text vs. summaries, static and dynamic coverage, agent contract tests |
+| `parity` | PR | **off** (container `--network none`) | The full matrix for both benchmarks: repeatable renders, static and dynamic coverage, agent contract tests |
 | `browser` | PR | **off** for test steps; browsers come preinstalled in the image | Node vs. browser byte-identical HTML over the matrix; playground e2e |
 | `license-guard` | PR | on | No repo file hash equals any benchmark theme file; README disclaimer present |
-| `oracle-recapture` | Weekly, manual | on + secrets | Store guard, seed, push, capture twice, open golden-refresh PR |
 | `docs-drift` | Weekly | on | Regenerate from theme-liquid-docs, open PR on change |
 | `agent-eval` | Weekly, manual | on + API key | Report only (§9.12) |
-| `release` | Tag | on | All of the above green, plus a capture age of 7 days or less |
+| `release` | Tag | on | All of the above green |
 
 ### 9.10 Filter conformance corpus and "implemented"
 
@@ -559,31 +547,32 @@ Categories:
 
 ## 10. Acceptance criteria (1.0 = North Star reached)
 
-Each criterion is checked automatically by the lane named.
+Each criterion is checked by the lane or review named.
 
 | # | Criterion | Verified by |
 |---|---|---|
-| AC-1 | For Dawn and Horizon at their pinned commits, across the matrix in §9.3, the tree and each section's text hash equal the golden summaries. The only accepted differences are in category `shopify-server-only`. | `parity` |
+| AC-1 | For Dawn and Horizon at their pinned commits, the comparison (§9.5) finds every §9.3 page type similar (§9.6) at desktop and mobile widths. | Maintainer review (§9.7) |
 | AC-2 | `check` reports 0 unimplemented Shopify filters, tags, or object properties reachable from the §9.3 page types, for both benchmarks. "Implemented" is defined in §9.10. | `parity` |
 | AC-3 | Rendering the full matrix produces 0 Liquid errors and 0 not-implemented events. | `parity` |
-| AC-4 | AC-1 to AC-3 pass with networking disabled. | `parity` (`--network none`) |
-| AC-5 | The golden summaries come from a capture no older than 7 days, and that capture passed its double-capture stability check. | `release` |
+| AC-4 | AC-2 and AC-3 pass with networking disabled. | `parity` (`--network none`) |
+| AC-5 | Every **fix** finding from the comparison is fixed or filed as an issue. | Findings list (§9.7) |
 | AC-6 | The agent contract tests pass (§9.12). | `parity` |
 | AC-7 | The browser build output is byte-identical to Node across the matrix. | `browser` |
 | AC-8 | Playground e2e passes, including the no-upload request check (§9.13). | `browser` |
 | AC-9 | Inspector e2e passes against the dev server for every matrix page. The tree equals `RenderResult.tree`. Every node maps to a source file. The diagnostics list equals the CLI's for the same input. A crafted `missing-resource` scenario and a `blocked-endpoint` call both show badges. Device presets change the iframe width. | `browser` |
 | AC-10 | No benchmark theme file is present in the repo, and the README starts with the disclaimer line. | `license-guard` |
 
-Report-only, never gating: screenshot similarity (§9.6) and the agent eval success rate (§9.12).
+AC-1 and AC-5 are judged by a person, not by a CI lane. The agent eval success rate (§9.12) is
+report-only.
 
 ## 11. Milestones
 
 | # | Milestone | Exit criteria |
 |---|---|---|
 | M0 | Foundation: workspace, generated spec, `ThemeFileSystem`, `check` (static), JSON Schemas, CI lanes including `network-off` and `license-guard` | `check --json` lists the Shopify features Dawn and Horizon use. The lanes run. |
-| M1 | Oracle harness: store guard and first wipe (owner-confirmed), fixture and images, seeding, instrumentation, capture, normalization, summaries, private raw store, recapture PR job | Golden summaries are committed for both themes × full matrix, and two consecutive recaptures show zero diff. |
-| M2 | Dawn parity: dialect, assembly, derivation | AC-1 to AC-4 for Dawn. |
-| M3 | Horizon parity: theme blocks, static and nested blocks | AC-1 to AC-4 for Horizon. |
+| M1 | Oracle harness: store guard and first wipe (owner-confirmed), fixture and images, seeding, unpublished theme push, side-by-side comparison | The comparison runs for both themes over the §9.3 page types at desktop and mobile widths. |
+| M2 | Dawn parity: dialect, assembly, derivation | AC-1 and AC-5 for Dawn; AC-2 to AC-4. |
+| M3 | Horizon parity: theme blocks, static and nested blocks | AC-1 and AC-5 for Horizon; AC-2 to AC-4. |
 | M4 | Dev server and inspector (can run in parallel with M2 and M3) | AC-9. |
 | M5 | Browser build and playground | AC-7, AC-8. |
 | M6 | Agent contract, eval report, docs, release 1.0 | All of §10. npm publish and playground deploy. |
@@ -609,11 +598,10 @@ implementation is claimed by M0.
 
 | Risk | Mitigation |
 |---|---|
-| Shopify output changes, or is nondeterministic | Double capture, normalization rules, and weekly recapture with refresh PRs. Pinned themes. |
-| Blocks without markers make block comparison incomplete | Two kinds of instrumentation (§9.4). Remaining unmarked blocks are counted and reported, never silently passed. |
+| Shopify output changes, or is nondeterministic | Pinned themes. The comparison is a dated, one-off check, and a person tells real differences from noise. |
 | liquidjs internals cannot be overridden | Stop for an owner decision on a fork (§8.1). |
-| Oracle store misuse, or an accidental wipe | Domain pin, marker metafield, owner-confirmed first wipe with backup, secrets limited to `main` and scheduled runs. |
-| Benchmark theme licensing | Themes are never committed. Public goldens hold only trees and hashes. Raw HTML stays private. |
+| Oracle store misuse, or an accidental wipe | Domain pin, marker metafield, owner-confirmed first wipe with backup. Credentials stay with the maintainer who runs the comparison. |
+| Benchmark theme licensing | Themes are never committed. Screenshots and captured pages stay on the maintainer's machine. |
 | The "Shopify" trademark in the name | Accepted by the owner. Disclaimer at the top of the README. No Shopify logos. |
 | Browser and playground work enlarges the 1.0 scope | Isomorphic core from M0, so M5 builds on existing structure. |
 | Search ranking and recommendations are not reproducible | Unambiguous search fixtures. Recommendations are JavaScript-loaded, so server HTML is empty on both sides. |
@@ -624,11 +612,12 @@ implementation is claimed by M0.
 1. The owner has supplied the store domain and admin URL (recorded in the local handoff, not as
    credentials in this specification). Before any mutation, verify that it is a development store,
    pin its domain in the oracle configuration, confirm it can be dedicated, export its current data,
-   and obtain confirmation for the first wipe at the time it happens.
-2. Create the custom app and Theme Access token. Store the secrets in a GitHub environment limited to
-   `main` and scheduled workflows.
-3. Create the public repository `verticalbarHQ/shopify-offline-preview` and a private repository for
-   raw goldens.
+   and obtain confirmation for the first wipe at the time it happens. The store supplied on
+   2026-10-13 is used for other work and is not to be written to (2026-10-17). Which store to use
+   is pending the owner's decision.
+2. Create the custom app. Its credentials and the storefront password stay with the maintainer who
+   runs the comparison.
+3. Create the public repository `verticalbarHQ/shopify-offline-preview`.
 4. Set up the npm publishing account and 2FA for `shopify-offline-preview`, and GitHub Pages for the
    playground.
 5. Provide an API key secret for the report-only agent eval.
@@ -641,14 +630,14 @@ implementation is claimed by M0.
 | Coverage | Static and scenario-executed | Static only; default-data run only |
 | Benchmark themes | Dawn, Horizon | All free themes (not on GitHub, license); a real store theme |
 | Pages | Core 4, search/cart/404, blog/article | Account, password, and gift card pages |
-| Match signals (gating) | Section/block tree and visible text | HTML skeleton score. Screenshots demoted to report-only. |
+| Match signals | Section order and visible text, judged by a person with screenshots (2026-10-17; was section/block tree and text hashes as gates) | HTML skeleton score; tree and text hashes as gates |
 | Data parity (verification harness) | Repo fixture → store | Store → repo import first; both directions inside the harness |
 | User data input (owner clarification, 2026-10-13) | Accept local snapshots of real store data obtained through external tools; publish and validate the input schema in 1.0 | Built-in live-store importer, including the previously proposed post-1.0 importer |
 | Oracle store identity (owner clarification, 2026-10-13) | Owner supplied the domain and admin URL, recorded in the local handoff; development-store status and mutation guards still require verification | Treating the supplied URL or password as permission to wipe, seed, push, or create credentials |
-| Previously unreviewed defaults (owner approval, 2026-10-13) | Owner's “proceed” response approves public text hashes, oracle-backed implementation status, weekly recapture and 7-day freshness, Horizon comment markers, two-origin inspector and HTTP 501, best-effort Google Fonts outside gates, 10 agent-eval tasks, and no vintage support | Changing these defaults before local M0 |
+| Previously unreviewed defaults (owner approval, 2026-10-13) | Owner's “proceed” response approves public text hashes, oracle-backed implementation status, weekly recapture and 7-day freshness, Horizon comment markers, two-origin inspector and HTTP 501, best-effort Google Fonts outside gates, 10 agent-eval tasks, and no vintage support. Text hashes, recapture, freshness and comment markers were superseded on 2026-10-17. | Changing these defaults before local M0 |
 | Delivery authorization (owner approval, 2026-10-13) | Begin local M0. Public repository creation, every push/PR, store wiping, credentials/secrets, publishing, Pages, and paid API use still require explicit approval at the action boundary | Treating local implementation approval as external delivery authorization |
-| Oracle cadence | Stored goldens gate PRs; scheduled recapture | Live Shopify call on every PR; manual only |
-| Golden storage | Public summaries, private raw | All private; raw HTML in public |
+| Oracle cadence | One-off, when a maintainer runs it (2026-10-17; was stored goldens gating PRs with scheduled recapture) | Live Shopify call on every PR; stored goldens with weekly recapture |
+| Golden storage | None. Screenshots and captures stay local (2026-10-17; was public summaries, private raw) | Public summaries with a private raw repository; raw HTML in public |
 | Images | Same files on both sides, browser scaling | sharp resizing (native dependency); placeholders only |
 | Snapshot shape | Source data plus derivation | Liquid-object shape; Storefront API shape |
 | Network | Allowed by default. "Offline" means it works without internet, verified with network disabled. | Block everything by default; renderer-only guarantee |
@@ -659,8 +648,9 @@ implementation is claimed by M0.
 | Agent interface | CLI plus JSON | Screenshot command; MCP server |
 | Agent verification | Contract tests gate; real eval is report-only | Eval gates; contract tests only |
 | Engine | liquidjs plus local overrides, no upstream contributions | Fork; own engine |
-| Block comparison | Instrumented copy on both sides | Sections plus text order only; theme-editor capture |
+| Block comparison | Not compared on their own; block text is part of its section's text (2026-10-17; was an instrumented copy on both sides) | Instrumented copy on both sides; theme-editor capture |
 | Oracle store | Existing dev store, dedicated and wiped | Coexist with prefixes; a new store |
+| Shopify comparison (owner decision, 2026-10-17) | A one-off side-by-side check that a person judges: screenshots of the store and the offline preview at desktop and mobile widths, with text differences extracted to help. Similar means the same sections in the same order, the same main content, and a layout that does not look broken (§9.6). Findings are listed as OK or fix. | Stored goldens gating PRs; weekly recapture; a private raw repository; a numeric pass rate |
 | Server-only differences | Normalization plus a categorized allowlist | Normalization only; unrestricted allowlist |
 | Drift | Pinned themes and auto-refresh PRs | Fail `main`; report only |
 | Packaging | One npm package | Multiple packages |

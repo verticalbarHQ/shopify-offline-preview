@@ -103,7 +103,7 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
       );
       return "";
     });
-  // SPEC §9.7 lists the Shop login button as output only Shopify's servers can produce.
+  // SPEC §9.6 lists the Shop login button as output only Shopify's servers can produce.
   engine.registerFilter("login_button", function (value: unknown) {
     if (liquidObjectKind(value) !== "shop")
       throw new Error("login_button requires the shop object");

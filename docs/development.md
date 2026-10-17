@@ -78,26 +78,45 @@ names. The `unit` job runs the same check on pull requests.
 
 ## Shopify comparison tools
 
-`tools/oracle/` holds the tools for comparing the preview with real Shopify output. They are
+`tools/oracle/` holds the tools for comparing the preview with a real Shopify store. They are
 development tools and are not part of the package. [SPEC §9](../SPEC.md#9-verification-system)
-describes the design, which has four steps:
+describes the check: a one-off, side-by-side look that a person judges, not a CI gate.
 
 1. Seed a dedicated Shopify development store from the sample store.
-2. Push instrumented copies of the benchmark themes as unpublished themes.
-3. Capture each benchmark page twice.
-4. Compare the captures with the preview's own renders.
+2. Push the benchmark themes as unpublished themes.
+3. Start the dev server on the same theme and data, then run `pnpm oracle:visual-compare <config>`.
+   It opens each page on both sides at desktop and mobile widths and writes a local report: the two
+   screenshots side by side, the section order, and the text found on only one side.
+4. Go through the report and list each difference as OK or fix.
 
-None of the commands below contacts a store.
+The config names the two origins, the widths and the pages:
+
+```json
+{
+  "out": ".local/visual-compare",
+  "widths": [1280, 390],
+  "sides": [
+    { "label": "Shopify", "origin": "https://<store>.myshopify.com", "passwordEnv": "SOP_STOREFRONT_PASSWORD" },
+    { "label": "Offline preview", "origin": "http://127.0.0.1:3001", "hide": ["#sop-diagnostic-badges"] }
+  ],
+  "pages": [{ "name": "home", "path": "/" }, { "name": "product", "path": "/products/<handle>" }]
+}
+```
+
+`passwordEnv` names the environment variable that holds the storefront password. The report shows
+benchmark theme output, so keep it out of the repository; `.local/` is ignored.
+
+None of the commands below changes a store.
 
 | Command | Purpose |
 |---|---|
+| `pnpm oracle:visual-compare <config>` | Captures and compares two origins as described above. It only reads pages, apart from submitting the storefront password. |
 | `pnpm oracle:seed-prepare` | Plans the store state for the benchmark pages from a snapshot and its images. |
 | `pnpm oracle:seed-requests-prepare` | Compiles that plan into Admin API requests and validates them against an Admin API schema. |
 | `pnpm oracle:backup-audit`, `pnpm oracle:supplemental-backup-audit` | Audit the store exports taken before the store is wiped. |
 | `pnpm oracle:corpus-prepare` | Builds a theme that runs the documented filter examples, so Shopify's outputs can be captured. |
-| `pnpm parity:check` | Compares the preview's renders with the captured pages in `oracle/goldens/`. |
 
-The modules that do talk to a store follow these rules:
+The modules that do change a store follow these rules:
 
 - Before every operation, they confirm the pinned development store and its marker metafield
   `sop.oracle_store = "true"`.
