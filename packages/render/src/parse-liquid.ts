@@ -1,5 +1,6 @@
 import { NodeTypes, toLiquidAST, walk } from "@shopify/liquid-html-parser";
 import { type Liquid, Token, TokenKind, type TopLevelToken, TypeGuards } from "liquidjs";
+import { dropBlankBodyText } from "./blank-bodies.js";
 import { LiteralTokenizer, preserveQuotedOutputs } from "./literal-tokenizer.js";
 import { preserveNumericLiterals } from "./numbers.js";
 import { RangeParser } from "./range-parser.js";
@@ -61,6 +62,7 @@ export function parseLiquid(
   );
   keepFirstWhitespaceOnLeftTrim(tokens);
   const parsed = new RangeParser(engine, onError).parseTokens(tokens);
+  dropBlankBodyText(parsed);
   preserveQuotedOutputs(engine, parsed);
   preserveNumericLiterals(parsed);
   return parsed;
