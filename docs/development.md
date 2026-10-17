@@ -67,13 +67,14 @@ endpoints.
 
 `.github/workflows/ci.yml` runs on pull requests and on `main`:
 
-- `unit`: `pnpm verify`, `benchmarks:fetch` and `agent:contract-check`;
+- `unit`: `pnpm verify`, `benchmarks:fetch`, `agent:contract-check` and `pages:artifact-check`;
 - `network-off`: the main checks in a container without networking;
 - `browser`: the browser checks in a container without networking;
 - `license-guard`.
 
 `.github/workflows/pages.yml` publishes the playground from `main`. Before that,
-`pnpm pages:artifact-check` confirms that the artifact contains no benchmark theme files.
+`pnpm pages:artifact-check` confirms that the artifact contains no benchmark theme files or
+names. The `unit` job runs the same check on pull requests.
 
 ## Shopify comparison tools
 
