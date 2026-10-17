@@ -1008,6 +1008,21 @@ export function liquidObjects(
     ]),
   );
   const articles = new Map<string, Map<string, LiquidRecord>>();
+  /** Shopify lists a blog's articles newest first; equal publish times put the later-created (higher id) first. */
+  function newestFirst<T extends { publishedAt: string; id?: string | undefined }>(
+    items: readonly T[],
+  ) {
+    const numeric = (value: string | undefined) =>
+      value && /^\d+$/.test(value) ? BigInt(value) : null;
+    return items
+      .map((article, index) => ({ article, index }))
+      .sort((a, b) => {
+        const time = Date.parse(b.article.publishedAt) - Date.parse(a.article.publishedAt);
+        if (time) return time;
+        const [x, y] = [numeric(a.article.id), numeric(b.article.id)];
+        return x !== null && y !== null && x !== y ? (y > x ? 1 : -1) : 0;
+      });
+  }
   const blogs = new Map(
     snapshot.blogs.map((source, blogIndex) => [
       source.handle,
@@ -1018,7 +1033,7 @@ export function liquidObjects(
           title: source.title,
           url: `/blogs/${source.handle}`,
           template_suffix: source.templateSuffix,
-          articles: source.articles.map((article, index) => {
+          articles: newestFirst(source.articles).map(({ article, index }) => {
             const dto = tracked(
               {
                 ...availableFields({

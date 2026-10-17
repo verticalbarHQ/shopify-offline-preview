@@ -24,6 +24,8 @@ const configSchema = z.strictObject({
         hide: z.array(z.string().min(1)).optional(),
         // Query parameters added to every page on this side, such as Shopify's preview_theme_id.
         params: z.record(z.string(), z.string()).optional(),
+        // Paths visited once on this side before any capture, such as GET /cart/add to fill a cart.
+        setup: z.array(z.string().min(1)).optional(),
       }),
     )
     .length(2),
@@ -318,6 +320,8 @@ async function main() {
     if (path.startsWith("/password"))
       throw new Error(`Storefront password was not accepted for ${side.label}`);
   }
+  for (const side of config.sides)
+    for (const path of side.setup ?? []) await open(pageUrl(side.origin, path, side.params));
   const rows: Row[] = [];
   for (const page of config.pages)
     for (const width of config.widths) {
