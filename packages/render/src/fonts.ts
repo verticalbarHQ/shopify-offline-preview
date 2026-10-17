@@ -145,10 +145,7 @@ export function registerFontFilters(
   );
   for (const name of ["font_face", "font_url"]) {
     engine.registerFilter(name, function (input: unknown, ...args: unknown[]) {
-      if (!(input instanceof Font)) {
-        if (name === "font_url") throw new Error("font_url can only be used with a font drop");
-        return "";
-      }
+      if (!(input instanceof Font)) return "";
       const file = this.token.file ?? null,
         line = this.token.getPosition()[0] ?? null;
       const options = namedArgs(args);

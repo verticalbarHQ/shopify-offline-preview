@@ -260,8 +260,36 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
       hooks.diagnostic(code, message, this.token.file ?? null, this.token.getPosition()[0] ?? null);
     return images.imageTag(value, args, report("not-implemented"), report("missing-resource"));
   });
-  // Extra named arguments become attributes in the order given: true writes name="name", and
-  // false or nil leaves the attribute out (measured on a Shopify store).
+  // Extra named arguments become attributes in the order given. A boolean HTML attribute is
+  // written as name="name" when true and left out when false; other values are written as
+  // given (measured on a Shopify store).
+  const booleanAttributes = new Set([
+    "allowfullscreen",
+    "async",
+    "autofocus",
+    "autoplay",
+    "checked",
+    "controls",
+    "default",
+    "defer",
+    "disabled",
+    "formnovalidate",
+    "hidden",
+    "inert",
+    "ismap",
+    "itemscope",
+    "loop",
+    "multiple",
+    "muted",
+    "nomodule",
+    "novalidate",
+    "open",
+    "playsinline",
+    "readonly",
+    "required",
+    "reversed",
+    "selected",
+  ]);
   const tagAttributes = (base: [string, unknown][], args: unknown[], fixed: string[]) => {
     const attributes = new Map(base);
     for (const [name, input] of Object.entries(namedArgs(args))) {
@@ -269,11 +297,14 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
       if (!fixed.includes(name)) attributes.set(name, toValue(input));
     }
     return [...attributes]
-      .flatMap(([name, value]) =>
-        value === null || value === undefined || value === false
-          ? []
-          : [`${name}="${escapeAttribute(value === true ? name : value)}"`],
-      )
+      .flatMap(([name, value]) => {
+        if (value === null || value === undefined) return [];
+        if (booleanAttributes.has(name))
+          return value === false
+            ? []
+            : [`${name}="${value === true ? name : escapeAttribute(value)}"`];
+        return [`${name}="${escapeAttribute(value)}"`];
+      })
       .join(" ");
   };
   engine.registerFilter("stylesheet_tag", function (value: unknown, ...args: unknown[]) {
@@ -287,7 +318,8 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
       );
     const attributes = tagAttributes(
       [
-        ["href", value],
+        // Shopify keeps an empty href for a missing URL (a script drops its src instead).
+        ["href", toValue(value) ?? ""],
         ["rel", "stylesheet"],
         ["type", "text/css"],
         ["media", "all"],
@@ -300,7 +332,7 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
   engine.registerFilter("script_tag", (value: unknown, ...args: unknown[]) => {
     const attributes = tagAttributes(
       [
-        ["src", value],
+        ["src", toValue(value)],
         ["type", "text/javascript"],
       ],
       args,

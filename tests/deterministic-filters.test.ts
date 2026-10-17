@@ -127,6 +127,13 @@ const measured: [string, string][] = [
     "'abc==' | base64_url_safe_decode",
     "Liquid error: invalid base64 provided to base64_url_safe_decode",
   ],
+  ["'#bc51e1' | color_lighten: 10", "#cd7ce9"],
+  ["'#000d65' | color_darken: 5", "#000a4c"],
+  ["'#000d65' | color_modify: 'lightness', 75", "#8090ff"],
+  ["'rgb(100, 50, 200)' | color_desaturate: 50", "rgb(121, 113, 138)"],
+  ["'#bc51e1' | color_saturate: 0", "#bc51e1"],
+  ["'#000d65' | color_desaturate: 0", "#000d65"],
+  ["'#7ab55c' | hex_to_rgba: nil", "rgba(122,181,92,)"],
 ];
 
 test("color, hash, encoding and text filters match Shopify's output", async () => {
@@ -147,7 +154,11 @@ test("script_tag and stylesheet_tag write extra attributes in the order given", 
     "<p>{{ '/a.js' | script_tag: type: 'module', defer: true }}</p>" +
       "<p>{{ '/a.js' | script_tag: async: true, defer: false, data-x: 'y' }}</p>" +
       "<p>{{ '/a.css' | stylesheet_tag: media: 'print', preload: true }}</p>" +
-      "<p>{{ '/a.css' | stylesheet_tag: crossorigin: 'anonymous', disabled: true, fetchpriority: 'high' }}</p>",
+      "<p>{{ '/a.css' | stylesheet_tag: crossorigin: 'anonymous', disabled: true, fetchpriority: 'high' }}</p>" +
+      "<p>{{ missing | stylesheet_tag }}</p>" +
+      "<p>{{ missing | script_tag }}</p>" +
+      "<p>{{ '/a.css' | stylesheet_tag: title: true }}</p>" +
+      "<p>{{ '/a.js' | script_tag: src: '/b.js' }}</p>",
   );
   assert.deepEqual(
     [...html.matchAll(/<p>(.*?)<\/p>/gs)].map((m) => m[1]),
@@ -156,6 +167,10 @@ test("script_tag and stylesheet_tag write extra attributes in the order given", 
       '<script src="/a.js" type="text/javascript" async="async" data-x="y"></script>',
       '<link href="/a.css" rel="stylesheet" type="text/css" media="print" />',
       '<link href="/a.css" rel="stylesheet" type="text/css" media="all" crossorigin="anonymous" disabled="disabled" fetchpriority="high" />',
+      '<link href="" rel="stylesheet" type="text/css" media="all" />',
+      '<script type="text/javascript"></script>',
+      '<link href="/a.css" rel="stylesheet" type="text/css" media="all" title="true" />',
+      '<script src="/a.js" type="text/javascript"></script>',
     ],
   );
 });
@@ -167,12 +182,11 @@ test("collections list their products' tags, types and vendors", async () => {
   assert.ok(html.includes("<p>blue,red,sop-fixture|Test Goods|Example Studio</p>"), html);
 });
 
-test("date formats, image quality, unit prices and font URLs fail or stay empty as on Shopify", async () => {
+test("date formats, image quality and unit prices fail or stay empty as on Shopify", async () => {
   const { html } = await render(
     "<p>{{ product.created_at | date: format: 'month_day_year' }}</p>" +
       "<p>{{ product | image_url: width: 450, quality: 80 }}</p>" +
-      "<p>[{{ product.selected_or_first_available_variant.unit_price | unit_price_with_measurement: nil }}]</p>" +
-      "<p>{{ settings.missing_font | font_url }}</p>",
+      "<p>[{{ product.selected_or_first_available_variant.unit_price | unit_price_with_measurement: nil }}]</p>",
     "/products/sop-matrix-needle",
   );
   assert.deepEqual(
@@ -184,7 +198,45 @@ test("date formats, image quality, unit prices and font URLs fail or stay empty 
       "The format option 'month_day_year' is not a supported format.",
       "quality can't be used with ext png",
       "[]",
-      "font_url can only be used with a font drop",
     ],
   );
+});
+
+test("hashes stay correct across block and chunk boundaries", async () => {
+  const { createHash, createHmac } = await import("node:crypto");
+  const { blake3Bytes, hmacSha1, sha1 } = await import("../packages/render/src/filters/hashes.js");
+  for (const length of [55, 56, 63, 64, 65, 119, 120, 1000]) {
+    const text = "x".repeat(length);
+    assert.equal(sha1(text), createHash("sha1").update(text).digest("hex"), `sha1 ${length}`);
+    const key = "k".repeat(length % 130);
+    assert.equal(
+      hmacSha1(text, key),
+      createHmac("sha1", key).update(text).digest("hex"),
+      `hmac ${length}`,
+    );
+  }
+  // Official BLAKE3 test vectors: input byte i is i % 251.
+  for (const [length, hash] of [
+    [1025, "d00278ae47eb27b34faecf67b4fe263f82d5412916c1ffd97c8cb7fb814b8444"],
+    [2049, "5f4d72f40d7a5f82b15ca2b2e44b1de3c2ef86c426c95c1af0b6879522563030"],
+    [4096, "015094013f57a5277b59d8475c0501042c0b642e531b0a1c8f58d2163229e969"],
+  ] as const)
+    assert.equal(
+      blake3Bytes(new Uint8Array(length).map((_, i) => i % 251)),
+      hash,
+      `blake3 ${length}`,
+    );
+});
+
+test("a named date format falls back to the theme's default locale before failing", async () => {
+  const snapshot = defaultFixture();
+  snapshot.shop.locale = "fr";
+  const theme = new MemoryThemeFileSystem({
+    "templates/index.json": '{"layout":false,"sections":{"main":{"type":"main"}},"order":["main"]}',
+    "sections/main.liquid": "<p>{{ '2026-10-17' | date: format: 'custom' }}</p>",
+    "locales/fr.json": "{}",
+    "locales/en.default.json": '{"date_formats":{"custom":"%Y/%m/%d"}}',
+  });
+  const { html } = await renderTheme(theme, "/", { snapshot });
+  assert.ok(html.includes("<p>2026/10/17</p>"), html);
 });

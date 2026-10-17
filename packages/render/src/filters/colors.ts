@@ -31,15 +31,30 @@ function exactHsl(color: ColorValue) {
   if (d !== 0) h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
   return { h: ((h * 60 + 360) % 360) / 360, s: d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1)), l };
 }
+/**
+ * HSL (each 0 to 1) to RGB with the W3C hue-to-RGB steps. Callers do their HSL arithmetic in
+ * degrees and percentages, as Shopify does: measured outputs at exact halves depend on it.
+ */
 function fromHsl(h: number, s: number, l: number, alpha: number): ColorValue {
-  const a = s * Math.min(l, 1 - l);
-  const channel = (n: number) => {
-    const k = (n + h * 12) % 12;
-    // Snap away floating-point noise first, so an exact half rounds up as it does on Shopify.
-    const exact = (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))) * 255;
-    return Math.round(Number(exact.toFixed(9)));
+  const m2 = l <= 0.5 ? l * (s + 1) : l + s - l * s,
+    m1 = l * 2 - m2;
+  const hue = (t: number) => {
+    const x = t < 0 ? t + 1 : t > 1 ? t - 1 : t;
+    if (x * 6 < 1) return m1 + (m2 - m1) * x * 6;
+    if (x * 2 < 1) return m2;
+    if (x * 3 < 2) return m1 + (m2 - m1) * (2 / 3 - x) * 6;
+    return m1;
   };
-  return new ColorValue(channel(0), channel(8), channel(4), alpha, () => {});
+  const [r, g, b] = [hue(h + 1 / 3), hue(h), hue(h - 1 / 3)].map((v) => Math.round(v * 255));
+  return new ColorValue(r ?? 0, g ?? 0, b ?? 0, alpha, () => {});
+}
+/** HSL in degrees and percentages. */
+function hslUnits(color: ColorValue) {
+  const { h, s, l } = exactHsl(color);
+  return { h: h * 360, s: s * 100, l: l * 100 };
+}
+function fromHslUnits(h: number, s: number, l: number, alpha: number): ColorValue {
+  return fromHsl(h / 360, s / 100, l / 100, alpha);
 }
 function percent(value: unknown) {
   const amount = Number(toValue(value));
@@ -64,7 +79,7 @@ type ColorFormat = "hex" | "rgb" | "hsl";
 interface ParsedColor {
   color: ColorValue;
   format: ColorFormat;
-  /** Exact HSL components (0 to 1) when the input was written as hsl(). */
+  /** The HSL components (degrees and percentages) when the input was written as hsl(). */
   hsl?: { h: number; s: number; l: number };
 }
 function parsedColor(value: unknown): ParsedColor {
@@ -75,11 +90,11 @@ function parsedColor(value: unknown): ParsedColor {
     text,
   );
   if (hsl) {
-    const h = Number(hsl[1]) / 360,
-      s = Number(hsl[2]) / 100,
-      l = Number(hsl[3]) / 100,
+    const h = Number(hsl[1]),
+      s = Number(hsl[2]),
+      l = Number(hsl[3]),
       alpha = hsl[4] === undefined ? 1 : Number(hsl[4]);
-    return { color: fromHsl(h, s, l, alpha), format: "hsl", hsl: { h, s, l } };
+    return { color: fromHslUnits(h, s, l, alpha), format: "hsl", hsl: { h, s, l } };
   }
   return { color: channels(value), format: /^rgba?\(/.test(text) ? "rgb" : "hex" };
 }
@@ -88,12 +103,12 @@ function alphaText(alpha: number): string {
   return String(Math.round(alpha * 100) / 100);
 }
 function hslText(h: number, s: number, l: number, alpha: number): string {
-  const parts = `${Math.round(h * 360) % 360}, ${Math.round(s * 100)}%, ${Math.round(l * 100)}%`;
+  const parts = `${Math.round(h) % 360}, ${Math.round(s)}%, ${Math.round(l)}%`;
   return alpha === 1 ? `hsl(${parts})` : `hsla(${parts}, ${alphaText(alpha)})`;
 }
 function colorText(color: ColorValue, format: ColorFormat): string {
   if (format === "hsl") {
-    const { h, s, l } = exactHsl(color);
+    const { h, s, l } = hslUnits(color);
     return hslText(h, s, l, color.alpha);
   }
   if (color.alpha !== 1)
@@ -137,7 +152,7 @@ function saturationAmount(value: unknown, label: string): number {
     amount > 100
   )
     throw new Error(`${label} amount must be a numeric value between 0 and 100`);
-  return amount / 100;
+  return amount;
 }
 export function registerColorFilters(engine: Liquid): void {
   engine.registerFilter("color_modify", (input: unknown, component: unknown, amount: unknown) => {
@@ -167,11 +182,11 @@ export function registerColorFilters(engine: Liquid): void {
       );
     let result: ColorValue;
     if (["hue", "saturation", "lightness"].includes(key)) {
-      const hsl = exactHsl(color);
-      result = fromHsl(
-        key === "hue" ? value / 360 : hsl.h,
-        key === "saturation" ? value / 100 : hsl.s,
-        key === "lightness" ? value / 100 : hsl.l,
+      const hsl = hslUnits(color);
+      result = fromHslUnits(
+        key === "hue" ? value : hsl.h,
+        key === "saturation" ? value : hsl.s,
+        key === "lightness" ? value : hsl.l,
         color.alpha,
       );
     } else
@@ -207,11 +222,11 @@ export function registerColorFilters(engine: Liquid): void {
   ] as const)
     engine.registerFilter(name, (value: unknown, amount: unknown) => {
       const c = channels(value),
-        hsl = exactHsl(c);
-      const result = fromHsl(
+        hsl = hslUnits(c);
+      const result = fromHslUnits(
         hsl.h,
         hsl.s,
-        Math.min(1, Math.max(0, hsl.l + (direction * percent(amount)) / 100)),
+        Math.min(100, Math.max(0, hsl.l + direction * percent(amount))),
         c.alpha,
       );
       return modifiedColor(value, result);
@@ -240,11 +255,11 @@ export function registerColorFilters(engine: Liquid): void {
     engine.registerFilter(name, (value: unknown, amount: unknown) => {
       const input = parsedColor(value),
         change = direction * saturationAmount(amount, label);
-      const { h, s, l } = input.hsl ?? exactHsl(input.color);
-      const saturation = Math.min(1, Math.max(0, s + change));
+      const { h, s, l } = input.hsl ?? hslUnits(input.color);
+      const saturation = Math.min(100, Math.max(0, s + change));
       return input.format === "hsl"
         ? hslText(h, saturation, l, input.color.alpha)
-        : colorText(fromHsl(h, saturation, l, input.color.alpha), input.format);
+        : colorText(fromHslUnits(h, saturation, l, input.color.alpha), input.format);
     });
   engine.registerFilter("color_mix", (value: unknown, other: unknown, percent: unknown) => {
     const first = parsedColor(value),
@@ -266,16 +281,18 @@ export function registerColorFilters(engine: Liquid): void {
   });
   engine.registerFilter("color_to_hsl", (value: unknown) => {
     const input = parsedColor(value);
-    const { h, s, l } = input.hsl ?? exactHsl(input.color);
+    const { h, s, l } = input.hsl ?? hslUnits(input.color);
     return hslText(h, s, l, input.color.alpha);
   });
   engine.registerFilter("color_to_oklch", (value: unknown) => oklch(parsedColor(value).color));
-  engine.registerFilter("hex_to_rgba", (value: unknown, alpha: unknown = 1) => {
+  engine.registerFilter("hex_to_rgba", (value: unknown, ...args: unknown[]) => {
+    // An omitted alpha is 1; an explicit nil prints nothing, as on Shopify.
+    const alpha = args.length === 0 ? 1 : (toValue(args[0]) ?? "");
     const text = String(toValue(value) ?? "");
     // Shopify leaves anything other than a 3- or 6-digit hex color unchanged.
     if (!/^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(text.trim())) return text;
     const color = channels(text);
-    return `rgba(${color.red},${color.green},${color.blue},${String(toValue(alpha))})`;
+    return `rgba(${color.red},${color.green},${color.blue},${String(alpha)})`;
   });
   engine.registerFilter("brightness_difference", (value: unknown, other: unknown) =>
     Math.round(Math.abs(brightness(channels(value)) - brightness(channels(other)))),
