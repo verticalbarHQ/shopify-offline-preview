@@ -979,8 +979,10 @@ export function liquidObjects(
     const value = collections.get(source.handle);
     return value ? [value] : [];
   });
+  // Configurable so that paginate can present one page of it.
   Object.defineProperty(collectionDictionary, Symbol.iterator, {
     value: () => listedCollections[Symbol.iterator](),
+    configurable: true,
   });
   for (const [key, value] of Object.entries({
     size: listedCollections.length,

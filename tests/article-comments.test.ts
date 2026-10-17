@@ -18,7 +18,7 @@ test("comment moderation comes from the snapshot; an article without comments ha
   blog.commentsModerated = true;
   article.commentsCount = 0;
   const result = await renderTheme(theme, `/blogs/${blog.handle}/${article.handle}`, { snapshot });
-  assert.ok(result.html.includes("[true]0/0"), result.html);
+  assert.ok(result.html.includes("[true]0/1"), result.html);
   assert.deepEqual(
     result.diagnostics.filter((d) => d.code !== "shopify-server-only"),
     [],

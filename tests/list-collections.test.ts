@@ -21,3 +21,23 @@ test("/collections renders the list-collections template with the collections", 
     result.html,
   );
 });
+
+test("paginate pages through the collections global and keeps handle lookups", async () => {
+  const snapshot = defaultFixture();
+  const [catalog] = snapshot.collections;
+  assert.ok(catalog);
+  snapshot.collections.push(
+    { ...catalog, id: "200002", handle: "second", title: "Second", products: [] },
+    { ...catalog, id: "200003", handle: "third", title: "Third", products: [] },
+  );
+  const theme = new MemoryThemeFileSystem({
+    "templates/list-collections.json":
+      '{"layout":false,"sections":{"main":{"type":"main"}},"order":["main"]}',
+    "sections/main.liquid":
+      "{% paginate collections by 2 %}{% for c in collections %}{{ c.handle }} {% endfor %}|{{ collections['sop-catalog'].title }}|{{ paginate.pages }}{% endpaginate %}",
+  });
+  const first = await renderTheme(theme, "/collections", { snapshot });
+  assert.ok(first.html.includes("sop-catalog second |Example Catalog|2"), first.html);
+  const second = await renderTheme(theme, "/collections?page=2", { snapshot });
+  assert.ok(second.html.includes("third |Example Catalog|2"), second.html);
+});

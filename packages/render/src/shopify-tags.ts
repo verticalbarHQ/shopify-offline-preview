@@ -45,6 +45,9 @@ function body(parser: Parser, tokens: TopLevelToken[], name: string): Template[]
 function record(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
 }
+function iterable(value: unknown): value is Record<string, unknown> & Iterable<unknown> {
+  return record(value) && Symbol.iterator in value;
+}
 interface TagHooks {
   path: string;
   track: ObjectTracker;
@@ -213,7 +216,13 @@ export function registerShopifyTags(engine: Liquid, hooks: TagHooks): void {
       }
       async render(context: Context): Promise<string> {
         const path = this.array.getText();
-        const array: unknown = await evalNumericValue(engine, path, context);
+        const source: unknown = await evalNumericValue(engine, path, context);
+        // The collections global is a handle dictionary that iterates over the store's collections.
+        const dictionary =
+          path === "collections" && liquidObjectKind(source) === "dictionary" && iterable(source)
+            ? source
+            : undefined;
+        const array: unknown = dictionary ? [...dictionary] : source;
         if (!Array.isArray(array)) {
           hooks.unsupported(`Pagination source ${path} is not an available array.`);
           return `[not implemented: paginate ${escapeHtml(path)}]`;
@@ -221,7 +230,9 @@ export function registerShopifyTags(engine: Liquid, hooks: TagHooks): void {
         const keys = path.split(".");
         const property = keys.at(-1);
         const root = keys[0];
-        const parent = await evalNumericValue(engine, keys.slice(0, -1).join("."), context);
+        const parent = dictionary
+          ? undefined
+          : await evalNumericValue(engine, keys.slice(0, -1).join("."), context);
         const expectedKind = {
           products: "collection",
           articles: "blog",
@@ -230,11 +241,12 @@ export function registerShopifyTags(engine: Liquid, hooks: TagHooks): void {
           comments: "article",
         }[property ?? ""];
         if (
-          !/^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+$/.test(path) ||
-          (!/^(collection\.products|blog\.articles|search\.results|product\.variants|article\.comments)$/.test(
-            path,
-          ) &&
-            (!expectedKind || liquidObjectKind(parent) !== expectedKind))
+          !dictionary &&
+          (!/^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+$/.test(path) ||
+            (!/^(collection\.products|blog\.articles|search\.results|product\.variants|article\.comments)$/.test(
+              path,
+            ) &&
+              (!expectedKind || liquidObjectKind(parent) !== expectedKind)))
         ) {
           hooks.unsupported(`Independent pagination for ${path} is not implemented.`);
           return `[not implemented: paginate ${escapeHtml(path)}]`;
@@ -252,28 +264,37 @@ export function registerShopifyTags(engine: Liquid, hooks: TagHooks): void {
         if (!Number.isInteger(window) || window < 0 || window > 100)
           throw new Error("Invalid pagination window_size");
         const total = Math.min(array.length, 25000),
-          pages = Math.ceil(total / size),
+          pages = Math.max(1, Math.ceil(total / size)),
           offset = (page - 1) * size;
         const link = (number: number) => {
           const target = new URL(url);
           target.searchParams.set("page", String(number));
+          // Shopify writes the query parameters in name order.
+          target.searchParams.sort();
           return target.pathname + target.search;
         };
-        const indices = new Set<number>([1, pages]);
-        for (let i = Math.max(1, page - window); i <= Math.min(pages, page + window); i++)
-          indices.add(i);
+        // Shopify's page list, as measured on a store: the first and the last page, the pages
+        // less than window_size away from the current one, and one "&hellip;" for each run of
+        // pages left out on either side. A single page has no list.
         const parts: { title: string; is_link: boolean; url: string | null }[] = [];
-        let previous = 0;
-        for (const index of [...indices].filter((i) => i > 0).sort((a, b) => a - b)) {
-          if (index - previous === 2)
-            parts.push({ title: String(index - 1), is_link: true, url: link(index - 1) });
-          else if (index - previous > 2) parts.push({ title: "…", is_link: false, url: null });
+        let skippingBefore = false,
+          skippingAfter = false;
+        for (let index = 1; pages > 1 && index <= pages; index++) {
+          const before = index <= page - window,
+            after = index >= page + window;
+          if (index !== 1 && index !== pages && (before || (after && index !== page))) {
+            if (before ? !skippingBefore : !skippingAfter)
+              parts.push({ title: "&hellip;", is_link: false, url: null });
+            if (before) skippingBefore = true;
+            else skippingAfter = true;
+            continue;
+          }
           parts.push({
             title: String(index),
             is_link: index !== page,
             url: index === page ? null : link(index),
           });
-          previous = index;
+          skippingBefore = skippingAfter = false;
         }
         const part = (value: { title: string; is_link: boolean; url: string | null }) =>
           hooks.track(value, "part");
@@ -287,14 +308,30 @@ export function registerShopifyTags(engine: Liquid, hooks: TagHooks): void {
             page_param: "page",
             parts: parts.map(part),
             previous:
-              page > 1 ? part({ title: "Previous", is_link: true, url: link(page - 1) }) : null,
-            next: page < pages ? part({ title: "Next", is_link: true, url: link(page + 1) }) : null,
+              page > 1
+                ? part({ title: "&laquo; Previous", is_link: true, url: link(page - 1) })
+                : null,
+            next:
+              page < pages
+                ? part({ title: "Next &raquo;", is_link: true, url: link(page + 1) })
+                : null,
           },
           "paginate",
         );
         if (!root || !property) throw new Error("Invalid pagination path");
         const slice = array.slice(offset, offset + size);
         let local: unknown = slice;
+        if (dictionary) {
+          const page = new Proxy(dictionary, {
+            get(target, property, receiver) {
+              return property === Symbol.iterator
+                ? () => slice[Symbol.iterator]()
+                : Reflect.get(target, property, receiver);
+            },
+          });
+          preserveLiquidObjectKind(dictionary, page);
+          local = page;
+        }
         for (let index = keys.length - 2; index >= 0; index--) {
           const original: unknown = await evalNumericValue(
             engine,
