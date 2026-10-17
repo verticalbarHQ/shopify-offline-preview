@@ -154,10 +154,6 @@ export const shopifyVerification: Readonly<Record<string, readonly string[]>> = 
     "corpus/2026-10-17/filters/last/0",
     "corpus/2026-10-17/filters/last/1",
   ],
-  "filter:line_items_for": [
-    "corpus/2026-10-17/filters/line_items_for/0",
-    "corpus/2026-10-17/filters/line_items_for/1",
-  ],
   "filter:link_to": [
     "comparison/2026-10-17/dawn",
     "comparison/2026-10-17/horizon",
@@ -190,7 +186,6 @@ export const shopifyVerification: Readonly<Record<string, readonly string[]>> = 
     "corpus/2026-10-17/filters/metafield_tag/7",
     "corpus/2026-10-17/filters/metafield_tag/8",
   ],
-  "filter:metafield_text": ["corpus/2026-10-17/filters/metafield_text/3"],
   "filter:minus": [
     "comparison/2026-10-17/dawn",
     "comparison/2026-10-17/horizon",
@@ -229,7 +224,6 @@ export const shopifyVerification: Readonly<Record<string, readonly string[]>> = 
   "filter:newline_to_br": ["corpus/2026-10-17/filters/newline_to_br/0"],
   "filter:payment_button": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
   "filter:payment_terms": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
-  "filter:payment_type_img_url": ["corpus/2026-10-17/filters/payment_type_img_url/0"],
   "filter:payment_type_svg_tag": [
     "corpus/2026-10-17/filters/payment_type_svg_tag/0",
     "corpus/2026-10-17/filters/payment_type_svg_tag/1",
@@ -1047,7 +1041,6 @@ export const shopifyVerification: Readonly<Record<string, readonly string[]>> = 
   "object:linklist": ["comparison/2026-10-17/horizon"],
   "object:localization": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
   "object:media": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
-  "object:order": ["comparison/2026-10-17/horizon"],
   "object:page": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
   "object:page_description": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
   "object:page_image": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
@@ -1059,7 +1052,6 @@ export const shopifyVerification: Readonly<Record<string, readonly string[]>> = 
   "object:product": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
   "object:product_option": ["comparison/2026-10-17/horizon"],
   "object:product_option_value": ["comparison/2026-10-17/horizon"],
-  "object:rating": ["comparison/2026-10-17/horizon"],
   "object:recommendations": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
   "object:request": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
   "object:routes": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],

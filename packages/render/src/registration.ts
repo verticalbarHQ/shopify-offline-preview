@@ -22,14 +22,14 @@ import { Font } from "./fonts.js";
 import { observeEngines, renderTheme } from "./index.js";
 import { TableRowLoop } from "./tablerow-tag.js";
 
-/** Liquid objects implemented as classes: their getters are their properties. */
-const drops: [abstract new (...args: never[]) => object, string][] = [
-  [ColorValue, "color"],
-  [ColorScheme, "color_scheme"],
-  [ColorSchemeGroup, "color_scheme_group"],
-  [Font, "font"],
-  [NamedImageDrop, "image"],
-  [TableRowLoop, "tablerowloop"],
+/** Liquid objects implemented as classes: their getters and the listed fields are their properties. */
+const drops: [abstract new (...args: never[]) => object, string, string[]][] = [
+  [ColorValue, "color", ["red", "green", "blue", "alpha", "color_space"]],
+  [ColorScheme, "color_scheme", ["id", "settings"]],
+  [ColorSchemeGroup, "color_scheme_group", []],
+  [Font, "font", ["handle", "weight", "style"]],
+  [NamedImageDrop, "image", []],
+  [TableRowLoop, "tablerowloop", ["length"]],
 ];
 function getters(prototype: object): string[] {
   return Object.entries(Object.getOwnPropertyDescriptors(prototype)).flatMap(([key, value]) =>
@@ -78,6 +78,8 @@ function probeSnapshot(): Snapshot {
   snapshot.shop.policies = [
     { id: "1", title: "Refund policy", body: "<p>Probe</p>", url: "/policies/refund-policy" },
   ];
+  const blog = snapshot.blogs[0];
+  if (blog) blog.commentsModerated = false;
   const variant = main?.variants[0];
   if (variant) {
     variant.quantityPriceBreaks = [{ minimumQuantity: 2, price: "10.00" }];
@@ -220,7 +222,7 @@ export function rendererRegistration(): Promise<ImplementationEvidence[]> {
       );
     });
     add("media", media);
-    for (const [drop, type] of drops) add(type, getters(drop.prototype));
+    for (const [drop, type, fields] of drops) add(type, [...getters(drop.prototype), ...fields]);
     // LiquidJS provides the loop object; `parentloop` is preserved by the preview's loop tracing.
     add("forloop", Object.keys(registry.objects.forloop?.properties ?? {}));
     for (const name of ["section", "block", "settings", "form", "paginate", "content_for_layout"])
