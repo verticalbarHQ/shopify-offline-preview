@@ -141,7 +141,7 @@ deterministic.
 |---|---|
 | `shopify-offline-preview dev <theme> [--data <dir>] [--scenario <name>] [--design-mode] [--port <n>]` | Starts the dev server and inspector (§7.3). |
 | `shopify-offline-preview render <theme> <path> [--data] [--scenario] [--design-mode] [--json] [--out <file>]` | Renders one URL path. JSON output: `{schemaVersion, html, tree, diagnostics, dataUsed, route}`. |
-| `shopify-offline-preview check <theme> [--json] [--strict]` | Static coverage (§9.11): the Shopify filters, tags, and objects reachable from each page type, and whether each is implemented. |
+| `shopify-offline-preview check <theme> [--json] [--strict]` | Static coverage (§9.11): the Shopify filters, tags, and objects reachable from each page type, and whether each is implemented, server-only or verified (§9.10). |
 | `shopify-offline-preview schema <render\|check\|snapshot>` | Prints the published JSON Schema for that output or input. |
 
 Exit codes:
@@ -152,7 +152,7 @@ Exit codes:
 | 2 | Usage error. |
 | 3 | The theme or snapshot failed to load or validate. |
 | 4 | Fatal render failure. |
-| 5 | `check --strict` found reachable features that are not implemented, or parts of the theme it could not analyse statically. |
+| 5 | `check --strict` found reachable features that are missing (§9.10), or parts of the theme it could not analyse statically. |
 
 ### 7.3 Dev server and inspector
 
@@ -501,26 +501,39 @@ findings list stays with the maintainer's local results; user documentation does
 | `agent-eval` | Weekly, manual | on + API key | Report only (§9.12) |
 | `release` | Tag | on | All of the above green |
 
-### 9.10 Filter conformance corpus and "implemented"
+### 9.10 Implemented, server-only and verified
 
-- The pinned theme-liquid-docs data has 245 filter example entries: 235 have nonempty `raw_liquid`
-  inputs and 10 have no executable input. Expected outputs are absent. Empty entries are reported
-  explicitly and never treated as successful conformance cases; authored supplemental cases retain
-  their own provenance.
-- The oracle runs these inputs on the oracle store and captures Shopify's outputs. The inputs are
-  rendered from generated snippet files in a dedicated alternate template, with paths mapped to
-  fixture equivalents.
-- A filter, tag, or object property counts as **implemented** only when it is registered **and**
-  covered by at least one oracle-verified corpus case. A registered stub does not count.
-  **Registered** means the offline renderer provides it: a non-stub filter or tag, or a property
-  that the renderer's objects expose (`check` reports it from the renderer's own registration).
+`check` gives each Shopify feature it finds three independent facts:
+
+- **Implemented**: the offline renderer provides it. That is a non-stub filter or tag, or an object
+  or property that the renderer's objects expose. `check` reads this from the renderer's own
+  registration.
+- **Server-only**: only Shopify's servers can produce it, or it needs data that a snapshot does not
+  carry. Examples are logged-in customers, discounts, selling plans, comments, store pickup and form
+  errors. The preview leaves these out by design. They are listed with reasons in
+  `packages/spec/src/server-only.ts`.
+- **Verified**: a one-off Shopify comparison (§9.5) showed the feature behaving like Shopify. The
+  evidence is one of two things:
+  - the feature ran in a page pair that the comparison judged similar;
+  - a documented filter example whose output matched Shopify's exactly. Of the pinned
+    theme-liquid-docs filter examples, 235 have executable `raw_liquid` inputs. They are rendered
+    on the oracle store from generated snippets in an alternate template, with paths mapped to
+    fixture equivalents.
+
+  `tools/oracle/record-verification.ts` records this evidence in
+  `packages/spec/src/verification.ts`. It is information for the reader, not a gate.
+
+A feature is **missing** when it is neither implemented nor server-only. Unknown filters and tags
+count as missing, because Shopify rejects them too. A property that Shopify does not document for the
+statically inferred type does not count, because static analysis can only approximate a variable's
+type.
 
 ### 9.11 Coverage
 
 - **Static.** For each page type, find the files reachable from the template: layout, section groups,
   sections, blocks, and statically named `render` targets. Dynamically named renders are flagged.
-  Collect the Shopify filters, tags, and object properties they use. The unimplemented count must be
-  0.
+  Collect the Shopify filters, tags, and object properties they use. The missing count (§9.10) must
+  be 0.
 - **Dynamic.** Across the full matrix, record what actually executed. Liquid errors and
   not-implemented events must both be 0.
 
@@ -554,7 +567,7 @@ Each criterion is checked by the lane or review named.
 | # | Criterion | Verified by |
 |---|---|---|
 | AC-1 | For Dawn and Horizon at their pinned commits, the comparison (§9.5) finds every §9.3 page type similar (§9.6) at desktop and mobile widths. | Maintainer review (§9.7) |
-| AC-2 | `check` reports 0 unimplemented Shopify filters, tags, or object properties reachable from the §9.3 page types, for both benchmarks. "Implemented" is defined in §9.10. | `parity` |
+| AC-2 | `check` reports 0 missing Shopify filters, tags, objects or object properties reachable from the §9.3 page types, for both benchmarks. "Missing" is defined in §9.10. | `parity` |
 | AC-3 | Rendering the full matrix produces 0 Liquid errors and 0 not-implemented events. | `parity` |
 | AC-4 | AC-2 and AC-3 pass with networking disabled. | `parity` (`--network none`) |
 | AC-5 | Every **fix** finding from the comparison is fixed or filed as an issue. | Findings list (§9.7) |
@@ -653,22 +666,4 @@ implementation is claimed by M0.
 | Block comparison | Not compared on their own; block text is part of its section's text (2026-10-17; was an instrumented copy on both sides) | Instrumented copy on both sides; theme-editor capture |
 | Oracle store | Existing dev store, dedicated and wiped | Coexist with prefixes; a new store |
 | Shopify comparison (owner decision, 2026-10-17) | A one-off side-by-side check that a person judges: screenshots of the store and the offline preview at desktop and mobile widths, with text differences extracted to help. Similar means the same sections in the same order, the same main content, and a layout that does not look broken (§9.6). Findings are listed as OK or fix. | Stored goldens gating PRs; weekly recapture; a private raw repository; a numeric pass rate |
-| Server-only differences | Listed among the allowed differences (§9.6) and marked OK in the findings (2026-10-17; was normalization plus a categorized allowlist) | Normalization only; unrestricted allowlist; a categorized allowlist file |
-| Drift | Pinned themes. A change on Shopify's side shows up the next time someone runs the comparison (2026-10-17; was auto-refresh PRs) | Fail `main`; report only; auto-refresh PRs |
-| Packaging | One npm package | Multiple packages |
-| Runtime | Node and browser officially, including the playground in 1.0 | Node only; browser-ready structure only |
-| License | MIT | Apache-2.0 |
-| Spec language | English | Korean |
-
-## 16. References
-
-- Shopify CLI 4.9.3 (`@shopify/cli` on npm): `theme dev` storefront rendering with `replace_templates`
-- [Slate — Local development](https://shopify.github.io/slate/docs/local-development)
-- [Shopify/vision (archived)](https://github.com/Shopify/vision)
-- [Shopify/theme-liquid-docs](https://github.com/Shopify/theme-liquid-docs) (MIT)
-- [Shopify/liquid](https://github.com/Shopify/liquid), [Shopify/liquid-spec](https://github.com/Shopify/liquid-spec)
-- [harttle/liquidjs](https://github.com/harttle/liquidjs) (MIT)
-- [Shopify/dawn](https://github.com/Shopify/dawn), [Shopify/horizon](https://github.com/Shopify/horizon) (restricted licenses)
-- [Shopify/theme-tools](https://github.com/Shopify/theme-tools) (MIT; `@shopify/liquid-html-parser`)
-- [bosun-ai/snapify](https://github.com/bosun-ai/snapify), [Piyushmishra29/liquid-storefront](https://github.com/Piyushmishra29/liquid-storefront)
-- [Shopify Trademarks](https://www.shopify.com/legal/trademarks)
+| Implemented and verified (owner decisions, 2026-10-17) | "오프라인 프리뷰는 일단 C+B 승인" (23:2x KST): `check` counts a feature as missing only when the preview neither provides it nor classifies it as server-only. Shopify verification is shown separately. Its evidence includes features that ran in the 72 page pairs judged similar. "C 중에선 쉽고 방법이 명백한것만 지원하고, (b)는 해보는게 좋아보임" (23:4x KST): of the features the preview does not provide, only those that are easy and clearly derivable are implemented. The rest are classified as server-only, and ambiguous ones are classified as server-only too. Features the preview provides but no comparison exercised are all to be tried on the dedicated store. | Implemented only with a Shopify-verified example for every feature (the 2026-10-13 rule, which would have required about 400 authored cases); implementing every feature regardless of whether it can work offline |

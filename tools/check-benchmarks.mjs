@@ -21,11 +21,8 @@ for (const theme of themes) {
   assert.equal(result.supported, true);
   assert.ok(result.pages.length >= 10);
   assert.ok(result.summary.featureCount > 0);
-  assert.equal(
-    result.summary.unimplementedCount,
-    result.summary.featureCount,
-    "M0 must not claim oracle-verified implementations",
-  );
+  // AC-2: every reachable Shopify feature is provided or classified as server-only (SPEC §9.10).
+  assert.equal(result.summary.unimplementedCount, 0, `${theme.name}: missing Shopify features`);
   const errors = result.diagnostics.filter((d) => d.severity === "error");
   assert.deepEqual(errors, [], `${theme.name}: parse/reference errors`);
   await writeFile(`.local/results/${theme.name}-check.json`, output);
@@ -34,6 +31,11 @@ for (const theme of themes) {
     commit: theme.commit,
     templates: result.pages.length,
     features: result.summary.featureCount,
+    verified: new Set(
+      result.pages.flatMap((p) =>
+        p.features.filter((f) => f.verified).map((f) => `${f.kind}:${f.name}`),
+      ),
+    ).size,
     complete: result.summary.complete,
     diagnostics: result.diagnostics.length,
   };

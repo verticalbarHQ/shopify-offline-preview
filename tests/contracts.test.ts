@@ -137,6 +137,9 @@ test("CLI is non-interactive with one JSON document, strict exit 5, usage 2, loa
     assert.ok(!normal.stdout.includes("\u001b"));
     const validate = await validator("check");
     assert.equal(validate(JSON.parse(normal.stdout)), true);
+    // A filter Shopify does not have is missing, so --strict fails.
+    const header = join(root, "sections/header.liquid");
+    await writeFile(header, `${await readFile(header, "utf8")}{{ 'x' | not_a_filter }}`);
     const strict = run("check", root, "--json", "--strict");
     assert.equal(strict.status, 5, strict.stderr);
     assert.equal(validate(JSON.parse(strict.stdout)), true);
@@ -266,4 +269,48 @@ test("browser renderer executes without Node globals and matches Node's HTML/tre
     context,
   );
   assert.equal(JSON.stringify(browser), JSON.stringify(node));
+});
+
+test("the published check schema and the parser agree that a provided feature is never server-only", async () => {
+  const { checkSchema } = await import("../packages/check/src/contracts.js");
+  const validate = await validator("check");
+  const result = (registered: boolean, serverOnly: boolean) => ({
+    schemaVersion: "1.0",
+    supported: true,
+    specCommit: "x",
+    pages: [
+      {
+        pageType: "product",
+        template: "templates/product.json",
+        files: [],
+        features: [
+          {
+            kind: "filter",
+            name: "money",
+            known: true,
+            registered,
+            serverOnly,
+            oracleCases: [],
+            implemented: registered,
+            verified: false,
+            occurrences: [],
+          },
+        ],
+        unimplementedCount: 0,
+        complete: true,
+      },
+    ],
+    diagnostics: [],
+    summary: { featureCount: 1, unimplementedCount: 0, complete: true },
+  });
+  for (const [registered, serverOnly, valid] of [
+    [true, false, true],
+    [false, true, true],
+    [false, false, true],
+    [true, true, false],
+  ] as const) {
+    const value = result(registered, serverOnly);
+    assert.equal(validate(value), valid, `${registered}/${serverOnly}`);
+    assert.equal(checkSchema.safeParse(value).success, valid, `${registered}/${serverOnly}`);
+  }
 });

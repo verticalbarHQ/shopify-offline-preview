@@ -21,18 +21,57 @@ test("reachable sections, groups, nested blocks, snippets, and multiline Liquid"
   assert.ok(page.features.some((f) => f.name === "variant.price"));
   assert.ok(page.features.some((f) => f.kind === "filter" && f.name === "t" && f.known));
   assert.ok(page.features.some((f) => f.kind === "tag" && f.name === "schema" && f.known));
-  assert.equal(result.summary.unimplementedCount, result.summary.featureCount);
+  // Without registration nothing is provided: every documented feature, filter and tag is missing.
+  const unique = new Map(
+    result.pages.flatMap((p) => p.features).map((f) => [`${f.kind}:${f.name}`, f]),
+  );
+  assert.equal(
+    result.summary.unimplementedCount,
+    [...unique.values()].filter((f) => f.known || f.kind === "filter" || f.kind === "tag").length,
+  );
 });
 
-test("registration requires a real oracle case; known aliases resolve to canonical evidence", async () => {
+test("provided features are implemented; verification needs a comparison case; aliases resolve", async () => {
   const fs = new MemoryThemeFileSystem(theme());
   const result = await checkTheme(fs, [
     { kind: "filter", name: "money", registered: true, oracleCases: [] },
-    { kind: "filter", name: "translate", registered: true, oracleCases: ["oracle/translate/1"] },
+    { kind: "filter", name: "translate", registered: true, oracleCases: ["corpus/x/translate/1"] },
   ]);
   const features = result.pages[0]?.features ?? [];
-  assert.equal(features.find((f) => f.name === "money")?.implemented, false);
-  assert.equal(features.find((f) => f.name === "t")?.implemented, true);
+  const money = features.find((f) => f.name === "money");
+  const t = features.find((f) => f.name === "t");
+  assert.deepEqual([money?.implemented, money?.verified], [true, false]);
+  assert.deepEqual(
+    [t?.implemented, t?.verified, t?.oracleCases],
+    [true, true, ["corpus/x/translate/1"]],
+  );
+});
+
+test("server-only features are neither provided nor counted as missing", async () => {
+  const files = theme();
+  files["sections/header.liquid"] =
+    "{{ customer.email }}{{ product.title }}{{ product.not_a_property }}{{ 'x' | not_a_filter }}";
+  const result = await checkTheme(new MemoryThemeFileSystem(files), [
+    { kind: "object-property", name: "product.title", registered: true, oracleCases: [] },
+    {
+      kind: "object-property",
+      name: "customer.email",
+      registered: false,
+      serverOnly: true,
+      oracleCases: [],
+    },
+  ]);
+  const features = new Map(result.pages.flatMap((p) => p.features).map((f) => [f.name, f]));
+  const email = features.get("customer.email");
+  assert.deepEqual([email?.implemented, email?.serverOnly], [false, true]);
+  // An undocumented property on an inferred type is not counted; an unknown filter is.
+  const missing = (name: string) => {
+    const f = features.get(name);
+    return !f?.implemented && !f?.serverOnly && (f?.known || f?.kind === "filter");
+  };
+  assert.equal(missing("customer.email"), false);
+  assert.equal(features.get("product.not_a_property")?.known, false);
+  assert.equal(missing("not_a_filter"), true);
 });
 
 test("unknown filters are captured while comments and raw blocks are ignored", async () => {
@@ -665,7 +704,7 @@ test("excessive snippet context growth is reported as incomplete rather than sil
   );
 });
 
-test("renderer registration marks implemented filters, tags and object properties without claiming oracle coverage", async () => {
+test("renderer registration marks provided filters, tags and object properties as implemented", async () => {
   const files = theme();
   files["sections/header.liquid"] =
     "{{ shop.name | upcase }}{{ product.title }}{{ product.not_a_property }}{{ 'x' | camelize }}{% form 'product', product %}{{ form.id }}{% endform %}";
@@ -675,8 +714,14 @@ test("renderer registration marks implemented filters, tags and object propertie
     assert.equal(features.get(name)?.registered, true, name);
   for (const name of ["product.not_a_property", "camelize"])
     assert.equal(features.get(name)?.registered, false, name);
-  assert.ok(result.pages.flatMap((p) => p.features).every((f) => !f.implemented));
-  assert.equal(result.summary.unimplementedCount, result.summary.featureCount);
+  for (const name of ["upcase", "form", "product.title", "form.id", "shop"])
+    assert.equal(features.get(name)?.implemented, true, name);
+  // camelize is a stub, so it is missing; the undocumented property is not counted.
+  assert.equal(features.get("camelize")?.implemented, false);
+  assert.ok(result.summary.unimplementedCount >= 1);
+  assert.ok(
+    result.pages.flatMap((p) => p.features).every((f) => f.verified === f.oracleCases.length > 0),
+  );
 });
 
 test("renderer registration excludes stub globals and includes every media type", async () => {
@@ -692,4 +737,24 @@ test("renderer registration excludes stub globals and includes every media type"
     "filter:media_tag",
   ])
     assert.equal(names.has(name), true, name);
+});
+
+test("renderer registration carries server-only features and Shopify comparison evidence", async () => {
+  const entries = new Map((await rendererRegistration()).map((e) => [`${e.kind}:${e.name}`, e]));
+  const email = entries.get("object-property:customer.email");
+  assert.deepEqual([email?.registered, email?.serverOnly], [false, true]);
+  const money = entries.get("filter:money");
+  assert.equal(money?.registered, true);
+  assert.ok(money?.oracleCases.some((id) => id.startsWith("comparison/")));
+  for (const entry of entries.values())
+    assert.ok(!(entry.registered && entry.serverOnly), `${entry.kind}:${entry.name}`);
+});
+
+test("evidence that is both provided and server-only is rejected", async () => {
+  await assert.rejects(
+    checkTheme(new MemoryThemeFileSystem(theme()), [
+      { kind: "filter", name: "money", registered: true, serverOnly: true, oracleCases: [] },
+    ]),
+    /filter:money cannot be both provided and server-only/,
+  );
 });

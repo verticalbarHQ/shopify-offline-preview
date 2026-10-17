@@ -32,67 +32,155 @@
           "features": {
             "type": "array",
             "items": {
-              "type": "object",
-              "properties": {
-                "kind": {
-                  "type": "string",
-                  "enum": [
-                    "filter",
-                    "tag",
-                    "object",
-                    "object-property"
-                  ]
-                },
-                "name": {
-                  "type": "string"
-                },
-                "known": {
-                  "type": "boolean"
-                },
-                "registered": {
-                  "type": "boolean"
-                },
-                "oracleCases": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                "implemented": {
-                  "type": "boolean"
-                },
-                "occurrences": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "file": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "filter",
+                        "tag",
+                        "object",
+                        "object-property"
+                      ]
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "known": {
+                      "type": "boolean"
+                    },
+                    "oracleCases": {
+                      "type": "array",
+                      "items": {
                         "type": "string"
-                      },
-                      "line": {
-                        "type": "integer",
-                        "exclusiveMinimum": 0,
-                        "maximum": 9007199254740991
                       }
                     },
-                    "required": [
-                      "file",
-                      "line"
-                    ],
-                    "additionalProperties": false
-                  }
+                    "verified": {
+                      "type": "boolean"
+                    },
+                    "occurrences": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "file": {
+                            "type": "string"
+                          },
+                          "line": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "file",
+                          "line"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "registered": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "implemented": {
+                      "type": "boolean",
+                      "const": true
+                    },
+                    "serverOnly": {
+                      "type": "boolean",
+                      "const": false
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "name",
+                    "known",
+                    "oracleCases",
+                    "verified",
+                    "occurrences",
+                    "registered",
+                    "implemented",
+                    "serverOnly"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "filter",
+                        "tag",
+                        "object",
+                        "object-property"
+                      ]
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "known": {
+                      "type": "boolean"
+                    },
+                    "oracleCases": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "verified": {
+                      "type": "boolean"
+                    },
+                    "occurrences": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "file": {
+                            "type": "string"
+                          },
+                          "line": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "file",
+                          "line"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "registered": {
+                      "type": "boolean",
+                      "const": false
+                    },
+                    "implemented": {
+                      "type": "boolean",
+                      "const": false
+                    },
+                    "serverOnly": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "kind",
+                    "name",
+                    "known",
+                    "oracleCases",
+                    "verified",
+                    "occurrences",
+                    "registered",
+                    "implemented",
+                    "serverOnly"
+                  ],
+                  "additionalProperties": false
                 }
-              },
-              "required": [
-                "kind",
-                "name",
-                "known",
-                "registered",
-                "oracleCases",
-                "implemented",
-                "occurrences"
-              ],
-              "additionalProperties": false
+              ]
             }
           },
           "unimplementedCount": {

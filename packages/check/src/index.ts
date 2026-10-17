@@ -10,12 +10,20 @@ import {
   type FeatureKind,
   type ImplementationEvidence,
   isImplemented,
+  isVerified,
   registry,
 } from "../../spec/src/index.js";
 import { parseThemeJson, type ThemeFileSystem, themePath } from "../../theme/src/index.js";
 import type { CheckResult, Diagnostic, Feature } from "./contracts.js";
 import { variableEnvironments } from "./type-environments.js";
 import { baseType, linkObjectType, lookupKey, type Symbols } from "./type-facts.js";
+
+/** A feature while it is collected; checkTheme settles its flags before returning it. */
+type FeatureDraft = Omit<Feature, "registered" | "implemented" | "serverOnly"> & {
+  registered: boolean;
+  implemented: boolean;
+  serverOnly: boolean;
+};
 
 export { type CheckResult, checkSchema } from "./contracts.js";
 
@@ -75,7 +83,7 @@ const templateSchema = z.looseObject({
   order: z.array(z.string()),
 });
 interface Scan {
-  features: Feature[];
+  features: FeatureDraft[];
   refs: string[];
   calls: { file: string; bindings: Symbols }[];
   diagnostics: Diagnostic[];
@@ -140,7 +148,7 @@ function lookupTypes(expression: LiquidExpression, symbols: Map<string, Set<stri
 
 function scanLiquid(text: string, file: string, bindings: Symbols): Scan {
   const result: Scan = { features: [], refs: [], calls: [], diagnostics: [], complete: true };
-  const featureMap = new Map<string, Feature>();
+  const featureMap = new Map<string, FeatureDraft>();
   function add(kind: FeatureKind, name: string, known: boolean, node: LiquidHtmlNode): void {
     const key = `${kind}:${name}`;
     const feature = featureMap.get(key) ?? {
@@ -148,8 +156,10 @@ function scanLiquid(text: string, file: string, bindings: Symbols): Scan {
       name,
       known,
       registered: false,
+      serverOnly: false,
       oracleCases: [],
       implemented: false,
+      verified: false,
       occurrences: [],
     };
     const line = location(node);
@@ -414,6 +424,23 @@ function scanLiquid(text: string, file: string, bindings: Symbols): Scan {
   return result;
 }
 
+/** A provided feature is never server-only; the published schema allows only the two settled shapes. */
+function settle(feature: FeatureDraft): Feature {
+  return feature.registered
+    ? { ...feature, registered: true, implemented: true, serverOnly: false }
+    : { ...feature, registered: false, implemented: false };
+}
+
+/**
+ * A feature the preview is missing: neither provided nor server-only. Unknown filters and tags
+ * count, since Shopify rejects them too; object properties that Shopify does not document for the
+ * inferred type do not, because static analysis can only approximate a variable's type.
+ */
+function missing(feature: FeatureDraft): boolean {
+  if (feature.implemented || feature.serverOnly) return false;
+  return feature.known || feature.kind === "filter" || feature.kind === "tag";
+}
+
 /** No file/network access except through the supplied adapter; usable in a browser bundle. */
 export async function checkTheme(
   fs: ThemeFileSystem,
@@ -424,6 +451,9 @@ export async function checkTheme(
   const diagnostics: Diagnostic[] = [];
   const pages: CheckResult["pages"] = [];
   const scans = new Map<string, Promise<Scan>>();
+  for (const e of evidence)
+    if (e.registered && e.serverOnly)
+      throw new Error(`${e.kind}:${e.name} cannot be both provided and server-only`);
   const implementations = new Map(evidence.map((e) => [`${e.kind}:${e.name}`, e]));
   const templates = files.filter(
     (file) =>
@@ -502,12 +532,12 @@ export async function checkTheme(
       pageType: template.slice(10).split(".")[0] ?? "",
       template,
       files: [] as string[],
-      features: [] as Feature[],
+      features: [] as FeatureDraft[],
       unimplementedCount: 0,
       complete: true,
     };
     const visited = new Set<string>();
-    const features = new Map<string, Feature>();
+    const features = new Map<string, FeatureDraft>();
     const contexts = new Map<string, Set<string>>();
     async function visit(file: string, bindings: Symbols = new Map()): Promise<void> {
       let key = contextKey(file, bindings);
@@ -567,18 +597,20 @@ export async function checkTheme(
       const canonical = entry.kind === "filter" ? (aliases[entry.name] ?? entry.name) : entry.name;
       const implementation = implementations.get(`${entry.kind}:${canonical}`);
       entry.registered = implementation?.registered ?? false;
+      entry.serverOnly = implementation?.serverOnly ?? false;
       entry.oracleCases = [...(implementation?.oracleCases ?? [])].sort();
       entry.implemented = isImplemented(implementation);
+      entry.verified = isVerified(implementation);
       entry.occurrences.sort((a, b) => a.file.localeCompare(b.file, "en") || a.line - b.line);
     }
     page.files.sort();
     page.features = [...features.values()].sort((a, b) =>
       `${a.kind}:${a.name}`.localeCompare(`${b.kind}:${b.name}`, "en"),
     );
-    page.unimplementedCount = page.features.filter((f) => !f.implemented).length;
-    pages.push(page);
+    page.unimplementedCount = page.features.filter(missing).length;
+    pages.push({ ...page, features: page.features.map(settle) });
   }
-  const unique = new Map<string, Feature>();
+  const unique = new Map<string, FeatureDraft>();
   for (const page of pages)
     for (const feature of page.features) unique.set(`${feature.kind}:${feature.name}`, feature);
   return {
@@ -595,7 +627,7 @@ export async function checkTheme(
     ),
     summary: {
       featureCount: unique.size,
-      unimplementedCount: [...unique.values()].filter((f) => !f.implemented).length,
+      unimplementedCount: [...unique.values()].filter(missing).length,
       complete: supported && pages.every((p) => p.complete),
     },
   };

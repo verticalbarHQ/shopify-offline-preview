@@ -10,7 +10,12 @@ import {
 } from "../../data/src/objects.js";
 import { applyScenario } from "../../data/src/scenarios.js";
 import type { Snapshot } from "../../data/src/schema.js";
-import { type ImplementationEvidence, registry } from "../../spec/src/index.js";
+import {
+  type ImplementationEvidence,
+  registry,
+  serverOnlyFeatures,
+  shopifyVerification,
+} from "../../spec/src/index.js";
 import { MemoryThemeFileSystem } from "../../theme/src/index.js";
 import { ColorScheme, ColorSchemeGroup, ColorValue } from "./color-settings.js";
 import { Font } from "./fonts.js";
@@ -169,7 +174,8 @@ const probeTheme = new MemoryThemeFileSystem({
 let evidence: Promise<ImplementationEvidence[]> | undefined;
 /**
  * Features the offline renderer provides: non-stub filters, tags, and the documented objects and
- * properties its runtime objects expose. Registration is not oracle verification (SPEC §9.10).
+ * properties its runtime objects expose, with any Shopify comparison evidence, plus the features
+ * classified as server-only (SPEC §9.10).
  */
 export function rendererRegistration(): Promise<ImplementationEvidence[]> {
   evidence ??= (async () => {
@@ -220,9 +226,24 @@ export function rendererRegistration(): Promise<ImplementationEvidence[]> {
     for (const name of ["section", "block", "settings", "form", "paginate", "content_for_layout"])
       globals.add(name);
     const objects: Record<string, { properties: Record<string, unknown> }> = registry.objects;
+    const aliases: Record<string, string> = registry.aliases;
+    // Comparison evidence recorded under a filter alias counts for the canonical filter.
+    const verification = new Map<string, Set<string>>();
+    for (const [key, cases] of Object.entries(shopifyVerification)) {
+      const [kind, name = ""] = key.split(/:(.*)/s);
+      const canonical = kind === "filter" ? `filter:${aliases[name] ?? name}` : key;
+      const set = verification.get(canonical) ?? new Set<string>();
+      for (const id of cases) set.add(id);
+      verification.set(canonical, set);
+    }
     const result: ImplementationEvidence[] = [];
     const registered = (kind: ImplementationEvidence["kind"], name: string) =>
-      result.push({ kind, name, registered: true, oracleCases: [] });
+      result.push({
+        kind,
+        name,
+        registered: true,
+        oracleCases: [...(verification.get(`${kind}:${name}`) ?? [])].sort(),
+      });
     for (const name of Object.keys(registry.filters).sort())
       if (filters.has(name)) registered("filter", name);
     for (const name of [...Object.keys(registry.tags), "schema"].sort())
@@ -232,6 +253,12 @@ export function rendererRegistration(): Promise<ImplementationEvidence[]> {
       const documented = objects[type]?.properties ?? {};
       for (const key of [...(properties.get(type) ?? [])].sort())
         if (Object.hasOwn(documented, key)) registered("object-property", `${type}.${key}`);
+    }
+    const provided = new Set(result.map((e) => `${e.kind}:${e.name}`));
+    for (const key of Object.keys(serverOnlyFeatures).sort()) {
+      if (provided.has(key)) continue;
+      const [kind, name = ""] = key.split(/:(.*)/s) as [ImplementationEvidence["kind"], string];
+      result.push({ kind, name, registered: false, serverOnly: true, oracleCases: [] });
     }
     return result;
   })();

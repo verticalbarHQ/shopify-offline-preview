@@ -9,15 +9,29 @@ export const diagnosticSchema = z.strictObject({
   message: z.string(),
 });
 export type Diagnostic = z.infer<typeof diagnosticSchema>;
-export const featureSchema = z.strictObject({
+const featureFields = {
   kind: z.enum(["filter", "tag", "object", "object-property"]),
   name: z.string(),
   known: z.boolean(),
-  registered: z.boolean(),
   oracleCases: z.array(z.string()),
-  implemented: z.boolean(),
+  verified: z.boolean(),
   occurrences: z.array(z.strictObject({ file: z.string(), line: z.number().int().positive() })),
-});
+};
+/** A feature is either provided by the preview or not; only one it does not provide can be server-only. */
+export const featureSchema = z.union([
+  z.strictObject({
+    ...featureFields,
+    registered: z.literal(true),
+    implemented: z.literal(true),
+    serverOnly: z.literal(false),
+  }),
+  z.strictObject({
+    ...featureFields,
+    registered: z.literal(false),
+    implemented: z.literal(false),
+    serverOnly: z.boolean(),
+  }),
+]);
 export type Feature = z.infer<typeof featureSchema>;
 export const checkSchema = z.strictObject({
   schemaVersion: z.literal("1.0"),
