@@ -185,9 +185,9 @@ Exit codes:
 ### 7.4 Rendering semantics
 
 1. **Routes.**
-   - Resource routes: `/`, `/products/:handle[?variant=]`, `/collections/:handle[?page=&sort_by=]`,
-     `/collections/all`, `/pages/:handle`, `/blogs/:blog[?page=]`, `/blogs/:blog/:article`,
-     `/search?q=`, `/cart`.
+   - Resource routes: `/`, `/products/:handle[?variant=]`, `/collections[?page=]`,
+     `/collections/:handle[?page=&sort_by=]`, `/collections/all`, `/pages/:handle`,
+     `/blogs/:blog[?page=]`, `/blogs/:blog/:article`, `/search?q=`, `/cart`.
    - Any unknown path renders the `404` template.
    - Template choice follows Shopify: the resource's `template_suffix`, or `?view=`.
 2. **Assembly.**

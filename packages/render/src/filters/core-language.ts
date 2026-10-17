@@ -171,7 +171,16 @@ export function registerCoreLanguage(engine: Liquid): void {
   };
   // Shopify's standard string filters read an array input or argument in Ruby notation, so
   // `["a", "b"] | append: "!"` is `["a", "b"]!` rather than `ab!`.
-  const arrayText = (value: unknown) => (Array.isArray(toValue(value)) ? inspect(value) : value);
+  // Shopify prints a store object in a list by its class name, which the preview does not model,
+  // so only lists of plain values are written this way.
+  const plain = (value: unknown): boolean => {
+    const item: unknown = toValue(value);
+    if (item === null || typeof item !== "object" || item instanceof Number) return true;
+    if (Array.isArray(item)) return item.every(plain);
+    return isSnapshotHash(item) && Object.values(item).every(plain);
+  };
+  const plainList = (value: unknown) => Array.isArray(toValue(value)) && plain(value);
+  const arrayText = (value: unknown) => (plainList(value) ? inspect(value) : value);
   for (const name of [
     "append",
     "prepend",
@@ -210,16 +219,17 @@ export function registerCoreLanguage(engine: Liquid): void {
     '"': "&quot;",
     "'": "&#39;",
   };
-  const htmlEscape = (pattern: RegExp) =>
+  // escape leaves nil as nil; escape_once turns it into an empty string.
+  const htmlEscape = (pattern: RegExp, nil: "" | null) =>
     function (this: { context: { memoryLimit: { use(size: number): void } } }, input: unknown) {
       const value: unknown = toValue(input);
-      if (value === null || value === undefined) return value;
-      const text = Array.isArray(value) ? inspect(value) : textValue(value);
+      if (value === null || value === undefined) return nil;
+      const text = plainList(value) ? inspect(value) : textValue(value);
       this.context.memoryLimit.use(text.length);
       return text.replace(pattern, (match) => htmlEscapes[match] ?? match);
     };
-  engine.registerFilter("escape", htmlEscape(/[&<>"']/g));
-  engine.registerFilter("escape_once", htmlEscape(/["><']|&(?![a-zA-Z]+;|#\d+;)/g));
+  engine.registerFilter("escape", htmlEscape(/[&<>"']/g, null));
+  engine.registerFilter("escape_once", htmlEscape(/["><']|&(?![a-zA-Z]+;|#\d+;)/g, ""));
   const replace = engine.filters.replace;
   if (typeof replace !== "function") throw new Error("Pinned LiquidJS replace filter unavailable");
   engine.registerFilter("replace", function (...args: unknown[]) {

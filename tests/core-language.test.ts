@@ -59,6 +59,26 @@ test("string filters read an array in Ruby notation and escape as Shopify does",
   const actual = [...result.html.matchAll(/<p>(.*?)<\/p>/gs)].map((m) => m[1]);
   assert.deepEqual(actual, [...cases.map(([, expected]) => expected), "2;3;4;5;"]);
 });
+test("nil stays nil after escape and becomes empty after escape_once, as on Shopify", async () => {
+  const result = await renderTheme(
+    new MemoryThemeFileSystem(
+      theme(
+        "{% assign a = nil | escape %}{% assign b = nil | escape_once %}[{{ b }}]{% if a == nil %}a-nil{% endif %}{% if b == nil %}b-nil{% else %}b-set{% endif %}",
+      ),
+    ),
+    "/",
+  );
+  assert.ok(result.html.includes("[]a-nilb-set"), result.html);
+});
+test("a list of store objects is not written out in Ruby notation", async () => {
+  const result = await renderTheme(
+    new MemoryThemeFileSystem(
+      theme("{% assign c = collections['sop-catalog'] %}<p>{{ c.products | append: '' }}</p>"),
+    ),
+    "/",
+  );
+  assert.ok(!result.html.includes("=>"), result.html.slice(0, 500));
+});
 test("contains never matches nil or false while retaining ordinary string and array membership", async () => {
   const snapshot = defaultFixture();
   const product = snapshot.products[0];

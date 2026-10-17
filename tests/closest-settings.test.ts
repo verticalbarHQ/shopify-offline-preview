@@ -65,6 +65,8 @@ test("an explicit closest value keeps any resource and drops a string, number or
     ["nil", "[blank||blank|]"],
     ["n", "[blank||blank|]"],
     ["s", "[blank||blank|]"],
+    ["5.0", "[blank||blank|]"],
+    ["(1..3)", "[blank||blank|]"],
     ["p", "[set|SOP Matrix Needle|blank|]"],
     ["c", "[set|Example Catalog|blank|]"],
   ];

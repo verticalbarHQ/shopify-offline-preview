@@ -16,6 +16,7 @@ import { ImageDirectory, NamedImageDrop } from "../../data/src/images.js";
 import {
   imageObject,
   type LiquidRecord,
+  liquidObjectKind,
   liquidObjects,
   type ObjectHooks,
   objectTracker,
@@ -1062,7 +1063,7 @@ export async function renderTheme(
         ? Object.defineProperties({}, Object.getOwnPropertyDescriptors(inherited))
         : {};
       // Shopify passes on a resource of any type but drops a string, number or list.
-      const resource = (value: unknown) => (object(value) ? value : null);
+      const resource = (value: unknown) => (liquidObjectKind(value) === undefined ? null : value);
       for (const [key, value] of Object.entries(args))
         if (key.startsWith("closest."))
           Object.defineProperty(resourceParent, key.slice(8), {
