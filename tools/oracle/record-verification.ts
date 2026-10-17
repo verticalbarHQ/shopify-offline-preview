@@ -15,7 +15,7 @@ import { liquidObjectKind } from "../../packages/data/src/objects.js";
 import { applyScenario } from "../../packages/data/src/scenarios.js";
 import { parseSnapshot } from "../../packages/data/src/schema.js";
 import { renderTheme } from "../../packages/render/src/index.js";
-import { registry } from "../../packages/spec/src/index.js";
+import { registry, serverOnlyFeatures } from "../../packages/spec/src/index.js";
 import { NodeThemeFileSystem } from "../../packages/theme/src/node.js";
 
 const config = z
@@ -101,8 +101,10 @@ function documentedNames(key: string): string[] {
     : [key];
 }
 const evidence = new Map<string, Set<string>>();
+// A server-only feature can run offline (as an absent value) but is not provided, so it is not
+// evidence of behaving like Shopify.
 const note = (key: string, id: string) => {
-  if (!documented.has(key)) return;
+  if (!documented.has(key) || Object.hasOwn(serverOnlyFeatures, key)) return;
   const set = evidence.get(key) ?? new Set<string>();
   set.add(id);
   evidence.set(key, set);
