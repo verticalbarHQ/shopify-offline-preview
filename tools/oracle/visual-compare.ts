@@ -106,6 +106,28 @@ const pausedSchema = z.object({
 });
 const readMethods = new Set(["GET", "HEAD", "OPTIONS"]);
 
+/** Lets reads through and, once armed, exactly one POST to the storefront password URL. */
+export function requestPolicy() {
+  let password: string | null = null;
+  const blocked = new Set<string>();
+  return {
+    blocked,
+    allowPasswordOnce(url: string | null) {
+      password = url;
+    },
+    allows(method: string, url: string): boolean {
+      if (readMethods.has(method)) return true;
+      // The exception is consumed by the first matching POST; a second one is blocked.
+      if (method === "POST" && password !== null && url === password) {
+        password = null;
+        return true;
+      }
+      blocked.add(`${method} ${url.split("?")[0]}`);
+      return false;
+    },
+  };
+}
+
 /** Line-level diff by longest common subsequence: lines only on the left or only on the right. */
 export function diffLines(left: string[], right: string[]) {
   const table = Array.from({ length: left.length + 1 }, () =>
@@ -238,14 +260,11 @@ async function main() {
   browser("open", "about:blank");
   const client = await BrowserProtocol.connect(browser("get", "cdp-url").trim());
   // Interception on the browser target covers every page, frame and worker.
-  let passwordUrl: string | null = null;
-  const blocked = new Set<string>();
+  const policy = requestPolicy();
   client.on((event) => {
     if (event.method !== "Fetch.requestPaused") return;
     const { requestId, request } = pausedSchema.parse(event.params);
-    const allowed =
-      readMethods.has(request.method) || (request.method === "POST" && request.url === passwordUrl);
-    if (!allowed) blocked.add(`${request.method} ${request.url.split("?")[0]}`);
+    const allowed = policy.allows(request.method, request.url);
     void client
       .call(
         allowed ? "Fetch.continueRequest" : "Fetch.failRequest",
@@ -282,8 +301,9 @@ async function main() {
     if (!side.passwordEnv) continue;
     const password = process.env[side.passwordEnv];
     if (!password) throw new Error(`Environment variable ${side.passwordEnv} is not set`);
-    passwordUrl = new URL("/password", side.origin).href;
+    const passwordUrl = new URL("/password", side.origin).href;
     await open(passwordUrl);
+    policy.allowPasswordOnce(passwordUrl);
     // Submits after the evaluation returns, so the navigation cannot swallow the reply.
     await evaluate(
       `(() => { const input = document.querySelector('input[type="password"]'); if (!input) return false; input.value = ${JSON.stringify(password)}; setTimeout(() => input.form.submit(), 0); return true; })()`,
@@ -294,7 +314,7 @@ async function main() {
       await delay(500);
       path = String(await evaluate("location.pathname").catch(() => "/password"));
     }
-    passwordUrl = null;
+    policy.allowPasswordOnce(null);
     if (path.startsWith("/password"))
       throw new Error(`Storefront password was not accepted for ${side.label}`);
   }
@@ -341,10 +361,10 @@ async function main() {
   browser("close");
   await writeFile(
     join(out, "summary.json"),
-    `${JSON.stringify({ blocked: [...blocked].sort(), rows }, null, 2)}\n`,
+    `${JSON.stringify({ blocked: [...policy.blocked].sort(), rows }, null, 2)}\n`,
     { mode: 0o600 },
   );
-  console.log(`Blocked ${blocked.size} non-read request target(s); see summary.json.`);
+  console.log(`Blocked ${policy.blocked.size} non-read request target(s); see summary.json.`);
   await writeFile(join(out, "index.html"), report(config, rows), { mode: 0o600 });
   console.log(`Report: ${join(out, "index.html")}`);
 }

@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { compareCaptures, diffLines, pageUrl } from "../tools/oracle/visual-compare.js";
+import {
+  compareCaptures,
+  diffLines,
+  pageUrl,
+  requestPolicy,
+} from "../tools/oracle/visual-compare.js";
 
 test("text differences list the lines found on only one side, in order", () => {
   assert.deepEqual(
@@ -38,4 +43,20 @@ test("a side's own query parameters reach every page URL, keeping the page's own
     "https://shop.example/search?q=chair&preview_theme_id=42",
   );
   assert.equal(pageUrl("http://127.0.0.1:3001", "/", {}), "http://127.0.0.1:3001/");
+});
+
+test("the storefront password exception lets exactly one POST through", () => {
+  const policy = requestPolicy();
+  const password = "https://shop.example/password";
+  assert.equal(policy.allows("POST", password), false);
+  policy.allowPasswordOnce(password);
+  assert.equal(policy.allows("GET", password), true);
+  assert.equal(policy.allows("POST", "https://shop.example/cart/add"), false);
+  assert.equal(policy.allows("POST", password), true);
+  assert.equal(policy.allows("POST", password), false);
+  assert.equal(policy.allows("HEAD", "https://shop.example/"), true);
+  assert.deepEqual([...policy.blocked].sort(), [
+    "POST https://shop.example/cart/add",
+    "POST https://shop.example/password",
+  ]);
 });
