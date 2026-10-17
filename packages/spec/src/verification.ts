@@ -145,12 +145,7 @@ export const shopifyVerification: Readonly<Record<string, readonly string[]>> = 
     "corpus/2026-10-17/filters/font_modify/0",
     "corpus/2026-10-17/filters/font_modify/1",
   ],
-  "filter:font_url": [
-    "comparison/2026-10-17/dawn",
-    "comparison/2026-10-17/horizon",
-    "corpus/2026-10-17/filters/font_url/0",
-    "corpus/2026-10-17/filters/font_url/1",
-  ],
+  "filter:font_url": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
   "filter:handleize": ["comparison/2026-10-17/horizon", "corpus/2026-10-17/filters/handleize/0"],
   "filter:has": [
     "comparison/2026-10-17/horizon",
