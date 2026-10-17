@@ -15,6 +15,8 @@ import {
 } from "../../spec/src/index.js";
 import { parseThemeJson, type ThemeFileSystem, themePath } from "../../theme/src/index.js";
 import type { CheckResult, Diagnostic, Feature } from "./contracts.js";
+import { variableEnvironments } from "./type-environments.js";
+import { baseType, linkObjectType, lookupKey, type Symbols } from "./type-facts.js";
 
 /** A feature while it is collected; checkTheme settles its flags before returning it. */
 type FeatureDraft = Omit<Feature, "registered" | "implemented" | "serverOnly"> & {
@@ -22,8 +24,6 @@ type FeatureDraft = Omit<Feature, "registered" | "implemented" | "serverOnly"> &
   implemented: boolean;
   serverOnly: boolean;
 };
-import { variableEnvironments } from "./type-environments.js";
-import { baseType, linkObjectType, lookupKey, type Symbols } from "./type-facts.js";
 
 export { type CheckResult, checkSchema } from "./contracts.js";
 
