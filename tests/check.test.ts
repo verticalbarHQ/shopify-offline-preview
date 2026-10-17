@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { checkTheme } from "../packages/check/src/index.js";
 import { rendererRegistration } from "../packages/render/src/registration.js";
+import { registry, shopifyVerification } from "../packages/spec/src/index.js";
 import { MemoryThemeFileSystem } from "../packages/theme/src/index.js";
 import { theme } from "./fixtures.js";
 
@@ -748,6 +749,16 @@ test("renderer registration carries server-only features and Shopify comparison 
   assert.ok(money?.oracleCases.some((id) => id.startsWith("comparison/")));
   for (const entry of entries.values())
     assert.ok(!(entry.registered && entry.serverOnly), `${entry.kind}:${entry.name}`);
+});
+
+test("every feature with Shopify comparison evidence is one the renderer provides", async () => {
+  const entries = new Map((await rendererRegistration()).map((e) => [`${e.kind}:${e.name}`, e]));
+  const aliases: Record<string, string> = registry.aliases;
+  for (const key of Object.keys(shopifyVerification)) {
+    const [kind, name = ""] = key.split(/:(.*)/s);
+    const canonical = kind === "filter" ? `filter:${aliases[name] ?? name}` : key;
+    assert.equal(entries.get(canonical)?.registered, true, key);
+  }
 });
 
 test("evidence that is both provided and server-only is rejected", async () => {

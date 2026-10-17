@@ -1684,6 +1684,9 @@
           "commentsEnabled": {
             "type": "boolean"
           },
+          "commentsModerated": {
+            "type": "boolean"
+          },
           "seo": {
             "type": "object",
             "properties": {

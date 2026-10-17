@@ -97,8 +97,11 @@ export function registerMediaFilters(
     const glb = sources.find((source) => source.format === "glb") ?? sources[0];
     return `<model-viewer${attributes({ src: glb?.url, "camera-controls": true, alt: media.alt, poster: poster(media, size), ...extra })}></model-viewer>`;
   }
+  // Shopify renders nothing for an unset video (nil), such as an empty video setting.
   engine.registerFilter("video_tag", (input: unknown, ...args: unknown[]) =>
-    videoTag(mediaOf(input, "video", "video_tag"), args),
+    input === null || input === undefined
+      ? ""
+      : videoTag(mediaOf(input, "video", "video_tag"), args),
   );
   engine.registerFilter("external_video_url", (input: unknown, ...args: unknown[]) =>
     externalUrl(mediaOf(input, "external_video", "external_video_url"), args),

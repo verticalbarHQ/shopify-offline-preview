@@ -251,13 +251,15 @@ Reading their `value` reports `not-implemented`.
 
 The optional fields are `id`, `seo` and `sortOptions`. `sortOptions` holds the sort labels as
 `{value, name}`; without it, English labels are used. `collections.all` contains every product
-unless you supply a collection with the handle `all`.
+unless you supply a collection with the handle `all`. Looping over `collections` (as on
+`/collections`) follows the snapshot's order; Shopify lists collections by title, so keep them in
+title order to see the same list.
 
 **Pages** require `handle`, `title`, `bodyHtml`, `templateSuffix` and `metafields`. The optional
 fields are `id` and `seo`.
 
 **Blogs** require `handle`, `title`, `templateSuffix`, `metafields` and `articles`. The optional
-fields are `id`, `seo` and `commentsEnabled`.
+fields are `id`, `seo`, `commentsEnabled` and `commentsModerated` (whether comments wait for approval).
 
 **Articles** require these fields: `handle`, `title`, `bodyHtml`, `excerptHtml`, `author`,
 `publishedAt`, `image`, `tags`, `templateSuffix` and `metafields`. The optional fields are `id`,

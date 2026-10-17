@@ -16,6 +16,7 @@ import { ImageDirectory, NamedImageDrop } from "../../data/src/images.js";
 import {
   imageObject,
   type LiquidRecord,
+  liquidObjectKind,
   liquidObjects,
   type ObjectHooks,
   objectTracker,
@@ -34,7 +35,7 @@ import { type RenderNode, type RenderResult, renderSchema } from "./contracts.js
 import { registerCycleTag } from "./cycle-tag.js";
 import { ImageUrlInputError } from "./filters/images.js";
 import { registerShopifyFilters } from "./filters/index.js";
-import { translateFactory } from "./filters/translations.js";
+import { schemaDefaultFactory, translateFactory } from "./filters/translations.js";
 import { fontSetting } from "./fonts.js";
 import { registerIncludeTag } from "./include-tag.js";
 import { registerSnapshotHashes } from "./json-hashes.js";
@@ -588,6 +589,7 @@ export async function renderTheme(
   }
   let globalSettingsContext: Context;
   const colorGroups = new Map<string, ColorSchemeGroup>();
+  const schemaDefault = schemaDefaultFactory(files, snapshot.shop.locale);
   function settings(
     definitions: z.infer<typeof settingSchema>[],
     configured: LiquidRecord,
@@ -598,7 +600,9 @@ export async function renderTheme(
     for (const definition of definitions) {
       if (!definition.id) continue;
       const key = definition.id;
-      const raw = Object.hasOwn(configured, key) ? configured[key] : definition.default;
+      const raw = Object.hasOwn(configured, key)
+        ? configured[key]
+        : schemaDefault(definition.default);
       // A `liquid` setting holds code that renders in its section or block scope when read.
       if (definition.type === "liquid" && typeof raw === "string" && raw) {
         if (!dynamicContext) {
@@ -1058,10 +1062,12 @@ export async function renderTheme(
       const resourceParent = object(inherited)
         ? Object.defineProperties({}, Object.getOwnPropertyDescriptors(inherited))
         : {};
+      // Shopify passes on a resource of any type but drops a string, number or list.
+      const resource = (value: unknown) => (liquidObjectKind(value) === undefined ? null : value);
       for (const [key, value] of Object.entries(args))
         if (key.startsWith("closest."))
           Object.defineProperty(resourceParent, key.slice(8), {
-            value,
+            value: resource(value),
             enumerable: true,
             configurable: true,
           });
@@ -1087,7 +1093,7 @@ export async function renderTheme(
       for (const [key, value] of Object.entries(args)) {
         if (key.startsWith("closest."))
           Object.defineProperty(closest, key.slice(8), {
-            value,
+            value: resource(value),
             enumerable: true,
             configurable: true,
           });

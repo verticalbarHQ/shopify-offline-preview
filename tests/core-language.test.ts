@@ -23,6 +23,62 @@ test("empty replacement patterns insert at Unicode character boundaries includin
   assert.ok(result.html.includes("xhxix|x😀x한x|x|abc|$&b$&"));
   assert.deepEqual(result.diagnostics, []);
 });
+test("string filters read an array in Ruby notation and escape as Shopify does", async () => {
+  // Each expression and the output Shopify rendered for it on a development store (2026-10-17).
+  const cases: [string, string][] = [
+    ["a | append: '!'", '["a", "b"]!'],
+    ["a | prepend: '!'", '!["a", "b"]'],
+    ["a | upcase", '["A", "B"]'],
+    ["a | replace: 'a', 'x'", '["x", "b"]'],
+    ["a | escape", "[&quot;a&quot;, &quot;b&quot;]"],
+    ["'a\"b' | escape", "a&quot;b"],
+    ['"it\'s > <" | escape', "it&#39;s &gt; &lt;"],
+    [
+      "'&quot; &nbsp; &#39; &#x27; \" < & &AMP; &#123;' | escape_once",
+      "&quot; &nbsp; &#39; &amp;#x27; &quot; &lt; &amp; &AMP; &#123;",
+    ],
+    ["a | strip", '["a", "b"]'],
+    ["a | split: '\"' | size", "5"],
+    ["e | append: '!'", "[]!"],
+    ["a | url_encode", "%5B%22a%22%2C+%22b%22%5D"],
+    ["a | truncate: 6", '["a...'],
+    ["a | append: '' | size", "10"],
+  ];
+  const loop =
+    "{% liquid\nassign p = null\nfor i in (1..4)\n  assign p = p | append: ', '\n  assign p = p | split: ','\n  echo p.size | append: ';'\nendfor\n%}";
+  const result = await renderTheme(
+    new MemoryThemeFileSystem(
+      theme(
+        `{%- assign a = 'a,b' | split: ',' -%}{%- assign e = '' | split: ',' -%}${cases
+          .map(([expression]) => `<p>{{ ${expression} }}</p>`)
+          .join("")}<p>${loop}</p>`,
+      ),
+    ),
+    "/",
+  );
+  const actual = [...result.html.matchAll(/<p>(.*?)<\/p>/gs)].map((m) => m[1]);
+  assert.deepEqual(actual, [...cases.map(([, expected]) => expected), "2;3;4;5;"]);
+});
+test("nil stays nil after escape and becomes empty after escape_once, as on Shopify", async () => {
+  const result = await renderTheme(
+    new MemoryThemeFileSystem(
+      theme(
+        "{% assign a = nil | escape %}{% assign b = nil | escape_once %}[{{ b }}]{% if a == nil %}a-nil{% endif %}{% if b == nil %}b-nil{% else %}b-set{% endif %}",
+      ),
+    ),
+    "/",
+  );
+  assert.ok(result.html.includes("[]a-nilb-set"), result.html);
+});
+test("a list of store objects is not written out in Ruby notation", async () => {
+  const result = await renderTheme(
+    new MemoryThemeFileSystem(
+      theme("{% assign c = collections['sop-catalog'] %}<p>{{ c.products | append: '' }}</p>"),
+    ),
+    "/",
+  );
+  assert.ok(!result.html.includes("=>"), result.html.slice(0, 500));
+});
 test("contains never matches nil or false while retaining ordinary string and array membership", async () => {
   const snapshot = defaultFixture();
   const product = snapshot.products[0];

@@ -979,8 +979,10 @@ export function liquidObjects(
     const value = collections.get(source.handle);
     return value ? [value] : [];
   });
+  // Configurable so that paginate can present one page of it.
   Object.defineProperty(collectionDictionary, Symbol.iterator, {
     value: () => listedCollections[Symbol.iterator](),
+    configurable: true,
   });
   for (const [key, value] of Object.entries({
     size: listedCollections.length,
@@ -1040,6 +1042,8 @@ export function liquidObjects(
                   comments_count: article.commentsCount,
                   created_at: article.createdAt,
                   updated_at: article.updatedAt,
+                  // A snapshot carries no comments, so the list is known only when there are none.
+                  comments: article.commentsCount === 0 ? [] : undefined,
                 }),
                 ...availableFields({ id: article.id === undefined ? undefined : id(article.id) }),
                 handle: article.handle,
@@ -1079,7 +1083,10 @@ export function liquidObjects(
           }),
           articles_count: source.articles.length,
           metafields: metafields(source.metafields, `blogs[${blogIndex}].metafields`),
-          ...availableFields({ "comments_enabled?": source.commentsEnabled }),
+          ...availableFields({
+            "comments_enabled?": source.commentsEnabled,
+            "moderated?": source.commentsModerated,
+          }),
         },
         "blog",
         `blogs[${blogIndex}]`,

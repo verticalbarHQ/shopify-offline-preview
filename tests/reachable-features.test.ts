@@ -55,8 +55,7 @@ test("default_pagination links previous, pages, gaps and next with an optional a
       [
         `<span class="prev">${link(8, "Back")}</span>`,
         `<span class="page">${link(1)}</span>`,
-        '<span class="deco">…</span>',
-        `<span class="page">${link(6)}</span>`,
+        '<span class="deco">&hellip;</span>',
         `<span class="page">${link(7)}</span>`,
         `<span class="page">${link(8)}</span>`,
         '<span class="page current">9</span>',

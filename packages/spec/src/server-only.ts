@@ -7,8 +7,6 @@
 export const serverOnlyFeatures: Readonly<Record<string, string>> = {
   "filter:format_address": "Addresses are formatted by Shopify with its per-country rules.",
   "object-property:address.phone": "Store pickup locations are loaded from Shopify by script.",
-  "object-property:article.comments": "Comments are submitted to and moderated by Shopify.",
-  "object-property:blog.moderated?": "Comments are submitted to and moderated by Shopify.",
   "object-property:comment.author": "Comments are submitted to and moderated by Shopify.",
   "object-property:comment.content": "Comments are submitted to and moderated by Shopify.",
   "object-property:comment.created_at": "Comments are submitted to and moderated by Shopify.",

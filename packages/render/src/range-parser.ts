@@ -87,6 +87,9 @@ class BoundTag extends Tag {
     }
     return yield this.#original.render(context, emitter);
   }
+  get original(): Tag & Template {
+    return this.#original;
+  }
   *arguments() {
     yield* this.#original.arguments?.() ?? [];
   }
@@ -111,6 +114,10 @@ class BoundOutput extends Output {
     const value = yield toValue(yield this.value.value(context, false));
     emitter.write(liquidOutputValue(value));
   }
+}
+/** The tag a parsed template stands for, without the preview's range binding. */
+export function unboundTag(template: Template): Template {
+  return template instanceof BoundTag ? template.original : template;
 }
 /** Public parser factory hooks bind SDK-owned range tokens before native tag/value evaluation. */
 export class RangeParser extends Parser {

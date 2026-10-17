@@ -174,7 +174,6 @@ test("inline assets enforce type, UTF-8 byte size, missing files and filesystem 
     ["large.svg", "x".repeat(15 * 1024)],
     ["unicode.svg", "한".repeat(6000)],
     ["bad.png", "not svg"],
-    ["missing.svg", null],
     ["../escape.svg", null],
   ] as const) {
     const theme = new MemoryThemeFileSystem({
@@ -187,9 +186,23 @@ test("inline assets enforce type, UTF-8 byte size, missing files and filesystem 
     });
     assert.ok(result.diagnostics.some((d) => d.code === "liquid-error"));
     assert.ok(result.html.includes("After"));
-    if (name === "missing.svg")
-      assert.ok(result.diagnostics.some((d) => d.code === "missing-resource"));
   }
+});
+
+test("a missing inline asset leaves Shopify's comment, with or without an extension", async () => {
+  const snapshot = defaultFixture();
+  const theme = new MemoryThemeFileSystem({
+    ...files,
+    "sections/main.liquid":
+      "{{'missing.svg'|inline_asset_content}}|{{'icon-3d-model'|inline_asset_content}}|After",
+  });
+  const result = await renderTheme(theme, `/products/${snapshot.products[0]?.handle}`, {
+    snapshot,
+  });
+  const comment = "<!-- inline_asset_content: Asset not found. -->";
+  assert.ok(result.html.includes(`${comment}|${comment}|After`), result.html);
+  assert.ok(!result.diagnostics.some((d) => d.code === "liquid-error"));
+  assert.equal(result.diagnostics.filter((d) => d.code === "missing-resource").length, 2);
 });
 
 test("inline assets accept the last valid byte size and report invalid UTF-8 consistently", async () => {
@@ -318,4 +331,19 @@ test("default keeps a kept Liquid object instead of unwrapping it, as Horizon's 
   const result = await renderTheme(theme, "/");
   assert.ok(result.html.includes("[#102030|16 32 48|16|index|fallback]"), result.html);
   assert.deepEqual(result.diagnostics, []);
+});
+
+test("video_tag renders nothing for an unset video and still rejects other values", async () => {
+  const snapshot = defaultFixture();
+  const result = await renderTheme(
+    new MemoryThemeFileSystem({
+      ...files,
+      "sections/main.liquid": "[{{ nothing | video_tag }}]{{ product | video_tag }}After",
+    }),
+    `/products/${snapshot.products[0]?.handle}`,
+    { snapshot },
+  );
+  assert.ok(result.html.includes("[]"), result.html);
+  assert.ok(result.html.includes("After"));
+  assert.equal(result.diagnostics.filter((d) => d.code === "liquid-error").length, 1);
 });

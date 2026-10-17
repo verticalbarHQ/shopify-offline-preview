@@ -55,7 +55,11 @@ export const shopifyVerification: Readonly<Record<string, readonly string[]>> = 
   ],
   "filter:color_to_hex": ["corpus/2026-10-17/filters/color_to_hex/0"],
   "filter:color_to_rgb": ["corpus/2026-10-17/filters/color_to_rgb/0"],
-  "filter:compact": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
+  "filter:compact": [
+    "comparison/2026-10-17/dawn",
+    "comparison/2026-10-17/horizon",
+    "corpus/2026-10-17/filters/compact/0",
+  ],
   "filter:concat": ["comparison/2026-10-17/horizon"],
   "filter:date": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
   "filter:default": [
@@ -63,6 +67,13 @@ export const shopifyVerification: Readonly<Record<string, readonly string[]>> = 
     "comparison/2026-10-17/horizon",
     "corpus/2026-10-17/filters/default/0",
     "corpus/2026-10-17/filters/default/1",
+  ],
+  "filter:default_pagination": [
+    "comparison/2026-10-17/horizon",
+    "corpus/2026-10-17/filters/default_pagination/0",
+    "corpus/2026-10-17/filters/default_pagination/1",
+    "corpus/2026-10-17/filters/default_pagination/2",
+    "corpus/2026-10-17/filters/default_pagination/3",
   ],
   "filter:divided_by": [
     "comparison/2026-10-17/dawn",
@@ -77,11 +88,21 @@ export const shopifyVerification: Readonly<Record<string, readonly string[]>> = 
   ],
   "filter:escape_once": ["corpus/2026-10-17/filters/escape_once/0"],
   "filter:external_video_tag": [
+    "comparison/2026-10-17/dawn",
+    "comparison/2026-10-17/horizon",
     "corpus/2026-10-17/filters/external_video_tag/0",
     "corpus/2026-10-17/filters/external_video_tag/1",
   ],
-  "filter:external_video_url": ["corpus/2026-10-17/filters/external_video_url/0"],
-  "filter:find": ["corpus/2026-10-17/filters/find/0", "corpus/2026-10-17/filters/find/1"],
+  "filter:external_video_url": [
+    "comparison/2026-10-17/dawn",
+    "comparison/2026-10-17/horizon",
+    "corpus/2026-10-17/filters/external_video_url/0",
+  ],
+  "filter:find": [
+    "comparison/2026-10-17/horizon",
+    "corpus/2026-10-17/filters/find/0",
+    "corpus/2026-10-17/filters/find/1",
+  ],
   "filter:find_index": [
     "comparison/2026-10-17/horizon",
     "corpus/2026-10-17/filters/find_index/0",
@@ -116,7 +137,11 @@ export const shopifyVerification: Readonly<Record<string, readonly string[]>> = 
   "filter:hmac_sha256": ["corpus/2026-10-17/filters/hmac_sha256/0"],
   "filter:image_tag": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
   "filter:image_url": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
-  "filter:inline_asset_content": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
+  "filter:inline_asset_content": [
+    "comparison/2026-10-17/dawn",
+    "comparison/2026-10-17/horizon",
+    "corpus/2026-10-17/filters/inline_asset_content/0",
+  ],
   "filter:item_count_for_variant": [
     "comparison/2026-10-17/dawn",
     "comparison/2026-10-17/horizon",
@@ -128,10 +153,6 @@ export const shopifyVerification: Readonly<Record<string, readonly string[]>> = 
     "comparison/2026-10-17/horizon",
     "corpus/2026-10-17/filters/last/0",
     "corpus/2026-10-17/filters/last/1",
-  ],
-  "filter:line_items_for": [
-    "corpus/2026-10-17/filters/line_items_for/0",
-    "corpus/2026-10-17/filters/line_items_for/1",
   ],
   "filter:link_to": [
     "comparison/2026-10-17/dawn",
@@ -154,6 +175,7 @@ export const shopifyVerification: Readonly<Record<string, readonly string[]>> = 
     "corpus/2026-10-17/filters/map/0",
   ],
   "filter:md5": ["comparison/2026-10-17/horizon", "corpus/2026-10-17/filters/md5/0"],
+  "filter:media_tag": ["comparison/2026-10-17/dawn"],
   "filter:metafield_tag": [
     "corpus/2026-10-17/filters/metafield_tag/0",
     "corpus/2026-10-17/filters/metafield_tag/2",
@@ -164,18 +186,22 @@ export const shopifyVerification: Readonly<Record<string, readonly string[]>> = 
     "corpus/2026-10-17/filters/metafield_tag/7",
     "corpus/2026-10-17/filters/metafield_tag/8",
   ],
-  "filter:metafield_text": ["corpus/2026-10-17/filters/metafield_text/3"],
   "filter:minus": [
     "comparison/2026-10-17/dawn",
     "comparison/2026-10-17/horizon",
     "corpus/2026-10-17/filters/minus/0",
   ],
   "filter:model_viewer_tag": [
+    "comparison/2026-10-17/horizon",
     "corpus/2026-10-17/filters/model_viewer_tag/0",
     "corpus/2026-10-17/filters/model_viewer_tag/1",
     "corpus/2026-10-17/filters/model_viewer_tag/2",
   ],
-  "filter:modulo": ["comparison/2026-10-17/horizon", "corpus/2026-10-17/filters/modulo/0"],
+  "filter:modulo": [
+    "comparison/2026-10-17/dawn",
+    "comparison/2026-10-17/horizon",
+    "corpus/2026-10-17/filters/modulo/0",
+  ],
   "filter:money": [
     "comparison/2026-10-17/dawn",
     "comparison/2026-10-17/horizon",
@@ -198,12 +224,16 @@ export const shopifyVerification: Readonly<Record<string, readonly string[]>> = 
   "filter:newline_to_br": ["corpus/2026-10-17/filters/newline_to_br/0"],
   "filter:payment_button": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
   "filter:payment_terms": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
-  "filter:payment_type_img_url": ["corpus/2026-10-17/filters/payment_type_img_url/0"],
   "filter:payment_type_svg_tag": [
     "corpus/2026-10-17/filters/payment_type_svg_tag/0",
     "corpus/2026-10-17/filters/payment_type_svg_tag/1",
   ],
-  "filter:placeholder_svg_tag": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
+  "filter:placeholder_svg_tag": [
+    "comparison/2026-10-17/dawn",
+    "comparison/2026-10-17/horizon",
+    "corpus/2026-10-17/filters/placeholder_svg_tag/0",
+    "corpus/2026-10-17/filters/placeholder_svg_tag/1",
+  ],
   "filter:pluralize": ["corpus/2026-10-17/filters/pluralize/0"],
   "filter:plus": [
     "comparison/2026-10-17/dawn",
@@ -216,7 +246,7 @@ export const shopifyVerification: Readonly<Record<string, readonly string[]>> = 
     "comparison/2026-10-17/horizon",
     "corpus/2026-10-17/filters/prepend/0",
   ],
-  "filter:reject": ["comparison/2026-10-17/horizon"],
+  "filter:reject": ["comparison/2026-10-17/horizon", "corpus/2026-10-17/filters/reject/0"],
   "filter:remove": ["comparison/2026-10-17/horizon", "corpus/2026-10-17/filters/remove/0"],
   "filter:remove_first": ["corpus/2026-10-17/filters/remove_first/0"],
   "filter:remove_last": ["corpus/2026-10-17/filters/remove_last/0"],
@@ -246,10 +276,13 @@ export const shopifyVerification: Readonly<Record<string, readonly string[]>> = 
     "corpus/2026-10-17/filters/size/1",
   ],
   "filter:slice": ["corpus/2026-10-17/filters/slice/1"],
-  "filter:sort": ["comparison/2026-10-17/dawn"],
+  "filter:sort": ["comparison/2026-10-17/dawn", "corpus/2026-10-17/filters/sort/1"],
   "filter:sort_by": ["corpus/2026-10-17/filters/sort_by/0"],
-  "filter:sort_natural": ["comparison/2026-10-17/horizon"],
-  "filter:split": ["comparison/2026-10-17/horizon"],
+  "filter:sort_natural": [
+    "comparison/2026-10-17/horizon",
+    "corpus/2026-10-17/filters/sort_natural/1",
+  ],
+  "filter:split": ["comparison/2026-10-17/horizon", "corpus/2026-10-17/filters/split/0"],
   "filter:standard_event_data": [
     "comparison/2026-10-17/dawn",
     "comparison/2026-10-17/horizon",
@@ -294,6 +327,7 @@ export const shopifyVerification: Readonly<Record<string, readonly string[]>> = 
   "filter:url_for_type": ["corpus/2026-10-17/filters/url_for_type/0"],
   "filter:url_for_vendor": ["corpus/2026-10-17/filters/url_for_vendor/0"],
   "filter:video_tag": [
+    "comparison/2026-10-17/horizon",
     "corpus/2026-10-17/filters/video_tag/0",
     "corpus/2026-10-17/filters/video_tag/2",
     "corpus/2026-10-17/filters/video_tag/3",
@@ -302,10 +336,15 @@ export const shopifyVerification: Readonly<Record<string, readonly string[]>> = 
     "comparison/2026-10-17/dawn",
     "comparison/2026-10-17/horizon",
     "corpus/2026-10-17/filters/where/0",
+    "corpus/2026-10-17/filters/where/1",
   ],
   "filter:within": ["corpus/2026-10-17/filters/within/0"],
-  "object-property:article.author": ["comparison/2026-10-17/horizon"],
-  "object-property:article.comments_count": ["comparison/2026-10-17/dawn"],
+  "object-property:article.author": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
+  "object-property:article.comments": ["comparison/2026-10-17/horizon"],
+  "object-property:article.comments_count": [
+    "comparison/2026-10-17/dawn",
+    "comparison/2026-10-17/horizon",
+  ],
   "object-property:article.content": [
     "comparison/2026-10-17/dawn",
     "comparison/2026-10-17/horizon",
@@ -329,7 +368,15 @@ export const shopifyVerification: Readonly<Record<string, readonly string[]>> = 
   ],
   "object-property:block.type": ["comparison/2026-10-17/dawn"],
   "object-property:blog.articles": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
+  "object-property:blog.articles_count": [
+    "comparison/2026-10-17/dawn",
+    "comparison/2026-10-17/horizon",
+  ],
   "object-property:blog.comments_enabled?": [
+    "comparison/2026-10-17/dawn",
+    "comparison/2026-10-17/horizon",
+  ],
+  "object-property:blog.moderated?": [
     "comparison/2026-10-17/dawn",
     "comparison/2026-10-17/horizon",
   ],
@@ -359,7 +406,10 @@ export const shopifyVerification: Readonly<Record<string, readonly string[]>> = 
     "comparison/2026-10-17/horizon",
   ],
   "object-property:closest.product": ["comparison/2026-10-17/horizon"],
-  "object-property:collection.all_products_count": ["comparison/2026-10-17/dawn"],
+  "object-property:collection.all_products_count": [
+    "comparison/2026-10-17/dawn",
+    "comparison/2026-10-17/horizon",
+  ],
   "object-property:collection.current_type": ["comparison/2026-10-17/dawn"],
   "object-property:collection.current_vendor": ["comparison/2026-10-17/dawn"],
   "object-property:collection.default_sort_by": [
@@ -367,6 +417,10 @@ export const shopifyVerification: Readonly<Record<string, readonly string[]>> = 
     "comparison/2026-10-17/horizon",
   ],
   "object-property:collection.description": [
+    "comparison/2026-10-17/dawn",
+    "comparison/2026-10-17/horizon",
+  ],
+  "object-property:collection.featured_image": [
     "comparison/2026-10-17/dawn",
     "comparison/2026-10-17/horizon",
   ],
@@ -379,7 +433,10 @@ export const shopifyVerification: Readonly<Record<string, readonly string[]>> = 
     "comparison/2026-10-17/horizon",
   ],
   "object-property:collection.id": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
-  "object-property:collection.image": ["comparison/2026-10-17/dawn"],
+  "object-property:collection.image": [
+    "comparison/2026-10-17/dawn",
+    "comparison/2026-10-17/horizon",
+  ],
   "object-property:collection.products": [
     "comparison/2026-10-17/dawn",
     "comparison/2026-10-17/horizon",
@@ -415,6 +472,31 @@ export const shopifyVerification: Readonly<Record<string, readonly string[]>> = 
     "comparison/2026-10-17/horizon",
   ],
   "object-property:currency.symbol": [
+    "comparison/2026-10-17/dawn",
+    "comparison/2026-10-17/horizon",
+  ],
+  "object-property:external_video.alt": ["comparison/2026-10-17/horizon"],
+  "object-property:external_video.aspect_ratio": [
+    "comparison/2026-10-17/dawn",
+    "comparison/2026-10-17/horizon",
+  ],
+  "object-property:external_video.external_id": [
+    "comparison/2026-10-17/dawn",
+    "comparison/2026-10-17/horizon",
+  ],
+  "object-property:external_video.host": [
+    "comparison/2026-10-17/dawn",
+    "comparison/2026-10-17/horizon",
+  ],
+  "object-property:external_video.id": [
+    "comparison/2026-10-17/dawn",
+    "comparison/2026-10-17/horizon",
+  ],
+  "object-property:external_video.media_type": [
+    "comparison/2026-10-17/dawn",
+    "comparison/2026-10-17/horizon",
+  ],
+  "object-property:external_video.preview_image": [
     "comparison/2026-10-17/dawn",
     "comparison/2026-10-17/horizon",
   ],
@@ -463,6 +545,10 @@ export const shopifyVerification: Readonly<Record<string, readonly string[]>> = 
     "comparison/2026-10-17/dawn",
     "comparison/2026-10-17/horizon",
   ],
+  "object-property:filter_value.url_to_remove": [
+    "comparison/2026-10-17/dawn",
+    "comparison/2026-10-17/horizon",
+  ],
   "object-property:filter_value.value": [
     "comparison/2026-10-17/dawn",
     "comparison/2026-10-17/horizon",
@@ -475,14 +561,18 @@ export const shopifyVerification: Readonly<Record<string, readonly string[]>> = 
   "object-property:font.style": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
   "object-property:font.system?": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
   "object-property:font.weight": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
-  "object-property:forloop.first": ["comparison/2026-10-17/horizon"],
+  "object-property:forloop.first": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
   "object-property:forloop.index": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
   "object-property:forloop.index0": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
   "object-property:forloop.last": ["comparison/2026-10-17/horizon"],
-  "object-property:forloop.length": ["comparison/2026-10-17/horizon"],
-  "object-property:form.email": ["comparison/2026-10-17/dawn"],
+  "object-property:forloop.length": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
+  "object-property:form.author": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
+  "object-property:form.body": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
+  "object-property:form.email": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
   "object-property:form.errors": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
   "object-property:form.id": ["comparison/2026-10-17/horizon"],
+  "object-property:form.name": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
+  "object-property:form.phone": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
   "object-property:form.posted_successfully?": [
     "comparison/2026-10-17/dawn",
     "comparison/2026-10-17/horizon",
@@ -493,7 +583,16 @@ export const shopifyVerification: Readonly<Record<string, readonly string[]>> = 
     "comparison/2026-10-17/horizon",
   ],
   "object-property:image.height": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
-  "object-property:image.id": ["comparison/2026-10-17/horizon"],
+  "object-property:image.id": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
+  "object-property:image.media_type": [
+    "comparison/2026-10-17/dawn",
+    "comparison/2026-10-17/horizon",
+  ],
+  "object-property:image.presentation": ["comparison/2026-10-17/horizon"],
+  "object-property:image.preview_image": [
+    "comparison/2026-10-17/dawn",
+    "comparison/2026-10-17/horizon",
+  ],
   "object-property:image.src": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
   "object-property:image.width": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
   "object-property:image_presentation.focal_point": ["comparison/2026-10-17/horizon"],
@@ -590,6 +689,26 @@ export const shopifyVerification: Readonly<Record<string, readonly string[]>> = 
     "comparison/2026-10-17/horizon",
   ],
   "object-property:localization.country": ["comparison/2026-10-17/horizon"],
+  "object-property:media.alt": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
+  "object-property:media.id": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
+  "object-property:media.media_type": [
+    "comparison/2026-10-17/dawn",
+    "comparison/2026-10-17/horizon",
+  ],
+  "object-property:media.preview_image": [
+    "comparison/2026-10-17/dawn",
+    "comparison/2026-10-17/horizon",
+  ],
+  "object-property:model.alt": ["comparison/2026-10-17/horizon"],
+  "object-property:model.id": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
+  "object-property:model.media_type": [
+    "comparison/2026-10-17/dawn",
+    "comparison/2026-10-17/horizon",
+  ],
+  "object-property:model.preview_image": [
+    "comparison/2026-10-17/dawn",
+    "comparison/2026-10-17/horizon",
+  ],
   "object-property:option_with_value.name": [
     "comparison/2026-10-17/dawn",
     "comparison/2026-10-17/horizon",
@@ -662,7 +781,10 @@ export const shopifyVerification: Readonly<Record<string, readonly string[]>> = 
     "comparison/2026-10-17/dawn",
     "comparison/2026-10-17/horizon",
   ],
-  "object-property:product.price_varies": ["comparison/2026-10-17/dawn"],
+  "object-property:product.price_varies": [
+    "comparison/2026-10-17/dawn",
+    "comparison/2026-10-17/horizon",
+  ],
   "object-property:product.quantity_price_breaks_configured?": [
     "comparison/2026-10-17/dawn",
     "comparison/2026-10-17/horizon",
@@ -869,11 +991,29 @@ export const shopifyVerification: Readonly<Record<string, readonly string[]>> = 
     "comparison/2026-10-17/dawn",
     "comparison/2026-10-17/horizon",
   ],
-  "object-property:variant.store_availabilities": ["comparison/2026-10-17/dawn"],
+  "object-property:variant.sku": ["comparison/2026-10-17/dawn"],
+  "object-property:variant.store_availabilities": [
+    "comparison/2026-10-17/dawn",
+    "comparison/2026-10-17/horizon",
+  ],
   "object-property:variant.title": ["comparison/2026-10-17/horizon"],
   "object-property:variant.unit_price": ["comparison/2026-10-17/horizon"],
   "object-property:variant.unit_price_measurement": ["comparison/2026-10-17/dawn"],
   "object-property:variant.url": ["comparison/2026-10-17/horizon"],
+  "object-property:video.alt": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
+  "object-property:video.aspect_ratio": [
+    "comparison/2026-10-17/dawn",
+    "comparison/2026-10-17/horizon",
+  ],
+  "object-property:video.id": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
+  "object-property:video.media_type": [
+    "comparison/2026-10-17/dawn",
+    "comparison/2026-10-17/horizon",
+  ],
+  "object-property:video.preview_image": [
+    "comparison/2026-10-17/dawn",
+    "comparison/2026-10-17/horizon",
+  ],
   "object:additional_checkout_buttons": [
     "comparison/2026-10-17/dawn",
     "comparison/2026-10-17/horizon",
@@ -885,7 +1025,7 @@ export const shopifyVerification: Readonly<Record<string, readonly string[]>> = 
   "object:cart": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
   "object:closest": ["comparison/2026-10-17/horizon"],
   "object:collection": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
-  "object:collections": ["comparison/2026-10-17/horizon"],
+  "object:collections": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
   "object:color": ["comparison/2026-10-17/horizon"],
   "object:color_scheme": ["comparison/2026-10-17/dawn"],
   "object:content_for_header": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
@@ -901,7 +1041,6 @@ export const shopifyVerification: Readonly<Record<string, readonly string[]>> = 
   "object:linklist": ["comparison/2026-10-17/horizon"],
   "object:localization": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
   "object:media": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
-  "object:order": ["comparison/2026-10-17/horizon"],
   "object:page": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
   "object:page_description": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
   "object:page_image": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
@@ -922,6 +1061,7 @@ export const shopifyVerification: Readonly<Record<string, readonly string[]>> = 
   "object:shop": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
   "object:template": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
   "object:variant": ["comparison/2026-10-17/horizon"],
+  "object:video": ["comparison/2026-10-17/horizon"],
   "tag:assign": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
   "tag:break": ["comparison/2026-10-17/horizon"],
   "tag:capture": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
@@ -929,8 +1069,9 @@ export const shopifyVerification: Readonly<Record<string, readonly string[]>> = 
   "tag:comment": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
   "tag:content_for": ["comparison/2026-10-17/horizon"],
   "tag:continue": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
+  "tag:cycle": ["comparison/2026-10-17/dawn"],
   "tag:doc": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
-  "tag:echo": ["comparison/2026-10-17/horizon"],
+  "tag:echo": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
   "tag:for": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
   "tag:form": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],
   "tag:if": ["comparison/2026-10-17/dawn", "comparison/2026-10-17/horizon"],

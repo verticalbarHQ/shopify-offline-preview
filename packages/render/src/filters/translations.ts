@@ -67,3 +67,30 @@ export function translateFactory(
     return key.endsWith("_html") ? text : escapeHtml(text);
   };
 }
+
+/**
+ * Resolves a `t:` key in a setting's schema default from the theme's schema locale, as Shopify does
+ * when a template leaves the setting out. Unresolved keys stay as written.
+ */
+export function schemaDefaultFactory(
+  files: Map<string, string>,
+  locale: string,
+): (value: unknown) => unknown {
+  const language = locale.split("-")[0] ?? locale;
+  const defaults = [...files.keys()].filter((file) =>
+    /^locales\/[^/]+\.default\.schema\.json$/.test(file),
+  );
+  const selected = [
+    `locales/${locale}.schema.json`,
+    `locales/${locale}.default.schema.json`,
+    `locales/${language}.schema.json`,
+    `locales/${language}.default.schema.json`,
+    ...defaults,
+  ].find((file) => files.has(file));
+  const translations = selected ? parseThemeJson(files.get(selected) ?? "{}", selected) : {};
+  return (value) => {
+    if (typeof value !== "string" || !value.startsWith("t:")) return value;
+    const text = lookup(translations, value.slice(2));
+    return typeof text === "string" ? text : value;
+  };
+}

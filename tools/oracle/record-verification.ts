@@ -15,6 +15,7 @@ import { liquidObjectKind } from "../../packages/data/src/objects.js";
 import { applyScenario } from "../../packages/data/src/scenarios.js";
 import { parseSnapshot } from "../../packages/data/src/schema.js";
 import { renderTheme } from "../../packages/render/src/index.js";
+import { rendererRegistration } from "../../packages/render/src/registration.js";
 import { registry } from "../../packages/spec/src/index.js";
 import { NodeThemeFileSystem } from "../../packages/theme/src/node.js";
 
@@ -88,9 +89,31 @@ const documented = new Set([
     Object.keys(o.properties ?? {}).map((key) => `object-property:${type}.${key}`),
   ),
 ]);
+// The preview's product media image is Shopify's `image`; every media type also stands for the
+// abstract `media` type that static analysis uses for a variable holding any media.
+const mediaTypes = new Set(["image", "video", "model", "external_video"]);
+function documentedNames(key: string): string[] {
+  const match = /^object-property:([a-z_]+)\.(.+)$/.exec(key);
+  if (!match) return [key];
+  const [, owner = "", property = ""] = match;
+  const type = owner === "media_image" ? "image" : owner;
+  return mediaTypes.has(type)
+    ? [`object-property:${type}.${property}`, `object-property:media.${property}`]
+    : [key];
+}
 const evidence = new Map<string, Set<string>>();
+// Only features the preview provides are recorded. A stub filter, or an object or property that is
+// absent offline, can still run, but that is not evidence of behaving like Shopify.
+const aliases: Record<string, string> = registry.aliases;
+const provided = new Set(
+  (await rendererRegistration()).filter((e) => e.registered).map((e) => `${e.kind}:${e.name}`),
+);
+const canonical = (key: string) => {
+  const [kind, name = ""] = key.split(/:(.*)/s);
+  return kind === "filter" ? `filter:${aliases[name] ?? name}` : key;
+};
 const note = (key: string, id: string) => {
-  if (!documented.has(key)) return;
+  if (!documented.has(key) || !provided.has(canonical(key))) return;
   const set = evidence.get(key) ?? new Set<string>();
   set.add(id);
   evidence.set(key, set);
@@ -105,7 +128,8 @@ for (const theme of config.themes) {
       : structuredClone(base);
     await renderTheme(fs, path, { snapshot });
   }
-  for (const key of ran) note(key, `comparison/${config.date}/${theme.name}`);
+  for (const key of ran)
+    for (const name of documentedNames(key)) note(name, `comparison/${config.date}/${theme.name}`);
 }
 for (const id of config.corpusMatches)
   note(`filter:${id.split("/")[1]}`, `corpus/${config.date}/${id}`);
