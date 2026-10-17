@@ -381,8 +381,9 @@ it runs in CI.
 ### 9.1 Oracle store
 
 - The oracle store is a development store in Vertical Bar's Shopify Partner account that is
-  **dedicated to this project**. A store that is used for anything else is never written to. Which
-  store this is has not been decided yet (§14).
+  **dedicated to this project**; it was created for the comparison on 2026-10-17 (§14). A store
+  that is used for anything else is never written to. Further dedicated development stores may be
+  created for behavior that depends on the store's country or plan, such as unit prices.
 - **Wipe guard.**
   - Destructive operations (wipe and reseed) run only after two checks: the store domain equals the
     one pinned in config, and the shop has the marker metafield `sop.oracle_store = "true"`.
@@ -391,6 +392,8 @@ it runs in CI.
 - **Access.**
   - A custom app with Admin API scopes `write_products`, `write_publications`, `write_content`,
     `write_online_store_navigation`, `write_files`, `write_metaobjects`, and `write_themes`.
+  - A second custom app, installed only on the dedicated stores, for setup that needs further
+    scopes: languages, markets, legal policies and metaobject definitions (for swatches).
   - The storefront password.
   - The maintainer who runs the comparison holds these locally. They are never stored in the
     repository or in CI.
@@ -628,8 +631,9 @@ implementation is claimed by M0.
    credentials in this specification). Before any mutation, verify that it is a development store,
    pin its domain in the oracle configuration, confirm it can be dedicated, export its current data,
    and obtain confirmation for the first wipe at the time it happens. The store supplied on
-   2026-10-13 is used for other work and is not to be written to (2026-10-17). Which store to use
-   is pending the owner's decision.
+   2026-10-13 is used for other work and is not to be written to (2026-10-17). On 2026-10-17 the
+   owner approved creating a new development store dedicated to the comparison instead; it is the
+   oracle store (§9.1).
 2. Create the custom app. Its credentials and the storefront password stay with the maintainer who
    runs the comparison.
 3. Create the public repository `verticalbarHQ/shopify-offline-preview`.
