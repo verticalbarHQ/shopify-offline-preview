@@ -733,7 +733,7 @@ export function liquidObjects(
                         ),
                 }),
               };
-              // Horizon measures option labels with `value.size`, the name's length.
+              // Themes measure option labels with `value.size`, the name's length.
               Object.defineProperty(fields, "size", { value: value.length, enumerable: false });
               return tracked(
                 new ScalarDrop(fields, value),
@@ -1138,7 +1138,7 @@ export function liquidObjects(
       const record = tracked(
         {
           title: link.title,
-          // Shopify derives a link's handle from its title (Dawn ids such as HeaderMenu-catalog).
+          // Shopify derives a link's handle from its title; themes build element ids from it.
           handle: handleize(link.title),
           url: link.url,
           type: link.type,
@@ -1787,7 +1787,7 @@ export function liquidObjects(
     self: null, // Metaobject templates are not rendered.
     current_tags: null, // Tag-filtered collection and blog URLs are not routed.
     // Product recommendations come from a separate storefront request; a page render has none.
-    // Dawn and Horizon read `performed` as well as the documented `performed?`.
+    // Themes read `performed` as well as the documented `performed?`.
     recommendations: tracked(
       { "performed?": false, performed: false, products: [], products_count: 0, intent: null },
       "recommendations",
