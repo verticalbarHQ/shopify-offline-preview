@@ -380,8 +380,9 @@ it runs in CI.
 
 ### 9.1 Oracle store
 
-- An existing development store in Vertical Bar's Shopify Partner account is **dedicated to this
-  project**.
+- The oracle store is a development store in Vertical Bar's Shopify Partner account that is
+  **dedicated to this project**. A store that is used for anything else is never written to. Which
+  store this is has not been decided yet (§14).
 - **Wipe guard.**
   - Destructive operations (wipe and reseed) run only after two checks: the store domain equals the
     one pinned in config, and the shop has the marker metafield `sop.oracle_store = "true"`.
@@ -449,7 +450,8 @@ Both sides use the unmodified benchmark theme at its pinned commit. Sections are
   each section's visible text (`innerText`, NFC-normalized, whitespace collapsed) and height.
 - One scenario per page type is enough: home, product, collection, page, search (a query that
   matches one product), cart (with items), 404, blog, and article (with an image).
-- `pnpm oracle:visual-compare <config>` runs the capture and writes the report.
+- `pnpm oracle:visual-compare <config>` runs the capture and writes the report. Its browser lets
+  only reads through, apart from the storefront password submission.
 - Screenshots, captured text and the report stay on the maintainer's machine. They show benchmark
   theme output, so they are never committed.
 
@@ -651,8 +653,8 @@ implementation is claimed by M0.
 | Block comparison | Not compared on their own; block text is part of its section's text (2026-10-17; was an instrumented copy on both sides) | Instrumented copy on both sides; theme-editor capture |
 | Oracle store | Existing dev store, dedicated and wiped | Coexist with prefixes; a new store |
 | Shopify comparison (owner decision, 2026-10-17) | A one-off side-by-side check that a person judges: screenshots of the store and the offline preview at desktop and mobile widths, with text differences extracted to help. Similar means the same sections in the same order, the same main content, and a layout that does not look broken (§9.6). Findings are listed as OK or fix. | Stored goldens gating PRs; weekly recapture; a private raw repository; a numeric pass rate |
-| Server-only differences | Normalization plus a categorized allowlist | Normalization only; unrestricted allowlist |
-| Drift | Pinned themes and auto-refresh PRs | Fail `main`; report only |
+| Server-only differences | Listed among the allowed differences (§9.6) and marked OK in the findings (2026-10-17; was normalization plus a categorized allowlist) | Normalization only; unrestricted allowlist; a categorized allowlist file |
+| Drift | Pinned themes. A change on Shopify's side shows up the next time someone runs the comparison (2026-10-17; was auto-refresh PRs) | Fail `main`; report only; auto-refresh PRs |
 | Packaging | One npm package | Multiple packages |
 | Runtime | Node and browser officially, including the playground in 1.0 | Node only; browser-ready structure only |
 | License | MIT | Apache-2.0 |

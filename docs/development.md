@@ -96,21 +96,28 @@ The config names the two origins, the widths and the pages:
   "out": ".local/visual-compare",
   "widths": [1280, 390],
   "sides": [
-    { "label": "Shopify", "origin": "https://<store>.myshopify.com", "passwordEnv": "SOP_STOREFRONT_PASSWORD" },
+    {
+      "label": "Shopify",
+      "origin": "https://<store>.myshopify.com",
+      "passwordEnv": "SOP_STOREFRONT_PASSWORD",
+      "params": { "preview_theme_id": "<unpublished theme id>" }
+    },
     { "label": "Offline preview", "origin": "http://127.0.0.1:3001", "hide": ["#sop-diagnostic-badges"] }
   ],
   "pages": [{ "name": "home", "path": "/" }, { "name": "product", "path": "/products/<handle>" }]
 }
 ```
 
-`passwordEnv` names the environment variable that holds the storefront password. The report shows
-benchmark theme output, so keep it out of the repository; `.local/` is ignored.
+`passwordEnv` names the environment variable that holds the storefront password. `params` are added
+to every page on that side, which is how the store shows an unpublished theme. `hide` hides elements
+before the capture, such as the preview's diagnostic badges. The report shows benchmark theme
+output, so keep it out of the repository; `.local/` is ignored.
 
 None of the commands below changes a store.
 
 | Command | Purpose |
 |---|---|
-| `pnpm oracle:visual-compare <config>` | Captures and compares two origins as described above. It only reads pages, apart from submitting the storefront password. |
+| `pnpm oracle:visual-compare <config>` | Captures and compares two origins as described above. The browser blocks every request that is not a read, including requests from the pages' own scripts, apart from the storefront password submission. |
 | `pnpm oracle:seed-prepare` | Plans the store state for the benchmark pages from a snapshot and its images. |
 | `pnpm oracle:seed-requests-prepare` | Compiles that plan into Admin API requests and validates them against an Admin API schema. |
 | `pnpm oracle:backup-audit`, `pnpm oracle:supplemental-backup-audit` | Audit the store exports taken before the store is wiped. |

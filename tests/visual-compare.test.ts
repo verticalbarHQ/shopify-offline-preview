@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { compareCaptures, diffLines } from "../tools/oracle/visual-compare.js";
+import { compareCaptures, diffLines, pageUrl } from "../tools/oracle/visual-compare.js";
 
 test("text differences list the lines found on only one side, in order", () => {
   assert.deepEqual(
@@ -30,4 +30,12 @@ test("section comparison reports missing, extra and moved sections", () => {
     result.sections.map((s) => s.id),
     ["header", "main", "footer"],
   );
+});
+
+test("a side's own query parameters reach every page URL, keeping the page's own query", () => {
+  assert.equal(
+    pageUrl("https://shop.example", "/search?q=chair", { preview_theme_id: "42" }),
+    "https://shop.example/search?q=chair&preview_theme_id=42",
+  );
+  assert.equal(pageUrl("http://127.0.0.1:3001", "/", {}), "http://127.0.0.1:3001/");
 });

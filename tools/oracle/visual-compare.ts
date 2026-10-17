@@ -1,7 +1,8 @@
 // Side-by-side visual comparison of two storefront origins (for example a Shopify store and the
 // offline preview's dev server) for human review. It screenshots each page at each width, extracts
-// the section order and each section's visible text, and writes a local HTML report. It makes GET
-// requests only, apart from submitting a storefront password when one is configured.
+// the section order and each section's visible text, and writes a local HTML report. The browser
+// lets only reads through (GET, HEAD, OPTIONS), apart from submitting a configured storefront
+// password; every other request, including ones the pages' own scripts send, is blocked.
 import { execFileSync } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -21,6 +22,8 @@ const configSchema = z.strictObject({
         passwordEnv: z.string().min(1).optional(),
         // CSS selectors hidden before capture, such as the preview's own diagnostic badges.
         hide: z.array(z.string().min(1)).optional(),
+        // Query parameters added to every page on this side, such as Shopify's preview_theme_id.
+        params: z.record(z.string(), z.string()).optional(),
       }),
     )
     .length(2),
@@ -89,6 +92,19 @@ const settle = (hide: string[]) => `(async () => {
   await new Promise((r) => setTimeout(r, 1000));
   return true;
 })()`;
+
+/** A page's URL on one side, with that side's own query parameters added. */
+export function pageUrl(origin: string, path: string, params: Record<string, string> = {}): string {
+  const url = new URL(path, origin);
+  for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
+  return url.href;
+}
+
+const pausedSchema = z.object({
+  requestId: z.string(),
+  request: z.object({ method: z.string(), url: z.string() }),
+});
+const readMethods = new Set(["GET", "HEAD", "OPTIONS"]);
 
 /** Line-level diff by longest common subsequence: lines only on the left or only on the right. */
 export function diffLines(left: string[], right: string[]) {
@@ -221,6 +237,24 @@ async function main() {
     execFileSync("agent-browser", ["--session", session, ...args], { encoding: "utf8" });
   browser("open", "about:blank");
   const client = await BrowserProtocol.connect(browser("get", "cdp-url").trim());
+  // Interception on the browser target covers every page, frame and worker.
+  let passwordUrl: string | null = null;
+  const blocked = new Set<string>();
+  client.on((event) => {
+    if (event.method !== "Fetch.requestPaused") return;
+    const { requestId, request } = pausedSchema.parse(event.params);
+    const allowed =
+      readMethods.has(request.method) || (request.method === "POST" && request.url === passwordUrl);
+    if (!allowed) blocked.add(`${request.method} ${request.url.split("?")[0]}`);
+    void client
+      .call(
+        allowed ? "Fetch.continueRequest" : "Fetch.failRequest",
+        allowed ? { requestId } : { requestId, errorReason: "BlockedByClient" },
+        event.sessionId,
+      )
+      .catch(() => undefined);
+  });
+  await client.call("Fetch.enable", { patterns: [{ urlPattern: "*", requestStage: "Request" }] });
   const targets = z
     .object({ targetInfos: z.array(z.object({ targetId: z.string(), type: z.string() })) })
     .parse(await client.call("Target.getTargets"));
@@ -232,6 +266,9 @@ async function main() {
       await client.call("Target.attachToTarget", { targetId: target.targetId, flatten: true }),
     );
   await client.call("Page.enable", {}, sessionId);
+  // A background tab throttles timers, which stalls the scroll-through before each capture.
+  await client.call("Page.bringToFront", {}, sessionId);
+  await client.call("Emulation.setFocusEmulationEnabled", { enabled: true }, sessionId);
   const evaluate = (expression: string) => client.evaluate(sessionId, expression);
   const open = async (url: string) => {
     await client.call("Page.navigate", { url }, sessionId);
@@ -245,7 +282,8 @@ async function main() {
     if (!side.passwordEnv) continue;
     const password = process.env[side.passwordEnv];
     if (!password) throw new Error(`Environment variable ${side.passwordEnv} is not set`);
-    await open(new URL("/password", side.origin).href);
+    passwordUrl = new URL("/password", side.origin).href;
+    await open(passwordUrl);
     // Submits after the evaluation returns, so the navigation cannot swallow the reply.
     await evaluate(
       `(() => { const input = document.querySelector('input[type="password"]'); if (!input) return false; input.value = ${JSON.stringify(password)}; setTimeout(() => input.form.submit(), 0); return true; })()`,
@@ -256,6 +294,7 @@ async function main() {
       await delay(500);
       path = String(await evaluate("location.pathname").catch(() => "/password"));
     }
+    passwordUrl = null;
     if (path.startsWith("/password"))
       throw new Error(`Storefront password was not accepted for ${side.label}`);
   }
@@ -270,7 +309,7 @@ async function main() {
       const captures: Captured[] = [];
       const images: string[] = [];
       for (const [index, side] of config.sides.entries()) {
-        await open(new URL(page.path, side.origin).href);
+        await open(pageUrl(side.origin, page.path, side.params));
         await evaluate(settle(side.hide ?? []));
         const captured = capturedSchema.parse(await evaluate(extract));
         captures.push(captured);
@@ -300,7 +339,12 @@ async function main() {
     }
   client.close();
   browser("close");
-  await writeFile(join(out, "summary.json"), `${JSON.stringify(rows, null, 2)}\n`, { mode: 0o600 });
+  await writeFile(
+    join(out, "summary.json"),
+    `${JSON.stringify({ blocked: [...blocked].sort(), rows }, null, 2)}\n`,
+    { mode: 0o600 },
+  );
+  console.log(`Blocked ${blocked.size} non-read request target(s); see summary.json.`);
   await writeFile(join(out, "index.html"), report(config, rows), { mode: 0o600 });
   console.log(`Report: ${join(out, "index.html")}`);
 }
