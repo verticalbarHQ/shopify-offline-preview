@@ -56,3 +56,36 @@ test("closest resolves section and nested block pickers, explicit overrides and 
     "[:]",
   ]);
 });
+
+test("an explicit closest value keeps any resource and drops a string, number or list", async () => {
+  // The values a development store showed for each argument (2026-10-17).
+  const cases: [string, string][] = [
+    ["t", "[blank||blank|]"],
+    ["s[1]", "[blank||blank|]"],
+    ["nil", "[blank||blank|]"],
+    ["n", "[blank||blank|]"],
+    ["s", "[blank||blank|]"],
+    ["p", "[set|SOP Matrix Needle|blank|]"],
+    ["c", "[set|Example Catalog|blank|]"],
+  ];
+  const calls = cases
+    .map(
+      ([value], index) =>
+        `<p>{% content_for 'block', type: 'probe', id: 'c${index}', closest.product: ${value} %}</p>`,
+    )
+    .join("");
+  const theme = new MemoryThemeFileSystem({
+    "templates/index.json": '{"layout":false,"sections":{"main":{"type":"main"}},"order":["main"]}',
+    "sections/main.liquid": `{%- assign s = 'a,b' | split: ',' -%}{%- assign t = 'abc' -%}{%- assign n = 5 -%}{%- assign p = all_products['sop-matrix-needle'] -%}{%- assign c = collections['sop-catalog'] -%}${calls}<p>{% content_for 'block', type: 'probe', id: 'w', closest.collection: p %}</p>`,
+    "blocks/probe.liquid":
+      "[{% if closest.product == blank %}blank{% else %}set{% endif %}|{{ closest.product.title }}|{% if closest.collection == blank %}blank{% else %}set{% endif %}|{{ closest.collection.title }}]{% schema %}{}{% endschema %}",
+  });
+  const { html } = await renderTheme(theme, "/", { snapshot: defaultFixture() });
+  const actual = [...html.matchAll(/<p>(.*?)<\/p>/gs)].map((m) =>
+    m[1]?.replace(/<[^>]*>/g, "").trim(),
+  );
+  assert.deepEqual(actual, [
+    ...cases.map(([, expected]) => expected),
+    "[blank||set|SOP Matrix Needle]",
+  ]);
+});

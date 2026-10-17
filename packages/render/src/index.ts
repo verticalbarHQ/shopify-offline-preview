@@ -1061,10 +1061,12 @@ export async function renderTheme(
       const resourceParent = object(inherited)
         ? Object.defineProperties({}, Object.getOwnPropertyDescriptors(inherited))
         : {};
+      // Shopify passes on a resource of any type but drops a string, number or list.
+      const resource = (value: unknown) => (object(value) ? value : null);
       for (const [key, value] of Object.entries(args))
         if (key.startsWith("closest."))
           Object.defineProperty(resourceParent, key.slice(8), {
-            value,
+            value: resource(value),
             enumerable: true,
             configurable: true,
           });
@@ -1090,7 +1092,7 @@ export async function renderTheme(
       for (const [key, value] of Object.entries(args)) {
         if (key.startsWith("closest."))
           Object.defineProperty(closest, key.slice(8), {
-            value,
+            value: resource(value),
             enumerable: true,
             configurable: true,
           });
