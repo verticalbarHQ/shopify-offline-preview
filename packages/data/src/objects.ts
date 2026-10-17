@@ -1177,24 +1177,19 @@ export function liquidObjects(
   const menuMap = Object.fromEntries(
     snapshot.menus.map((menu, index) => {
       const links = menuLinks(menu.links, `menus[${index}].links`);
-      return [
-        menu.handle,
-        tracked(
-          {
-            handle: menu.handle,
-            title: menu.title,
-            links: tracked(
-              links.map((link) => link.record),
-              "link",
-              `menus[${index}].links`,
-            ),
-            levels: links.length ? 1 + Math.max(...links.map((link) => link.levels)) : 0,
-          },
-          "linklist",
-          `menus[${index}]`,
-          { levels: null },
+      const record = {
+        handle: menu.handle,
+        title: menu.title,
+        links: tracked(
+          links.map((link) => link.record),
+          "link",
+          `menus[${index}].links`,
         ),
-      ];
+        levels: links.length ? 1 + Math.max(...links.map((link) => link.levels)) : 0,
+      };
+      // Shopify prints a menu as its handle, e.g. a link_list setting passed to an attribute.
+      Object.defineProperty(record, Symbol.toPrimitive, { value: () => menu.handle });
+      return [menu.handle, tracked(record, "linklist", `menus[${index}]`, { levels: null })];
     }),
   );
   /** `metaobjects.<type>.<handle>` lookup plus `values` and `values_count` per definition. */
