@@ -803,7 +803,8 @@ export function liquidObjects(
       content: source.descriptionHtml,
       vendor: source.vendor,
       type: source.productType,
-      tags: source.tags,
+      // Shopify keeps a product's tags in alphabetical order (measured).
+      tags: [...source.tags].sort(),
       template_suffix: source.templateSuffix,
       url: `/products/${source.handle}`,
       available: source.variants.some((variant) => variant.available),

@@ -258,3 +258,19 @@ test("hsl hues wrap around and all_tags stops at Shopify's 1,000-tag limit", asy
   // The fixture's own tags (blue, red, sop-fixture) sort first.
   assert.equal(tags, "1000|tag-0996");
 });
+
+test("product tags are in alphabetical order, as Shopify keeps them", async () => {
+  const snapshot = defaultFixture();
+  const product = snapshot.products[0];
+  assert.ok(product);
+  product.tags = ["sop-fixture", "red", "blue"];
+  const theme = new MemoryThemeFileSystem({
+    "templates/product.json":
+      '{"layout":false,"sections":{"main":{"type":"main"}},"order":["main"]}',
+    "sections/main.liquid": "<p>{{ product.tags | join: ',' }}</p><q>{{ product | json }}</q>",
+  });
+  const { html } = await renderTheme(theme, `/products/${product.handle}`, { snapshot });
+  assert.ok(html.includes("<p>blue,red,sop-fixture</p>"), html);
+  const json = JSON.parse(/<q>(.*)<\/q>/s.exec(html)?.[1] ?? "{}");
+  assert.deepEqual(json.tags, ["blue", "red", "sop-fixture"]);
+});
