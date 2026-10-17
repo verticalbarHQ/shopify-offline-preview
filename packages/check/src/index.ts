@@ -10,6 +10,7 @@ import {
   type FeatureKind,
   type ImplementationEvidence,
   isImplemented,
+  isVerified,
   registry,
 } from "../../spec/src/index.js";
 import { parseThemeJson, type ThemeFileSystem, themePath } from "../../theme/src/index.js";
@@ -148,8 +149,10 @@ function scanLiquid(text: string, file: string, bindings: Symbols): Scan {
       name,
       known,
       registered: false,
+      serverOnly: false,
       oracleCases: [],
       implemented: false,
+      verified: false,
       occurrences: [],
     };
     const line = location(node);
@@ -414,6 +417,16 @@ function scanLiquid(text: string, file: string, bindings: Symbols): Scan {
   return result;
 }
 
+/**
+ * A feature the preview is missing: neither provided nor server-only. Unknown filters and tags
+ * count, since Shopify rejects them too; object properties that Shopify does not document for the
+ * inferred type do not, because static analysis can only approximate a variable's type.
+ */
+function missing(feature: Feature): boolean {
+  if (feature.implemented || feature.serverOnly) return false;
+  return feature.known || feature.kind === "filter" || feature.kind === "tag";
+}
+
 /** No file/network access except through the supplied adapter; usable in a browser bundle. */
 export async function checkTheme(
   fs: ThemeFileSystem,
@@ -567,15 +580,17 @@ export async function checkTheme(
       const canonical = entry.kind === "filter" ? (aliases[entry.name] ?? entry.name) : entry.name;
       const implementation = implementations.get(`${entry.kind}:${canonical}`);
       entry.registered = implementation?.registered ?? false;
+      entry.serverOnly = implementation?.serverOnly ?? false;
       entry.oracleCases = [...(implementation?.oracleCases ?? [])].sort();
       entry.implemented = isImplemented(implementation);
+      entry.verified = isVerified(implementation);
       entry.occurrences.sort((a, b) => a.file.localeCompare(b.file, "en") || a.line - b.line);
     }
     page.files.sort();
     page.features = [...features.values()].sort((a, b) =>
       `${a.kind}:${a.name}`.localeCompare(`${b.kind}:${b.name}`, "en"),
     );
-    page.unimplementedCount = page.features.filter((f) => !f.implemented).length;
+    page.unimplementedCount = page.features.filter(missing).length;
     pages.push(page);
   }
   const unique = new Map<string, Feature>();
@@ -595,7 +610,7 @@ export async function checkTheme(
     ),
     summary: {
       featureCount: unique.size,
-      unimplementedCount: [...unique.values()].filter((f) => !f.implemented).length,
+      unimplementedCount: [...unique.values()].filter(missing).length,
       complete: supported && pages.every((p) => p.complete),
     },
   };

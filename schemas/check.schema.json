@@ -52,6 +52,9 @@
                 "registered": {
                   "type": "boolean"
                 },
+                "serverOnly": {
+                  "type": "boolean"
+                },
                 "oracleCases": {
                   "type": "array",
                   "items": {
@@ -59,6 +62,9 @@
                   }
                 },
                 "implemented": {
+                  "type": "boolean"
+                },
+                "verified": {
                   "type": "boolean"
                 },
                 "occurrences": {
@@ -88,8 +94,10 @@
                 "name",
                 "known",
                 "registered",
+                "serverOnly",
                 "oracleCases",
                 "implemented",
+                "verified",
                 "occurrences"
               ],
               "additionalProperties": false

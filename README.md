@@ -137,11 +137,15 @@ stderr. `--out <file>` writes the HTML to a file instead.
 - the files the template reaches;
 - the Shopify filters, tags, objects and properties those files use, with file and line.
 
-Each feature has two flags:
+Each feature has these flags:
 
-- `registered`: the preview provides the feature.
-- `implemented`: the feature is registered **and** has a test case confirmed against Shopify's own
-  output.
+- `implemented` (also `registered`): the preview provides the feature.
+- `serverOnly`: only Shopify's servers produce it, for example a logged-in customer or a discount.
+  The preview leaves it out by design.
+- `verified`: a comparison with a real Shopify store showed it behaving like Shopify. `oracleCases`
+  names those comparisons.
+
+`unimplementedCount` counts the features that are neither implemented nor server-only.
 
 **`schema`** prints the JSON Schema for `render --json`, `check --json` or the snapshot.
 
@@ -154,7 +158,7 @@ matches its schema, even when it fails. Messages go to stderr.
 | 2 | Usage error. |
 | 3 | The theme or snapshot could not be loaded or is invalid. |
 | 4 | Rendering failed. |
-| 5 | `check --strict` found one of these: a reachable feature that is not implemented, or part of the theme it could not analyse. |
+| 5 | `check --strict` found one of these: a reachable feature that is neither implemented nor server-only, or part of the theme it could not analyse. |
 
 ## Contributing
 

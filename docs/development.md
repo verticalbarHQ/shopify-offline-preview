@@ -48,7 +48,7 @@ blog and article, in several scenarios of the sample store.
 | Command | What it checks |
 |---|---|
 | `pnpm test` | Unit tests in `tests/`. Run `pnpm build` first; some tests load the browser bundle. |
-| `pnpm benchmarks:check` | `check` output for both benchmark themes is deterministic, matches its schema, and has no parse or missing-file errors. |
+| `pnpm benchmarks:check` | `check` output for both benchmark themes is deterministic, matches its schema, has no parse or missing-file errors, and has no missing Shopify features. |
 | `pnpm benchmarks:render-check` | All 36 benchmark renders are repeatable and byte-identical between Node and the browser build. |
 | `pnpm agent:contract-check` | The CLI contract: copy Dawn, edit a section, and find the edit in `render --json`; `check --strict` exits 5 on an unknown filter; every failure prints schema-valid JSON without a TTY. |
 | `pnpm browser:playground-check` | The playground across the benchmark pages: inspector tree, diagnostics, sandboxing, and no uploads. |
@@ -119,6 +119,7 @@ None of the commands below changes a store.
 | Command | Purpose |
 |---|---|
 | `pnpm oracle:visual-compare <config>` | Captures and compares two origins as described above. The browser blocks every request that is not a read, including requests from the pages' own scripts, apart from the storefront password submission. |
+| `pnpm oracle:record-verification <config>` | Re-renders the pages a comparison judged similar and records which Shopify features ran, plus the documented filter examples that matched Shopify exactly, in `packages/spec/src/verification.ts`. `check` reports these features as `verified`. |
 | `pnpm oracle:seed-prepare` | Plans the store state for the benchmark pages from a snapshot and its images. |
 | `pnpm oracle:seed-requests-prepare` | Compiles that plan into Admin API requests and validates them against an Admin API schema. |
 | `pnpm oracle:backup-audit`, `pnpm oracle:supplemental-backup-audit` | Audit the store exports taken before the store is wiped. |

@@ -14,8 +14,10 @@ export const featureSchema = z.strictObject({
   name: z.string(),
   known: z.boolean(),
   registered: z.boolean(),
+  serverOnly: z.boolean(),
   oracleCases: z.array(z.string()),
   implemented: z.boolean(),
+  verified: z.boolean(),
   occurrences: z.array(z.strictObject({ file: z.string(), line: z.number().int().positive() })),
 });
 export type Feature = z.infer<typeof featureSchema>;

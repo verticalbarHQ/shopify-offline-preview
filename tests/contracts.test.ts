@@ -137,6 +137,9 @@ test("CLI is non-interactive with one JSON document, strict exit 5, usage 2, loa
     assert.ok(!normal.stdout.includes("\u001b"));
     const validate = await validator("check");
     assert.equal(validate(JSON.parse(normal.stdout)), true);
+    // A filter Shopify does not have is missing, so --strict fails.
+    const header = join(root, "sections/header.liquid");
+    await writeFile(header, `${await readFile(header, "utf8")}{{ 'x' | not_a_filter }}`);
     const strict = run("check", root, "--json", "--strict");
     assert.equal(strict.status, 5, strict.stderr);
     assert.equal(validate(JSON.parse(strict.stdout)), true);
