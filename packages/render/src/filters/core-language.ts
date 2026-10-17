@@ -169,19 +169,68 @@ export function registerCoreLanguage(engine: Liquid): void {
     if (value === null || value === undefined || value === false) return false;
     return contains(left, right, context);
   };
+  // Shopify's standard string filters read an array input or argument in Ruby notation, so
+  // `["a", "b"] | append: "!"` is `["a", "b"]!` rather than `ab!`.
+  const arrayText = (value: unknown) => (Array.isArray(toValue(value)) ? inspect(value) : value);
+  for (const name of [
+    "append",
+    "prepend",
+    "capitalize",
+    "downcase",
+    "upcase",
+    "lstrip",
+    "rstrip",
+    "strip",
+    "strip_html",
+    "strip_newlines",
+    "newline_to_br",
+    "remove",
+    "remove_first",
+    "remove_last",
+    "replace_first",
+    "replace_last",
+    "split",
+    "truncate",
+    "url_encode",
+    "url_decode",
+  ]) {
+    const original = engine.filters[name];
+    if (typeof original !== "function")
+      throw new Error(`Pinned LiquidJS ${name} filter unavailable`);
+    engine.registerFilter(name, function (input: unknown, ...args: unknown[]) {
+      return original.call(this, arrayText(input), ...args.map(arrayText));
+    });
+  }
+  // Ruby's CGI.escapeHTML: a double quote becomes &quot; (LiquidJS writes &#34;). escape_once
+  // leaves any named or decimal entity alone, as Shopify does.
+  const htmlEscapes: Record<string, string> = {
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  };
+  const htmlEscape = (pattern: RegExp) =>
+    function (this: { context: { memoryLimit: { use(size: number): void } } }, input: unknown) {
+      const value: unknown = toValue(input);
+      if (value === null || value === undefined) return value;
+      const text = Array.isArray(value) ? inspect(value) : textValue(value);
+      this.context.memoryLimit.use(text.length);
+      return text.replace(pattern, (match) => htmlEscapes[match] ?? match);
+    };
+  engine.registerFilter("escape", htmlEscape(/[&<>"']/g));
+  engine.registerFilter("escape_once", htmlEscape(/["><']|&(?![a-zA-Z]+;|#\d+;)/g));
   const replace = engine.filters.replace;
   if (typeof replace !== "function") throw new Error("Pinned LiquidJS replace filter unavailable");
-  engine.registerFilter(
-    "replace",
-    function (input: unknown, search: unknown, replacement: unknown) {
-      const pattern = textValue(search);
-      if (pattern !== "") return replace.call(this, input, search, replacement);
-      const text = textValue(input);
-      const value = textValue(replacement);
-      const characters = Array.from(text);
-      this.context.memoryLimit.use(text.length + value.length * (characters.length + 1));
-      const output = `${value}${characters.join(value)}${text ? value : ""}`;
-      return output;
-    },
-  );
+  engine.registerFilter("replace", function (...args: unknown[]) {
+    const [input, search, replacement] = args.map(arrayText);
+    const pattern = textValue(search);
+    if (pattern !== "") return replace.call(this, input, search, replacement);
+    const text = textValue(input);
+    const value = textValue(replacement);
+    const characters = Array.from(text);
+    this.context.memoryLimit.use(text.length + value.length * (characters.length + 1));
+    const output = `${value}${characters.join(value)}${text ? value : ""}`;
+    return output;
+  });
 }
