@@ -195,3 +195,28 @@ test("tag and metafield filter operators come from the snapshot, never a guess",
   ];
   assert.throws(() => parseSnapshot(JSON.stringify(vendor)));
 });
+
+test("no filters are offered when nothing matched before filtering", async () => {
+  const value = snapshot();
+  const collection = value.collections[0];
+  assert.ok(collection);
+  const listing = new MemoryThemeFileSystem({
+    "templates/collection.json":
+      '{"layout":false,"sections":{"main":{"type":"main"}},"order":["main"]}',
+    "templates/search.json":
+      '{"layout":false,"sections":{"main":{"type":"main"}},"order":["main"]}',
+    "sections/main.liquid":
+      "{{ collection.filters.size }}{{ search.filters.size }}|{{ collection.products_count }}{{ search.results_count }}",
+  });
+  const page = async (path: string, snapshotValue = value) =>
+    (await renderTheme(listing, path, { snapshot: snapshotValue })).html.replace(
+      /<\/?div[^>]*>/g,
+      "",
+    );
+  // A filter that narrows the collection to nothing keeps the filters on offer.
+  assert.equal(await page("/collections/sop-catalog?filter.p.vendor=Nobody"), "30|00");
+  assert.equal(await page("/search?q=zzzxnevermatch983147"), "0|0");
+  assert.equal(await page("/search?q=Matrix%20Needle"), "3|1");
+  collection.products = [];
+  assert.equal(await page("/collections/sop-catalog", value), "00|00");
+});

@@ -30,9 +30,11 @@ test("price range maximum uses all variant prices in the current collection in L
     result.html,
   );
   assert.deepEqual(result.diagnostics, []);
+  // As on Shopify, a collection without products offers no filters at all.
   collection.products = [];
   result = await renderTheme(theme, `/collections/${collection.handle}`, { snapshot });
-  assert.ok(result.html.includes(`[0:$0.00:filter.v.price.gte=:filter.v.price.lte=:`), result.html);
+  assert.ok(!result.html.includes("["), result.html);
+  collection.products = [product.handle];
   snapshot.shop.currency = "JPY";
   result = await renderTheme(theme, `/collections/${collection.handle}`, { snapshot });
   assert.ok(result.html.includes(":¥]"));
