@@ -22,6 +22,7 @@ import { registerMediaFilters } from "./media.js";
 import { formatMoney, moneyAmount } from "./money.js";
 import { registerPaymentTypeFilter, registerPlaceholderFilter } from "./placeholders.js";
 import { registerSelectionFilters } from "./selection.js";
+import { registerStringFilters } from "./strings.js";
 import { registerStructuredDataFilter } from "./structured-data.js";
 import { translateFactory } from "./translations.js";
 
@@ -61,6 +62,7 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
   registerCoreLanguage(engine);
   registerNumericFilters(engine);
   registerColorFilters(engine);
+  registerStringFilters(engine);
   registerCollectionLinkFilters(engine);
   registerJsonFilter(engine);
   registerStructuredDataFilter(engine, hooks.snapshot.shop, hooks.diagnostic);
@@ -258,15 +260,54 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
       hooks.diagnostic(code, message, this.token.file ?? null, this.token.getPosition()[0] ?? null);
     return images.imageTag(value, args, report("not-implemented"), report("missing-resource"));
   });
-  engine.registerFilter(
-    "stylesheet_tag",
-    (value: unknown) =>
-      `<link href="${escapeAttribute(value)}" rel="stylesheet" type="text/css" media="all" />`,
-  );
-  engine.registerFilter(
-    "script_tag",
-    (value: unknown) => `<script src="${escapeAttribute(value)}" type="text/javascript"></script>`,
-  );
+  // Extra named arguments become attributes in the order given: true writes name="name", and
+  // false or nil leaves the attribute out (measured on a Shopify store).
+  const tagAttributes = (base: [string, unknown][], args: unknown[], fixed: string[]) => {
+    const attributes = new Map(base);
+    for (const [name, input] of Object.entries(namedArgs(args))) {
+      if (!/^[A-Za-z_:][A-Za-z0-9_:.-]*$/.test(name)) throw new Error("Invalid attribute name");
+      if (!fixed.includes(name)) attributes.set(name, toValue(input));
+    }
+    return [...attributes]
+      .flatMap(([name, value]) =>
+        value === null || value === undefined || value === false
+          ? []
+          : [`${name}="${escapeAttribute(value === true ? name : value)}"`],
+      )
+      .join(" ");
+  };
+  engine.registerFilter("stylesheet_tag", function (value: unknown, ...args: unknown[]) {
+    const options = namedArgs(args);
+    if (toValue(options.preload) === true)
+      hooks.diagnostic(
+        "shopify-server-only",
+        "Shopify's HTTP Link preload header is omitted from the HTML render result.",
+        this.token.file ?? null,
+        this.token.getPosition()[0] ?? null,
+      );
+    const attributes = tagAttributes(
+      [
+        ["href", value],
+        ["rel", "stylesheet"],
+        ["type", "text/css"],
+        ["media", "all"],
+      ],
+      args,
+      ["href", "rel", "preload"],
+    );
+    return `<link ${attributes} />`;
+  });
+  engine.registerFilter("script_tag", (value: unknown, ...args: unknown[]) => {
+    const attributes = tagAttributes(
+      [
+        ["src", value],
+        ["type", "text/javascript"],
+      ],
+      args,
+      ["src"],
+    );
+    return `<script ${attributes}></script>`;
+  });
 }
 function escapeAttribute(value: unknown): string {
   return String(value ?? "").replace(

@@ -14,6 +14,17 @@ const mediaTitles = new WeakMap<object, string>();
 export function mediaProductTitle(media: object): string | undefined {
   return mediaTitles.get(media);
 }
+/**
+ * The distinct non-empty values of a product field across a collection's products, in
+ * alphabetical order, as Shopify returns `all_tags` (and, as measured, `all_types`/`all_vendors`).
+ */
+function memberValues(members: readonly LiquidRecord[], key: "tags" | "type" | "vendor"): string[] {
+  const values = members.flatMap((product) => {
+    const value: unknown = product[key];
+    return Array.isArray(value) ? value : [value];
+  });
+  return [...new Set(values.filter((v): v is string => typeof v === "string" && v !== ""))].sort();
+}
 export function liquidObjectKind(value: unknown): string | undefined {
   return value !== null && typeof value === "object" ? objectKinds.get(value) : undefined;
 }
@@ -879,6 +890,15 @@ export function liquidObjects(
             return query().products.length;
           },
           all_products_count: members.length,
+          get all_tags() {
+            return memberValues(members, "tags");
+          },
+          get all_types() {
+            return memberValues(members, "type");
+          },
+          get all_vendors() {
+            return memberValues(members, "vendor");
+          },
           image: collectionImage,
           // The collection image, else the first product's featured image.
           get featured_image() {
@@ -949,6 +969,15 @@ export function liquidObjects(
             return query().products.length;
           },
           all_products_count: members.length,
+          get all_tags() {
+            return memberValues(members, "tags");
+          },
+          get all_types() {
+            return memberValues(members, "type");
+          },
+          get all_vendors() {
+            return memberValues(members, "vendor");
+          },
           url: "/collections/all",
           image: null,
           get featured_image() {

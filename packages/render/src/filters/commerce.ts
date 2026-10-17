@@ -41,6 +41,8 @@ export function registerCommerceFilters(
         ? value
         : formatMoney(Number(value ?? 0), snapshot.shop.money_format);
     const unit: unknown = toValue(measurement);
+    // Shopify prints nothing for a variant without a unit price measurement.
+    if (unit === null || unit === undefined) return "";
     if (!record(unit) || typeof unit.reference_unit !== "string")
       throw new Error("unit_price_with_measurement requires a unit price measurement");
     const reference = Number(unit.reference_value);

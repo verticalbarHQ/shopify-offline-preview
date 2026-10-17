@@ -106,10 +106,8 @@ export function registerDateFilters(
     if (Object.hasOwn(custom, key) && typeof custom[key] === "string") return custom[key];
     if (language !== "en")
       report("Localized system date formats are unavailable; English patterns are used.");
-    if (!Object.hasOwn(english, key)) {
-      report(`Named date format ${key} is unavailable.`);
-      return english.default ?? "";
-    }
+    if (!Object.hasOwn(english, key))
+      throw new Error(`The format option '${key}' is not a supported format.`);
     return english[key] ?? "";
   }
   for (const name of ["date", "time_tag"])
