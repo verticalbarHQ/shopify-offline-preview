@@ -227,10 +227,11 @@ export function registerShopifyTags(engine: Liquid, hooks: TagHooks): void {
           articles: "blog",
           results: "search",
           variants: "product",
+          comments: "article",
         }[property ?? ""];
         if (
           !/^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)+$/.test(path) ||
-          (!/^(collection\.products|blog\.articles|search\.results|product\.variants)$/.test(
+          (!/^(collection\.products|blog\.articles|search\.results|product\.variants|article\.comments)$/.test(
             path,
           ) &&
             (!expectedKind || liquidObjectKind(parent) !== expectedKind))

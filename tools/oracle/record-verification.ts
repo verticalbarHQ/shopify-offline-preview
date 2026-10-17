@@ -88,6 +88,18 @@ const documented = new Set([
     Object.keys(o.properties ?? {}).map((key) => `object-property:${type}.${key}`),
   ),
 ]);
+// The preview's product media image is Shopify's `image`; every media type also stands for the
+// abstract `media` type that static analysis uses for a variable holding any media.
+const mediaTypes = new Set(["image", "video", "model", "external_video"]);
+function documentedNames(key: string): string[] {
+  const match = /^object-property:([a-z_]+)\.(.+)$/.exec(key);
+  if (!match) return [key];
+  const [, owner = "", property = ""] = match;
+  const type = owner === "media_image" ? "image" : owner;
+  return mediaTypes.has(type)
+    ? [`object-property:${type}.${property}`, `object-property:media.${property}`]
+    : [key];
+}
 const evidence = new Map<string, Set<string>>();
 const note = (key: string, id: string) => {
   if (!documented.has(key)) return;
@@ -105,7 +117,8 @@ for (const theme of config.themes) {
       : structuredClone(base);
     await renderTheme(fs, path, { snapshot });
   }
-  for (const key of ran) note(key, `comparison/${config.date}/${theme.name}`);
+  for (const key of ran)
+    for (const name of documentedNames(key)) note(name, `comparison/${config.date}/${theme.name}`);
 }
 for (const id of config.corpusMatches)
   note(`filter:${id.split("/")[1]}`, `corpus/${config.date}/${id}`);

@@ -326,6 +326,7 @@ export const snapshotSchema = z.strictObject({
   blogs: z.array(
     z.strictObject({
       commentsEnabled: z.boolean().optional(),
+      commentsModerated: z.boolean().optional(),
       seo: seo.optional(),
       id: z.string().min(1).optional(),
       handle,

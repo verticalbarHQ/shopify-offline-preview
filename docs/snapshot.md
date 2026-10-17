@@ -257,7 +257,7 @@ unless you supply a collection with the handle `all`.
 fields are `id` and `seo`.
 
 **Blogs** require `handle`, `title`, `templateSuffix`, `metafields` and `articles`. The optional
-fields are `id`, `seo` and `commentsEnabled`.
+fields are `id`, `seo`, `commentsEnabled` and `commentsModerated` (whether comments wait for approval).
 
 **Articles** require these fields: `handle`, `title`, `bodyHtml`, `excerptHtml`, `author`,
 `publishedAt`, `image`, `tags`, `templateSuffix` and `metafields`. The optional fields are `id`,
