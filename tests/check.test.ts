@@ -708,17 +708,17 @@ test("excessive snippet context growth is reported as incomplete rather than sil
 test("renderer registration marks provided filters, tags and object properties as implemented", async () => {
   const files = theme();
   files["sections/header.liquid"] =
-    "{{ shop.name | upcase }}{{ product.title }}{{ product.not_a_property }}{{ 'x' | camelize }}{% form 'product', product %}{{ form.id }}{% endform %}";
+    "{{ shop.name | upcase }}{{ product.title }}{{ product.not_a_property }}{{ 0 | weight_with_unit }}{% form 'product', product %}{{ form.id }}{% endform %}";
   const result = await checkTheme(new MemoryThemeFileSystem(files), await rendererRegistration());
   const features = new Map(result.pages.flatMap((p) => p.features).map((f) => [f.name, f]));
   for (const name of ["upcase", "form", "product.title", "form.id", "shop"])
     assert.equal(features.get(name)?.registered, true, name);
-  for (const name of ["product.not_a_property", "camelize"])
+  for (const name of ["product.not_a_property", "weight_with_unit"])
     assert.equal(features.get(name)?.registered, false, name);
   for (const name of ["upcase", "form", "product.title", "form.id", "shop"])
     assert.equal(features.get(name)?.implemented, true, name);
-  // camelize is a stub, so it is missing; the undocumented property is not counted.
-  assert.equal(features.get("camelize")?.implemented, false);
+  // weight_with_unit is a stub, so it is missing; the undocumented property is not counted.
+  assert.equal(features.get("weight_with_unit")?.implemented, false);
   assert.ok(result.summary.unimplementedCount >= 1);
   assert.ok(
     result.pages.flatMap((p) => p.features).every((f) => f.verified === f.oracleCases.length > 0),

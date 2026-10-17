@@ -113,6 +113,9 @@ export function imageFilters(snapshot: Snapshot, read: (path: string) => void = 
           (!Number.isInteger(Number(value)) || Number(value) < 10 || Number(value) > 90)
         )
           throw new ImageUrlInputError("Invalid image quality");
+        else if (key === "quality" && options.format === undefined && /\.png$/i.test(file))
+          // Measured on a Shopify store: quality applies only to lossy output.
+          throw new ImageUrlInputError("quality can't be used with ext png");
         else if (key === "pad_color" && !/^(?:[a-fA-F0-9]{3}|[a-fA-F0-9]{6})$/.test(String(value)))
           throw new ImageUrlInputError("Invalid image pad color");
         else if (

@@ -98,18 +98,22 @@ export function registerDateFilters(
     `locales/${language}.default.json`,
     ...defaults,
   ].find((file) => files.has(file));
-  const translations = selected ? parseThemeJson(files.get(selected) ?? "{}", selected) : {};
-  const custom =
-    record(translations) && record(translations.date_formats) ? translations.date_formats : {};
+  const dateFormats = (file: string | undefined) => {
+    const translations = file ? parseThemeJson(files.get(file) ?? "{}", file) : {};
+    return record(translations) && record(translations.date_formats)
+      ? translations.date_formats
+      : {};
+  };
+  // The store language's formats, then the theme's default locale's.
+  const customFormats = [dateFormats(selected), dateFormats(defaults[0])];
   function format(name: unknown, report: (message: string) => void): string {
     const key = String(name ?? "default");
-    if (Object.hasOwn(custom, key) && typeof custom[key] === "string") return custom[key];
+    for (const custom of customFormats)
+      if (Object.hasOwn(custom, key) && typeof custom[key] === "string") return custom[key];
     if (language !== "en")
       report("Localized system date formats are unavailable; English patterns are used.");
-    if (!Object.hasOwn(english, key)) {
-      report(`Named date format ${key} is unavailable.`);
-      return english.default ?? "";
-    }
+    if (!Object.hasOwn(english, key))
+      throw new Error(`The format option '${key}' is not a supported format.`);
     return english[key] ?? "";
   }
   for (const name of ["date", "time_tag"])

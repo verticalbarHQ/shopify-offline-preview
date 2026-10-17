@@ -98,7 +98,7 @@ test("changed capture provenance and prepared manifests are rejected before repl
 test("matching error and unsupported output hashes do not pass corpus conformance", async () => {
   for (const [liquid, path, code] of [
     ['{{ "product-1" | placeholder_svg_tag }}', "/", "missing-resource"],
-    ['{{ "" | camelize }}', "/", "not-implemented"],
+    ['{{ "" | weight_with_unit }}', "/", "not-implemented"],
     ["{{ nil | image_url }}", "/", "liquid-error"],
     ["{{ content_for_header }}", "/", "shopify-server-only"],
   ]) {

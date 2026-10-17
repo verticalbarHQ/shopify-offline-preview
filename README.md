@@ -71,7 +71,7 @@ listed in the inspector panel and in `render --json`. Most are also shown as bad
 |---|---|---|
 | `missing-resource` | The theme asked for data that the snapshot doesn't have, such as a product handle, a menu, an image file, an optional field or a translation. The value is empty, as it would be on a store without that data. | Add the data to your snapshot if the page should show it. |
 | `not-implemented` | The theme uses a Shopify filter, tag or object property that the preview does not provide. The filter's output is replaced with `[not implemented: …]`. | Nothing. Your theme is fine; the preview differs from Shopify here. |
-| `liquid-error` | A Liquid error, shown inline the way Shopify shows it: `Liquid error (sections/hero.liquid line 12): …`. | Fix the theme code. |
+| `liquid-error` | A Liquid error, shown inline the way Shopify shows it: `Liquid error (sections/hero line 12): …`. | Fix the theme code. |
 | `shopify-server-only` | Content that only Shopify's servers produce, such as checkout buttons and `content_for_header` scripts. It is left out. | Nothing. |
 | `app-placeholder` | An app block or app embed. It is shown as a labelled placeholder. | Nothing. |
 | `blocked-endpoint` | Theme JavaScript called a Shopify server endpoint, such as `/cart/add` or the Section Rendering API. The call returns HTTP 501. | Nothing. |

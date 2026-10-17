@@ -442,7 +442,9 @@ export async function renderTheme(
     location = { file, line };
     diagnostic("liquid-error", message, "error");
     location = previous;
-    return `Liquid error (${escapeHtml(file)} line ${line}): ${escapeHtml(message)}`;
+    // Shopify names the file without its .liquid extension, such as "sections/main line 3".
+    const shown = file.replace(/\.liquid$/, "");
+    return `Liquid error (${escapeHtml(shown)} line ${line}): ${escapeHtml(message)}`;
   }
   function source(file: string): string {
     const text = files.get(themePath(file));

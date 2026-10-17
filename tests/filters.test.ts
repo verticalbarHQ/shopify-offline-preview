@@ -115,7 +115,7 @@ test("image URLs retain crop/quality hints and preload metadata while adapters s
   const snapshot = defaultFixture();
   const theme = new MemoryThemeFileSystem({
     ...files,
-    "sections/main.liquid": `{{product.featured_image | image_url: width: 32, height: 16, crop: 'top', quality: 80 | image_tag: preload: true, widths: '16,32'}}`,
+    "sections/main.liquid": `{{product.featured_image | image_url: width: 32, height: 16, crop: 'top', format: 'pjpg', quality: 80 | image_tag: preload: true, widths: '16,32'}}`,
   });
   const result = await renderTheme(theme, `/products/${snapshot.products[0]?.handle}`, {
     snapshot,
@@ -278,7 +278,7 @@ test("image URL output reports invalid input while native-style assignments supp
   });
   assert.ok(
     result.html.includes(
-      "Value=Old|Liquid error (sections/main.liquid line 1): invalid url input|/sop/images/",
+      "Value=Old|Liquid error (sections/main line 1): invalid url input|/sop/images/",
     ),
   );
   assert.equal(result.diagnostics.filter((d) => d.code === "liquid-error").length, 1);

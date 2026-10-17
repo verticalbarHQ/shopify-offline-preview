@@ -79,7 +79,7 @@ test("no layout, schema defaults, missing references and invalid image inputs re
       '{{section.settings.heading}}|{% if section.settings.featured == nil %}nil{% endif %}|{{"x" | image_url}}{% schema %}{"settings":[{"type":"text","id":"heading","default":"Default"},{"type":"product","id":"featured"}]}{% endschema %}',
   });
   const result = await renderTheme(theme, "/", { snapshot: fixture });
-  assert.match(result.html, /Default\|nil\|Liquid error \(sections\/basic.liquid line 1\)/);
+  assert.match(result.html, /Default\|nil\|Liquid error \(sections\/basic line 1\)/);
   assert.deepEqual(result.dataUsed, {});
   assert.deepEqual(
     result.diagnostics.map((d) => d.code),
@@ -103,7 +103,7 @@ test("unknown filters fail explicitly instead of being silently skipped", async 
     { snapshot: fixture },
   );
   // Strict filter validation happens at parse time. This file fails explicitly rather than quietly returning x.
-  assert.match(result.html, /Liquid error \(sections\/error.liquid line 1\)/);
+  assert.match(result.html, /Liquid error \(sections\/error line 1\)/);
   assert.ok(result.diagnostics.some((d) => d.code === "liquid-error"));
 });
 
