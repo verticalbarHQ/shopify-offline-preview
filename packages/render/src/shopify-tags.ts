@@ -101,6 +101,10 @@ export function registerShopifyTags(engine: Liquid, hooks: TagHooks): void {
         this.hash = new Hash(this.tokenizer);
         this.templates = body(parser, tokens, "form");
       }
+      // biome-ignore lint/correctness/useYield: LiquidJS's public traversal protocol returns children
+      *children() {
+        return this.templates;
+      }
       async render(context: Context): Promise<string> {
         const kind = String(await evalNumericValue(engine, this.kind.getText(), context));
         const target = this.resource
@@ -213,6 +217,10 @@ export function registerShopifyTags(engine: Liquid, hooks: TagHooks): void {
         this.size = size;
         this.hash = new Hash(this.tokenizer);
         this.templates = body(parser, tokens, "paginate");
+      }
+      // biome-ignore lint/correctness/useYield: LiquidJS's public traversal protocol returns children
+      *children() {
+        return this.templates;
       }
       async render(context: Context): Promise<string> {
         const path = this.array.getText();

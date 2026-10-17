@@ -46,3 +46,20 @@ test("an if, unless, case or for block that outputs only whitespace renders noth
     cases.map(([, expected]) => expected),
   );
 });
+
+test("blank blocks inside paginate and form render nothing, and their outputs read quotes literally", async () => {
+  // Shopify's output on a development store (2026-10-17).
+  const theme = new MemoryThemeFileSystem({
+    "templates/collection.json":
+      '{"layout":false,"sections":{"main":{"type":"main"}},"order":["main"]}',
+    "sections/main.liquid":
+      "<p>{% paginate collection.products by 5 %}[{% if true %}\n{% assign x = 1 %}\n{% endif %}]{% endpaginate %}</p>" +
+      "<p>{% form 'contact' %}[{% if true %}\n  {%- assign y = 2 %}\n{% endif %}]{% endform %}</p>" +
+      "<p>{% paginate collection.products by 5 %}{{ 'a\\nb' | size }}{% endpaginate %}</p>",
+  });
+  const { html } = await renderTheme(theme, "/collections/sop-catalog", {
+    snapshot: defaultFixture(),
+  });
+  const actual = [...html.matchAll(/<p>(.*?)<\/p>/gs)].map((m) => m[1]?.replace(/<[^>]*>/g, ""));
+  assert.deepEqual(actual, ["[]", "[]", "4"]);
+});
