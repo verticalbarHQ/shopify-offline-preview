@@ -104,7 +104,7 @@ test("unsupplied image source metadata remains diagnosed and does not borrow pro
     "/",
     { snapshot: defaultFixture() },
   );
-  assert.equal(result.diagnostics.filter((d) => d.code === "not-implemented").length, 1);
+  assert.equal(result.diagnostics.filter((d) => d.code === "missing-resource").length, 1);
   const input = snapshot();
   const first = input.images[0];
   assert.ok(first);
@@ -114,7 +114,7 @@ test("unsupplied image source metadata remains diagnosed and does not borrow pro
     "/",
     { snapshot: { ...input, images: [withoutId] } },
   );
-  assert.equal(missingId.diagnostics.filter((d) => d.code === "not-implemented").length, 1);
+  assert.equal(missingId.diagnostics.filter((d) => d.code === "missing-resource").length, 1);
 });
 
 test("image metadata validates filenames, coordinates, duplicates and conflicts for shared local bytes", () => {
@@ -191,7 +191,10 @@ test("global and section dynamic image pickers preserve typed images and diagnos
     "/",
     { snapshot: { ...input, images: [withoutPoint] } },
   );
-  assert.equal(missing.diagnostics.filter((d) => d.code === "not-implemented").length, 1);
+  assert.deepEqual(
+    missing.diagnostics.map((d) => [d.code, d.message]),
+    [["missing-resource", "Uploaded image presentation metadata is absent from the snapshot."]],
+  );
 });
 
 test("named image objects, missing drops and picker settings match the browser bundle byte for byte", async () => {

@@ -5,6 +5,7 @@ import {
   serialize,
   type DefaultTreeAdapterTypes as Tree,
 } from "parse5";
+import { snapshotImages } from "../../data/src/images.js";
 import type { Snapshot } from "../../data/src/schema.js";
 import { servedPreview } from "../../dev/src/view.js";
 import type { RenderResult } from "../../render/src/contracts.js";
@@ -22,7 +23,7 @@ export async function playgroundPreview(
   viewId: string,
   inspectorOrigin: string,
 ): Promise<string> {
-  const resources = await prepareResources(files, images);
+  const resources = await prepareResources(files, images, snapshotImages(snapshot));
   const doc = parse(
     servedPreview(result, inspectorOrigin, {
       designMode,

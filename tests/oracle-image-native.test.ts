@@ -239,7 +239,8 @@ test("owned source, exact unpublished probe, settings and stable Native/API brac
   assert.equal(image?.mediaId, "8002");
   assert.equal(image?.mediaAlt, null);
   assert.equal(image?.previewAlt, "Observed preview");
-  assert.equal(derived.snapshot.products[0]?.images[0]?.id, undefined);
+  // The fixture's synthetic image ID survives seeding calibration until Native observation replaces it.
+  assert.equal(derived.snapshot.products[0]?.images[0]?.id, "600001");
   assert.equal(projected.captureReady, false);
   for (const field of ["parent", "variant"] as const) {
     const changed = structuredClone(derived.snapshot),

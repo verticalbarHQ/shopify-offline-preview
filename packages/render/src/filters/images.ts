@@ -147,6 +147,7 @@ export function imageFilters(snapshot: Snapshot, read: (path: string) => void = 
     input: unknown,
     args: unknown[],
     unsupported: (message: string) => void = () => {},
+    missing: (message: string) => void = unsupported,
   ): string {
     const presentation =
       input instanceof ImageUrlDrop ? (input.metadata?.presentation ?? false) : true;
@@ -157,9 +158,12 @@ export function imageFilters(snapshot: Snapshot, read: (path: string) => void = 
     const image = images.get(decodeURIComponent(url.pathname.slice(12)));
     if (!image) throw new Error("Image input is absent from the local snapshot");
     for (const key of ["file", "alt", "width", "height"]) observe(image.file, key);
-    const options = namedArgs(args);
+    // Liquid nil literals arrive as NullDrop values; an explicit nil removes that attribute.
+    const options = Object.fromEntries(
+      Object.entries(namedArgs(args)).map(([key, value]) => [key, toValue(value) ?? null]),
+    );
     if (presentation && "filename" in image && !Object.hasOwn(image, "focalPoint"))
-      unsupported("Uploaded image presentation metadata is absent from the snapshot.");
+      missing("Uploaded image presentation metadata is absent from the snapshot.");
     const sourceWidth = Number(url.searchParams.get("crop_width") ?? image.width);
     const sourceHeight = Number(url.searchParams.get("crop_height") ?? image.height);
     const requestedWidth = url.searchParams.get("width"),
@@ -186,7 +190,7 @@ export function imageFilters(snapshot: Snapshot, read: (path: string) => void = 
       attributes.style = `object-position:${focalPointPercent(image.focalPoint.x)} ${focalPointPercent(image.focalPoint.y)};`;
     }
     const widths =
-      options.widths === undefined
+      options.widths === undefined || options.widths === null
         ? [165, 360, 533, 720, 940, 1066, width]
         : String(options.widths).split(",").map(Number);
     const sizes = [

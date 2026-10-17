@@ -1,10 +1,19 @@
 import { Drop } from "liquidjs";
-import { ImageDirectory } from "./images.js";
-import type { Snapshot } from "./schema.js";
+import { handleize } from "./handle.js";
+import { ImageDirectory, localImageUrl } from "./images.js";
+import { focalPoint, ScalarDrop } from "./scalar-drop.js";
+import type { MenuLink, ProductMedia, Snapshot } from "./schema.js";
 import { type SearchCandidate, searchResults } from "./search.js";
+import { storefrontQuery } from "./storefront-filters.js";
 
+export { ScalarDrop };
 export type LiquidRecord = Record<string, unknown>;
 const objectKinds = new WeakMap<object, string>();
+const mediaTitles = new WeakMap<object, string>();
+/** The title of the product that owns video, external video or model media. */
+export function mediaProductTitle(media: object): string | undefined {
+  return mediaTitles.get(media);
+}
 export function liquidObjectKind(value: unknown): string | undefined {
   return value !== null && typeof value === "object" ? objectKinds.get(value) : undefined;
 }
@@ -12,10 +21,168 @@ export function preserveLiquidObjectKind(source: unknown, target: object): void 
   const kind = liquidObjectKind(source);
   if (kind !== undefined) objectKinds.set(target, kind);
 }
+/**
+ * Standard storefront paths for the primary locale. Customer-account profile and storefront
+ * login URLs depend on the shop's account host, so they stay absent and are diagnosed on access.
+ */
+const routePaths = {
+  root_url: "/",
+  account_url: "/account",
+  account_login_url: "/account/login",
+  account_logout_url: "/account/logout",
+  account_recover_url: "/account/recover",
+  account_register_url: "/account/register",
+  account_addresses_url: "/account/addresses",
+  collections_url: "/collections",
+  all_products_collection_url: "/collections/all",
+  search_url: "/search",
+  predictive_search_url: "/search/suggest",
+  cart_url: "/cart",
+  cart_add_url: "/cart/add",
+  cart_change_url: "/cart/change",
+  cart_clear_url: "/cart/clear",
+  cart_update_url: "/cart/update",
+  product_recommendations_url: "/recommendations/products",
+} as const;
 export interface ObjectHooks {
   read(path: string): void;
   unsupported(type: string, property: string): void;
   unsupportedOperation?(message: string): void;
+  /** Data the snapshot does not supply, or a reference to an absent resource; it resolves to nil. */
+  missing?(message: string): void;
+  /** Converts a source color string into the renderer's Liquid color object. */
+  color?(value: string): unknown;
+  /** Output only Shopify's servers can produce; it is omitted offline. */
+  serverOnly?(message: string): void;
+}
+/** Records the reads of a Liquid object and diagnoses properties it does not have. */
+export type ObjectTracker = <T extends object>(
+  value: T,
+  type: string,
+  path?: string | null,
+  sourceKeys?: Readonly<Record<string, string | null>>,
+) => T;
+// Properties LiquidJS probes on its own (generator results, thenables, the Comparable protocol).
+const internalKeys = new Set([
+  "next",
+  "then",
+  "toLiquid",
+  "toJSON",
+  "constructor",
+  "__proto__",
+  "prototype",
+  "equals",
+  "gt",
+  "geq",
+  "lt",
+  "leq",
+]);
+// Lookups by merchant-defined keys: an absent key is ordinary nil, not a missing feature.
+const openTypes = new Set(["settings", "dictionary", "metafields", "metaobject"]);
+const absentMarker = "sop:absent";
+/**
+ * Defined values only. The names of omitted source fields travel with the record (object spread
+ * copies the enumerable symbol), so reading one reports missing data rather than a missing feature.
+ */
+export function availableFields(values: LiquidRecord): LiquidRecord {
+  const result: LiquidRecord = {};
+  const absent: string[] = [];
+  for (const [key, value] of Object.entries(values))
+    if (value === undefined) absent.push(key);
+    else result[key] = value;
+  if (absent.length)
+    Object.defineProperty(result, Symbol(absentMarker), { value: absent, enumerable: true });
+  return result;
+}
+function absentFields(target: object): string[] {
+  return Object.getOwnPropertySymbols(target).flatMap((symbol) => {
+    const keys: unknown = symbol.description === absentMarker ? Reflect.get(target, symbol) : [];
+    return Array.isArray(keys) ? keys.map(String) : [];
+  });
+}
+let typeRecorder: ((type: string, keys: readonly string[]) => void) | undefined;
+/** Runs `run` while reporting the type and own properties of every newly tracked object. */
+export async function recordObjectTypes<T>(
+  record: (type: string, keys: readonly string[]) => void,
+  run: () => Promise<T>,
+): Promise<T> {
+  const previous = typeRecorder;
+  typeRecorder = record;
+  try {
+    return await run();
+  } finally {
+    typeRecorder = previous;
+  }
+}
+/**
+ * Proxies record snapshot reads (a null path records none) and report every other property: an
+ * omitted source field as missing data, anything else as not available offline.
+ */
+export function objectTracker(hooks: ObjectHooks): ObjectTracker {
+  const cache = new WeakMap<object, Map<string, object>>();
+  return function tracked<T extends object>(
+    value: T,
+    type: string,
+    path: string | null = null,
+    sourceKeys?: Readonly<Record<string, string | null>>,
+  ): T {
+    let entries = cache.get(value);
+    if (!entries) {
+      entries = new Map();
+      cache.set(value, entries);
+    }
+    const cached = entries.get(`${type}:${path ?? ""}`);
+    // Cache keys identify the same object and wrapper type; Proxy<T> preserves T's shape.
+    if (cached) return cached as T;
+    typeRecorder?.(
+      type,
+      Reflect.ownKeys(value).filter((key): key is string => typeof key === "string"),
+    );
+    const result = new Proxy(value, {
+      getOwnPropertyDescriptor(target, key) {
+        const descriptor = Reflect.getOwnPropertyDescriptor(target, key);
+        if (
+          !descriptor &&
+          typeof key === "string" &&
+          !internalKeys.has(key) &&
+          !Array.isArray(target) &&
+          !openTypes.has(type)
+        ) {
+          if (hooks.missing && absentFields(target).includes(key))
+            hooks.missing(`Object property ${type}.${key} is absent from the snapshot.`);
+          else hooks.unsupported(type, key);
+        }
+        return descriptor;
+      },
+      get(target, key, receiver) {
+        if (typeof key !== "string") return Reflect.get(target, key, receiver);
+        // `paginate.next` is Liquid data; only engine probes for methods are hidden.
+        if (
+          internalKeys.has(key) &&
+          (!Object.hasOwn(target, key) || typeof Reflect.get(target, key) === "function")
+        )
+          return undefined;
+        if (Object.hasOwn(target, key)) {
+          const source = sourceKeys && Object.hasOwn(sourceKeys, key) ? sourceKeys[key] : key;
+          if (source !== null && path !== null)
+            hooks.read(Array.isArray(target) ? `${path}[${source}]` : `${path}.${source}`);
+          return Reflect.get(target, key, receiver);
+        }
+        if (Array.isArray(target) || openTypes.has(type)) return Reflect.get(target, key, receiver);
+        // Drops keep their scalar conversion and missing-property protocol behind the proxy.
+        if (target instanceof Drop && (key === "valueOf" || key === "liquidMethodMissing")) {
+          const method: unknown = Reflect.get(target, key);
+          return typeof method === "function" ? method.bind(target) : method;
+        }
+        // LiquidJS probes iterator/thenable properties directly; missing Liquid
+        // properties are diagnosed by its own-property descriptor lookup above.
+        return undefined;
+      },
+    });
+    entries.set(`${type}:${path ?? ""}`, result);
+    objectKinds.set(result, type);
+    return result;
+  };
 }
 export interface RouteContext {
   pageType: string;
@@ -28,6 +195,25 @@ export interface RouteContext {
   designMode: boolean;
 }
 
+// Primary languages written right to left (CLDR character order), as `shop_locale.direction`.
+const rightToLeft = new Set([
+  "ar",
+  "arc",
+  "ckb",
+  "dv",
+  "fa",
+  "he",
+  "iw",
+  "ks",
+  "ps",
+  "sd",
+  "ug",
+  "ur",
+  "yi",
+]);
+function direction(isoCode: string): "rtl" | "ltr" {
+  return rightToLeft.has(isoCode.split("-")[0]?.toLowerCase() ?? "") ? "rtl" : "ltr";
+}
 /** Shopify Liquid uses hundredths for JPY/KRW too. Values above safe numeric precision fail. */
 export function liquidPrice(value: string): number {
   const [whole = "", fraction = ""] = value.split(".");
@@ -42,11 +228,18 @@ function id(value: string): number | string {
   const number = Number(value);
   return /^\d+$/.test(value) && Number.isSafeInteger(number) ? number : value;
 }
-function availableFields(values: LiquidRecord): LiquidRecord {
-  return Object.fromEntries(Object.entries(values).filter(([, value]) => value !== undefined));
+function sourceId(value: string | null | undefined): number | string | null | undefined {
+  return value === undefined || value === null ? value : id(value);
 }
-function image(
-  value: Snapshot["products"][number]["images"][number],
+
+type SourceImage = Snapshot["products"][number]["images"][number];
+// Shopify reports the image center when no focal point is set.
+const unsetFocalPoint = { x: "0.5", y: "0.5" };
+/** Image fields shared by product, collection, article, media preview and shop images. */
+function imageFields(
+  value: SourceImage,
+  path: string,
+  tracked: ObjectTracker,
   index: number | null = null,
 ): LiquidRecord {
   const src = `/sop/images/${value.file.split("/").map(encodeURIComponent).join("/")}`;
@@ -55,7 +248,6 @@ function image(
     alt: value.alt,
     width: value.width,
     height: value.height,
-    ...(value.id === undefined ? {} : { id: value.id === null ? null : id(value.id) }),
     src,
     url: src,
     aspect_ratio: value.width / value.height,
@@ -65,76 +257,135 @@ function image(
     "attached_to_variant?": null,
     media_type: null,
     preview_image: null,
+    ...availableFields({
+      presentation:
+        value.focalPoint === undefined
+          ? undefined
+          : tracked(
+              {
+                focal_point: tracked(
+                  focalPoint(value.focalPoint ?? unsetFocalPoint),
+                  "focal_point",
+                  `${path}.focalPoint`,
+                  { x: null, y: null },
+                ),
+              },
+              "image_presentation",
+              path,
+              { focal_point: "focalPoint" },
+            ),
+    }),
   };
 }
-
+/** A standalone snapshot image, such as the shop's social sharing image. */
+export function imageObject(value: SourceImage, path: string, tracked: ObjectTracker): object {
+  return tracked(
+    { ...imageFields(value, path, tracked), ...availableFields({ id: sourceId(value.id) }) },
+    "image",
+    path,
+  );
+}
+const policyAliases = [
+  "shipping_policy",
+  "privacy_policy",
+  "refund_policy",
+  "terms_of_service",
+  "subscription_policy",
+];
+/** Documented globals that exist on Shopify but have no offline value; reading one is diagnosed. */
+export const unavailableGlobals: readonly string[] = [
+  "all_country_option_tags",
+  "country_option_tags",
+  "content_for_index",
+  "scripts",
+  "theme",
+];
 /** Source-backed fields plus explicit derivation; omitted fields are observed, never invented. */
 export function liquidObjects(
   snapshot: Snapshot,
   route: RouteContext,
   hooks: ObjectHooks,
+  tracked: ObjectTracker = objectTracker(hooks),
 ): LiquidRecord {
-  const cache = new WeakMap<object, Map<string, object>>();
-  const internal = new Set([
-    "next", // LiquidJS probes this descriptor when resolving generator results.
-    "then",
-    "toLiquid",
-    "toJSON",
-    "constructor",
-    "__proto__",
-    "prototype",
-    "equals", // LiquidJS probes its public Comparable protocol during comparisons.
-    "gt",
-    "geq",
-    "lt",
-    "leq",
-  ]);
-  function tracked<T extends object>(
-    value: T,
-    type: string,
+  function absent(type: string, property: string) {
+    if (hooks.missing)
+      hooks.missing(`Object property ${type}.${property} is absent from the snapshot.`);
+    else hooks.unsupported(type, property);
+  }
+  const image = (value: SourceImage, path: string, index: number | null = null) =>
+    imageFields(value, path, tracked, index);
+  /** Video, external video and 3D model media; their preview images have no ID. */
+  function otherMedia(
+    entry: Exclude<ProductMedia, { mediaType: "image" }>,
     path: string,
-    sourceKeys?: Readonly<Record<string, string | null>>,
-  ): T {
-    let entries = cache.get(value);
-    if (!entries) {
-      entries = new Map();
-      cache.set(value, entries);
-    }
-    const cached = entries.get(`${type}:${path}`);
-    // Cache keys identify the same object and wrapper type; Proxy<T> preserves T's shape.
-    if (cached) return cached as T;
-    const result = new Proxy(value, {
-      getOwnPropertyDescriptor(target, key) {
-        const descriptor = Reflect.getOwnPropertyDescriptor(target, key);
-        if (
-          !descriptor &&
-          typeof key === "string" &&
-          !internal.has(key) &&
-          !Array.isArray(target) &&
-          !["settings", "dictionary", "metafields"].includes(type)
-        )
-          hooks.unsupported(type, key);
-        return descriptor;
-      },
-      get(target, key, receiver) {
-        if (typeof key !== "string") return Reflect.get(target, key, receiver);
-        if (internal.has(key)) return undefined;
-        if (Object.hasOwn(target, key)) {
-          const source = sourceKeys && Object.hasOwn(sourceKeys, key) ? sourceKeys[key] : key;
-          if (source !== null)
-            hooks.read(Array.isArray(target) ? `${path}[${source}]` : `${path}.${source}`);
-          return Reflect.get(target, key, receiver);
-        }
-        if (Array.isArray(target) || ["settings", "dictionary", "metafields"].includes(type))
-          return Reflect.get(target, key, receiver);
-        // LiquidJS probes iterator/thenable properties directly; missing Liquid
-        // properties are diagnosed by its own-property descriptor lookup above.
-        return undefined;
-      },
-    });
-    entries.set(`${type}:${path}`, result);
-    objectKinds.set(result, type);
+    index: number,
+    title: string,
+  ): object {
+    const result = mediaObject(entry, path, index);
+    mediaTitles.set(result, title);
     return result;
+  }
+  function mediaObject(
+    entry: Exclude<ProductMedia, { mediaType: "image" }>,
+    path: string,
+    index: number,
+  ): object {
+    const preview = tracked(
+      { ...image(entry.previewImage, `${path}.previewImage`), id: null },
+      "image",
+      `${path}.previewImage`,
+      { id: null },
+    );
+    const common = {
+      ...availableFields({ id: sourceId(entry.id) }),
+      alt: entry.alt,
+      media_type: entry.mediaType,
+      position: index + 1,
+      preview_image: preview,
+    };
+    const keys = { media_type: "mediaType", position: null, preview_image: "previewImage" };
+    if (entry.mediaType === "external_video")
+      return tracked(
+        {
+          ...common,
+          host: entry.host,
+          external_id: entry.externalId,
+          aspect_ratio: entry.previewImage.width / entry.previewImage.height,
+        },
+        "external_video",
+        path,
+        { ...keys, external_id: "externalId", aspect_ratio: "previewImage" },
+      );
+    const sources = tracked(
+      entry.sources.map((source, sourceIndex) =>
+        tracked(
+          {
+            url: localImageUrl(source.file),
+            format: source.format,
+            mime_type: source.mimeType,
+            ...("width" in source ? { width: source.width, height: source.height } : {}),
+          },
+          entry.mediaType === "video" ? "video_source" : "model_source",
+          `${path}.sources[${sourceIndex}]`,
+          { url: "file", mime_type: "mimeType" },
+        ),
+      ),
+      entry.mediaType === "video" ? "video_source" : "model_source",
+      `${path}.sources`,
+    );
+    if (entry.mediaType === "model") return tracked({ ...common, sources }, "model", path, keys);
+    const first = entry.sources[0];
+    return tracked(
+      {
+        ...common,
+        sources,
+        aspect_ratio: first ? first.width / first.height : null,
+        ...availableFields({ duration: entry.duration }),
+      },
+      "video",
+      path,
+      { ...keys, aspect_ratio: "sources" },
+    );
   }
   function trackedJson(value: unknown, type: string, path: string): unknown {
     if (Array.isArray(value))
@@ -156,6 +407,60 @@ export function liquidObjects(
       );
     return value;
   }
+  /**
+   * A snapshot metafield written as `{ "type": <Shopify type>, "value": <Liquid value> }` has
+   * Shopify's metafield properties and outputs its value. Any other JSON is a legacy metafield
+   * value and is exposed unchanged.
+   */
+  function typedMetafield(value: unknown): value is { type: string; value: unknown } {
+    return (
+      value !== null &&
+      typeof value === "object" &&
+      !Array.isArray(value) &&
+      Object.keys(value).length === 2 &&
+      "value" in value &&
+      "type" in value &&
+      typeof value.type === "string"
+    );
+  }
+  function metafield(type: string | undefined, value: unknown, path: string): object {
+    const reference = type !== undefined && /_reference$/.test(type);
+    return tracked(
+      new ScalarDrop(
+        {
+          ...availableFields({ type, "list?": type?.startsWith("list.") }),
+          get value() {
+            if (!reference) return value;
+            hooks.unsupportedOperation?.(
+              `Metafield reference ${path} is not resolved to a resource offline.`,
+            );
+            return null;
+          },
+        },
+        value === null || ["string", "number", "boolean"].includes(typeof value)
+          ? value
+          : JSON.stringify(value),
+      ),
+      "metafield",
+      path,
+      { "list?": "type" },
+    );
+  }
+  function metafields(source: Snapshot["products"][number]["metafields"], path: string) {
+    return Object.fromEntries(
+      Object.entries(source).map(([namespace, fields]) => [
+        namespace,
+        Object.fromEntries(
+          Object.entries(fields).map(([key, value]) => [
+            key,
+            typedMetafield(value)
+              ? metafield(value.type, value.value, `${path}.${namespace}.${key}`)
+              : value,
+          ]),
+        ),
+      ]),
+    );
+  }
   const products = new Map<string, LiquidRecord>();
   const collections = new Map<string, LiquidRecord>();
   const sortOptions = [
@@ -169,56 +474,91 @@ export function liquidObjects(
     ["created-ascending", "Date, old to new"],
     ["created-descending", "Date, new to old"],
   ].map(([value, name]) => ({ value, name }));
-  function collectionSortOptions(supplied?: Snapshot["collections"][number]["sortOptions"]) {
-    if (supplied) return supplied;
-    if (snapshot.shop.locale.split("-")[0] !== "en")
-      hooks.unsupportedOperation?.(
-        "Localized collection sort labels are missing; English is used.",
+  function collectionSortOptions(
+    supplied: Snapshot["collections"][number]["sortOptions"],
+    path: string,
+  ) {
+    if (supplied)
+      return tracked(
+        supplied.map((option, index) =>
+          tracked({ ...option }, "sort_option", `${path}.sortOptions[${index}]`),
+        ),
+        "sort_option",
+        `${path}.sortOptions`,
       );
-    return sortOptions;
+    if (snapshot.shop.locale.split("-")[0] !== "en")
+      hooks.missing?.(
+        "Localized collection sort labels are absent from the snapshot; English is used.",
+      );
+    return sortOptions.map((option) => tracked({ ...option }, "sort_option"));
   }
   for (const [productIndex, source] of snapshot.products.entries()) {
     const path = `products[${productIndex}]`;
     const images = source.images.map((value, index) =>
-        tracked(image(value, index), "image", `${path}.images[${index}]`),
+        tracked(
+          {
+            ...image(value, `${path}.images[${index}]`, index),
+            ...availableFields({ id: sourceId(value.id) }),
+          },
+          "image",
+          `${path}.images[${index}]`,
+        ),
       ),
-      media = source.images.map((value, index) => {
+      // With explicit media, an image's media position is its place among all media.
+      mediaPosition = (index: number) => {
+        const file = source.images[index]?.file;
+        const position = source.media?.findIndex(
+          (entry) => entry.mediaType === "image" && entry.file === file,
+        );
+        return position === undefined || position < 0 ? index : position;
+      },
+      mediaImages = source.images.map((value, index) => {
+        const imagePath = `${path}.images[${index}]`;
         const preview = tracked(
-            {
-              ...image(value),
-              id: null,
-              alt:
-                value.previewAlt === undefined
-                  ? value.mediaAlt === undefined
-                    ? value.alt
-                    : value.mediaAlt
-                  : value.previewAlt,
-            },
-            "image",
-            `${path}.images[${index}]`,
-            {
-              id: null,
-              alt:
-                value.previewAlt !== undefined
-                  ? "previewAlt"
-                  : value.mediaAlt !== undefined
-                    ? "mediaAlt"
-                    : "alt",
-            },
-          ),
-          record = image(value, index);
-        delete record.id;
-        if (value.mediaId !== undefined) record.id = id(value.mediaId);
-        record.alt = value.mediaAlt === undefined ? value.alt : value.mediaAlt;
-        record.media_type = "image";
-        record.preview_image = preview;
-        const result = tracked(record, "image", `${path}.images[${index}]`, {
+          {
+            ...image(value, imagePath),
+            id: null,
+            alt:
+              value.previewAlt === undefined
+                ? value.mediaAlt === undefined
+                  ? value.alt
+                  : value.mediaAlt
+                : value.previewAlt,
+          },
+          "image",
+          imagePath,
+          {
+            id: null,
+            alt:
+              value.previewAlt !== undefined
+                ? "previewAlt"
+                : value.mediaAlt !== undefined
+                  ? "mediaAlt"
+                  : "alt",
+          },
+        );
+        // A media ID is never inferred from the classic image ID.
+        const record: LiquidRecord = {
+          ...image(value, imagePath, mediaPosition(index)),
+          ...availableFields({ id: sourceId(value.mediaId) }),
+          alt: value.mediaAlt === undefined ? value.alt : value.mediaAlt,
+          media_type: "image",
+          preview_image: preview,
+        };
+        const result = tracked(record, "image", imagePath, {
           id: "mediaId",
           alt: value.mediaAlt === undefined ? "alt" : "mediaAlt",
         });
         objectKinds.set(result, "media_image");
         return result;
-      });
+      }),
+      media = source.media
+        ? source.media.map((entry, index) =>
+            entry.mediaType === "image"
+              ? mediaImages[source.images.findIndex((value) => value.file === entry.file)]
+              : otherMedia(entry, `${path}.media[${index}]`, index, source.title),
+          )
+        : mediaImages;
     const variants = source.variants.map((variant, index) => {
       const options = source.options.map(
         (option) => variant.optionValues.find((value) => value.name === option.name)?.value ?? "",
@@ -254,7 +594,7 @@ export function liquidObjects(
           url: `/products/${source.handle}?variant=${encodeURIComponent(variant.id)}`,
           image: images.find((i) => i.file === variant.image) ?? null,
           featured_image: images.find((i) => i.file === variant.image) ?? null,
-          featured_media: media.find((i) => i.file === variant.image) ?? null,
+          featured_media: mediaImages.find((i) => i.file === variant.image) ?? null,
           ...availableFields({
             quantity_rule: trackedJson(
               variant.quantityRule,
@@ -312,7 +652,7 @@ export function liquidObjects(
           enumerable: true,
           get: () => {
             if (source.id === undefined) {
-              hooks.unsupported("image", "product_id");
+              absent("image", "product_id");
               return undefined;
             }
             return id(source.id);
@@ -329,6 +669,98 @@ export function liquidObjects(
       });
     }
     const firstAvailable = variants.find((variant) => variant.available) ?? null;
+    const current = selected ?? firstAvailable ?? variants[0];
+    const optionRows = source.variants.map((variant) =>
+      source.options.map(
+        (option) => variant.optionValues.find((value) => value.name === option.name)?.value ?? "",
+      ),
+    );
+    const currentRow = optionRows[current ? variants.indexOf(current) : -1] ?? [];
+    // Shopify derives option value state from the selected-or-first-available variant: earlier
+    // options constrain availability, and `variant` swaps only this option's value.
+    const optionsWithValues = source.options.map((option, index) =>
+      tracked(
+        {
+          name: option.name,
+          position: index + 1,
+          values: tracked(
+            option.values.map((value, valueIndex) => {
+              const isSelected = currentRow[index] === value;
+              const swapped = currentRow.map((entry, position) =>
+                position === index ? value : entry,
+              );
+              const match = isSelected
+                ? current
+                : variants[optionRows.findIndex((row) => row.every((v, i) => v === swapped[i]))];
+              const swatch = option.swatches?.[valueIndex];
+              const swatchPath = `${path}.options[${index}].swatches[${valueIndex}]`;
+              const fields: LiquidRecord = {
+                name: value,
+                selected: isSelected,
+                available: source.variants.some(
+                  (variant, row) =>
+                    variant.available &&
+                    optionRows[row]?.[index] === value &&
+                    currentRow.slice(0, index).every((v, i) => optionRows[row]?.[i] === v),
+                ),
+                variant: match ?? null,
+                // Snapshots have no combined listings, so no value points at another product.
+                product_url: null,
+                ...availableFields({
+                  id: sourceId(option.valueIds?.[valueIndex]),
+                  swatch:
+                    swatch === undefined || swatch === null
+                      ? swatch
+                      : tracked(
+                          {
+                            color:
+                              swatch.color === null
+                                ? null
+                                : (hooks.color?.(swatch.color) ?? swatch.color),
+                            image: swatch.image
+                              ? tracked(
+                                  {
+                                    ...image(swatch.image, `${swatchPath}.image`),
+                                    ...availableFields({ id: sourceId(swatch.image.id) }),
+                                  },
+                                  "image",
+                                  `${swatchPath}.image`,
+                                )
+                              : null,
+                          },
+                          "swatch",
+                          swatchPath,
+                        ),
+                }),
+              };
+              // Horizon measures option labels with `value.size`, the name's length.
+              Object.defineProperty(fields, "size", { value: value.length, enumerable: false });
+              return tracked(
+                new ScalarDrop(fields, value),
+                "product_option_value",
+                `${path}.options[${index}]`,
+                {
+                  name: `values[${valueIndex}]`,
+                  selected: null,
+                  available: null,
+                  variant: null,
+                  product_url: null,
+                  size: `values[${valueIndex}]`,
+                  id: `valueIds[${valueIndex}]`,
+                  swatch: `swatches[${valueIndex}]`,
+                },
+              );
+            }),
+            "product_option_value",
+            `${path}.options[${index}].values`,
+          ),
+          selected_value: currentRow[index] ?? null,
+        },
+        "product_option",
+        `${path}.options[${index}]`,
+        { position: null, selected_value: null },
+      ),
+    );
     const prices = source.variants.map((variant) => liquidPrice(variant.price));
     const comparePrices = source.variants.flatMap((variant) =>
       variant.compareAtPrice === null ? [] : [liquidPrice(variant.compareAtPrice)],
@@ -378,69 +810,59 @@ export function liquidObjects(
         source.options[0].values.length === 1 &&
         source.options[0].values[0] === "Default Title",
       options: source.options.map((option) => option.name),
-      options_with_values: source.options.map((option, index) => ({
-        name: option.name,
-        position: index + 1,
-        values: option.values,
-        selected_value: (selected ?? firstAvailable ?? variants[0])?.options[index] ?? null,
-      })),
+      options_with_values: optionsWithValues,
       images,
       featured_image: images[0] ?? null,
       media,
       featured_media: media[0] ?? null,
-      metafields: source.metafields,
+      metafields: metafields(source.metafields, `${path}.metafields`),
     };
     const product = tracked(dto, "product", path);
     products.set(source.handle, product);
     for (const variant of variants) Object.defineProperty(variant, "product", { value: product });
   }
-  function storefrontFilters(members: LiquidRecord[]) {
-    const query = new URL(route.path, "https://offline.invalid");
-    return snapshot.filters.map((filter, index) => {
-      if (filter.type !== "price_range") return filter;
-      const minimum = `${filter.id}.gte`,
-        maximum = `${filter.id}.lte`;
-      const selected = (name: string) => {
-        const value = query.searchParams.get(name);
-        if (!value || !/^\d+(?:\.\d{1,2})?$/.test(value)) return null;
-        try {
-          return liquidPrice(value);
-        } catch {
-          return null;
-        }
-      };
-      const removed = new URL(query);
-      removed.searchParams.delete(minimum);
-      removed.searchParams.delete(maximum);
-      removed.searchParams.delete("page");
-      return tracked(
+  const productSources = new Map(snapshot.products.map((source) => [source.handle, source]));
+  const viewed = (handle: string) =>
+    route.pageType === "collection" && route.resourceHandle === handle;
+  /** Filter objects and the filtered, sorted members, derived once on first use. */
+  function collectionQuery(handle: string, handles: string[], defaultSortBy: string) {
+    let result: ReturnType<typeof storefrontQuery> | undefined;
+    return () =>
+      (result ??= storefrontQuery(
+        snapshot,
+        route.path,
+        handles.flatMap((member) => {
+          const source = productSources.get(member),
+            value = products.get(member);
+          return source && value ? [{ source, value }] : [];
+        }),
         {
-          id: filter.id,
-          label: filter.label,
-          type: filter.type,
-          param_name: filter.id,
-          values: [],
-          active_values: [],
-          inactive_values: [],
-          operator: null,
-          min_value: { param_name: minimum, value: selected(minimum) },
-          max_value: { param_name: maximum, value: selected(maximum) },
-          range_max: members.reduce(
-            (maximum, product) => Math.max(maximum, Number(product.price_max) || 0),
-            0,
-          ),
-          url_to_remove: removed.pathname + removed.search,
+          apply: viewed(handle),
+          sortBy: route.sortBy,
+          defaultSortBy,
+          track: tracked,
+          unsupported: (message) => hooks.unsupportedOperation?.(message),
+          missing: (message) =>
+            hooks.missing ? hooks.missing(message) : hooks.unsupportedOperation?.(message),
         },
-        "filter",
-        `filters[${index}]`,
-      );
-    });
+      ));
   }
   for (const [collectionIndex, source] of snapshot.collections.entries()) {
     const members = source.products.flatMap((handle) => {
       const product = products.get(handle);
       return product ? [product] : [];
     });
+    const query = collectionQuery(source.handle, source.products, source.sortOrder);
+    const collectionImage = source.image
+      ? tracked(
+          {
+            ...image(source.image, `collections[${collectionIndex}].image`),
+            ...availableFields({ id: sourceId(source.image.id) }),
+          },
+          "image",
+          `collections[${collectionIndex}].image`,
+        )
+      : null;
     collections.set(
       source.handle,
       tracked(
@@ -450,16 +872,22 @@ export function liquidObjects(
           title: source.title,
           description: source.descriptionHtml,
           url: `/collections/${source.handle}`,
-          products: members,
-          products_count: members.length,
+          get products() {
+            return query().products;
+          },
+          get products_count() {
+            return query().products.length;
+          },
           all_products_count: members.length,
-          image: source.image
-            ? tracked(image(source.image), "image", `collections[${collectionIndex}].image`)
-            : null,
+          image: collectionImage,
+          // The collection image, else the first product's featured image.
+          get featured_image() {
+            return collectionImage ?? members[0]?.featured_image ?? null;
+          },
           template_suffix: source.templateSuffix,
           default_sort_by: source.sortOrder,
           get sort_options() {
-            return collectionSortOptions(source.sortOptions);
+            return collectionSortOptions(source.sortOptions, `collections[${collectionIndex}]`);
           },
           results_count: null,
           terms: null,
@@ -467,7 +895,7 @@ export function liquidObjects(
           current_type: null,
           sort_by: route.sortBy,
           get filters() {
-            return storefrontFilters(members);
+            return query().filters;
           },
         },
         "collection",
@@ -493,6 +921,13 @@ export function liquidObjects(
     const members = [...products.values()].sort((a, b) =>
       collator.compare(String(a.title), String(b.title)),
     );
+    const query = collectionQuery(
+      "all",
+      [...snapshot.products]
+        .sort((a, b) => collator.compare(a.title, b.title))
+        .map((product) => product.handle),
+      "title-ascending",
+    );
     collections.set(
       "all",
       tracked(
@@ -507,15 +942,22 @@ export function liquidObjects(
             return "Products";
           },
           description: "",
-          products: members,
-          products_count: members.length,
+          get products() {
+            return query().products;
+          },
+          get products_count() {
+            return query().products.length;
+          },
           all_products_count: members.length,
           url: "/collections/all",
           image: null,
+          get featured_image() {
+            return members[0]?.featured_image ?? null;
+          },
           template_suffix: null,
           default_sort_by: "title-ascending",
           get sort_options() {
-            return collectionSortOptions();
+            return collectionSortOptions(undefined, "collections.all");
           },
           results_count: null,
           terms: null,
@@ -523,7 +965,7 @@ export function liquidObjects(
           current_type: null,
           sort_by: route.sortBy,
           get filters() {
-            return storefrontFilters(members);
+            return query().filters;
           },
         },
         "collection",
@@ -558,7 +1000,7 @@ export function liquidObjects(
           content: source.bodyHtml,
           url: `/pages/${source.handle}`,
           template_suffix: source.templateSuffix,
-          metafields: source.metafields,
+          metafields: metafields(source.metafields, `pages[${index}].metafields`),
         },
         "page",
         `pages[${index}]`,
@@ -593,7 +1035,10 @@ export function liquidObjects(
                 published_at: article.publishedAt,
                 image: article.image
                   ? tracked(
-                      image(article.image),
+                      {
+                        ...image(article.image, `blogs[${blogIndex}].articles[${index}].image`),
+                        ...availableFields({ id: sourceId(article.image.id) }),
+                      },
                       "image",
                       `blogs[${blogIndex}].articles[${index}].image`,
                     )
@@ -601,7 +1046,10 @@ export function liquidObjects(
                 url: `/blogs/${source.handle}/${article.handle}`,
                 tags: article.tags,
                 template_suffix: article.templateSuffix,
-                metafields: article.metafields,
+                metafields: metafields(
+                  article.metafields,
+                  `blogs[${blogIndex}].articles[${index}].metafields`,
+                ),
               },
               "article",
               `blogs[${blogIndex}].articles[${index}]`,
@@ -615,6 +1063,7 @@ export function liquidObjects(
             return dto;
           }),
           articles_count: source.articles.length,
+          metafields: metafields(source.metafields, `blogs[${blogIndex}].metafields`),
           ...availableFields({ "comments_enabled?": source.commentsEnabled }),
         },
         "blog",
@@ -622,12 +1071,181 @@ export function liquidObjects(
       ),
     ]),
   );
+  const requestPath = localPath(route.path) ?? "/";
+  function localPath(url: string): string | null {
+    try {
+      const parsed = new URL(url, "https://offline.invalid");
+      if (![`offline.invalid`, snapshot.shop.domain].includes(parsed.host)) return null;
+      return parsed.pathname.replace(/(.)\/$/, "$1");
+    } catch {
+      return null;
+    }
+  }
+  /** Resources a menu link points at, found by its source URL. Other link types have no object. */
+  function linkObject(link: MenuLink): unknown {
+    const path = localPath(link.url);
+    let parts: string[] = [];
+    try {
+      parts = (path ?? "").split("/").slice(1).map(decodeURIComponent);
+    } catch {
+      parts = [];
+    }
+    const [namespace, handle = "", child = ""] = parts;
+    const lookup: Record<string, () => unknown> = {
+      product_link: () => (namespace === "products" ? products.get(handle) : undefined),
+      collection_link: () => (namespace === "collections" ? collections.get(handle) : undefined),
+      page_link: () => (namespace === "pages" ? pages.get(handle) : undefined),
+      blog_link: () => (namespace === "blogs" && !child ? blogs.get(handle) : undefined),
+      article_link: () => (namespace === "blogs" ? articles.get(handle)?.get(child) : undefined),
+      policy_link: () => {
+        const shop = globals.shop;
+        const policies = shop && typeof shop === "object" ? Reflect.get(shop, "policies") : null;
+        return Array.isArray(policies)
+          ? policies.find((policy) => Reflect.get(policy, "url") === path)
+          : undefined;
+      },
+    };
+    if (link.type === "metaobject_link") {
+      hooks.unsupportedOperation?.("Metaobject pages for menu links are not available offline.");
+      return null;
+    }
+    const find = lookup[link.type];
+    if (!find) return null;
+    const value = find();
+    if (value === undefined || value === null)
+      hooks.missing?.(`Menu link ${link.title} references a resource absent from the snapshot.`);
+    return value ?? null;
+  }
+  interface LinkState {
+    record: LiquidRecord;
+    active: boolean;
+    current: boolean;
+    levels: number;
+    children: LinkState[];
+  }
+  function menuLinks(links: MenuLink[], path: string): LinkState[] {
+    return links.map((link, index) => {
+      const children = menuLinks(link.links, `${path}[${index}].links`);
+      const target = localPath(link.url);
+      // Shopify ignores URL parameters; a link is active on its own path and below it.
+      const current = target !== null && target === requestPath;
+      const active =
+        current || (target !== null && target !== "/" && requestPath.startsWith(`${target}/`));
+      const levels = children.length ? 1 + Math.max(...children.map((c) => c.levels)) : 0;
+      const descendants = (states: LinkState[]): LinkState[] =>
+        states.flatMap((state) => [state, ...descendants(state.children)]);
+      const all = descendants(children);
+      const record = tracked(
+        {
+          title: link.title,
+          // Shopify derives a link's handle from its title (Dawn ids such as HeaderMenu-catalog).
+          handle: handleize(link.title),
+          url: link.url,
+          type: link.type,
+          links: tracked(
+            children.map((c) => c.record),
+            "link",
+            `${path}[${index}].links`,
+          ),
+          active,
+          current,
+          child_active: all.some((c) => c.active),
+          child_current: all.some((c) => c.current),
+          levels,
+          get object() {
+            return linkObject(link);
+          },
+          // Only Shopify's data-sale opt-out page link carries the privacy-choices icon.
+          ...(target === "/pages/data-sharing-opt-out" ? {} : { data_sharing_opt_out_icon: null }),
+        },
+        "link",
+        `${path}[${index}]`,
+        {
+          handle: "title",
+          active: null,
+          current: null,
+          child_active: null,
+          child_current: null,
+          levels: null,
+          object: "url",
+          data_sharing_opt_out_icon: null,
+        },
+      );
+      return { record, active, current, levels, children };
+    });
+  }
   const menuMap = Object.fromEntries(
-    snapshot.menus.map((menu) => [
-      menu.handle,
-      { handle: menu.handle, title: menu.title, links: menu.links },
-    ]),
+    snapshot.menus.map((menu, index) => {
+      const links = menuLinks(menu.links, `menus[${index}].links`);
+      return [
+        menu.handle,
+        tracked(
+          {
+            handle: menu.handle,
+            title: menu.title,
+            links: tracked(
+              links.map((link) => link.record),
+              "link",
+              `menus[${index}].links`,
+            ),
+            levels: links.length ? 1 + Math.max(...links.map((link) => link.levels)) : 0,
+          },
+          "linklist",
+          `menus[${index}]`,
+          { levels: null },
+        ),
+      ];
+    }),
   );
+  /** `metaobjects.<type>.<handle>` lookup plus `values` and `values_count` per definition. */
+  function metaobjectDefinitions(): LiquidRecord {
+    const definitions = new Map<string, Map<string, object>>();
+    for (const [index, source] of snapshot.metaobjects.entries()) {
+      const path = `metaobjects[${index}]`;
+      const entry = tracked(
+        {
+          ...Object.fromEntries(
+            Object.entries(source.fields).map(([key, value]) => [
+              key,
+              typedMetafield(value)
+                ? metafield(value.type, value.value, `${path}.fields.${key}`)
+                : metafield(undefined, value, `${path}.fields.${key}`),
+            ]),
+          ),
+          system: tracked(
+            { type: source.type, handle: source.handle },
+            "metaobject_system",
+            `${path}`,
+          ),
+        },
+        "metaobject",
+        path,
+        Object.fromEntries(Object.keys(source.fields).map((key) => [key, `fields.${key}`])),
+      );
+      let definition = definitions.get(source.type);
+      if (!definition) {
+        definition = new Map();
+        definitions.set(source.type, definition);
+      }
+      definition.set(source.handle, entry);
+    }
+    // `values` and `values_count` are the definition's own properties; they win over handles
+    // with the same name.
+    return Object.fromEntries(
+      [...definitions].map(([type, entries]) => [
+        type,
+        tracked(
+          {
+            ...Object.fromEntries(entries),
+            values: [...entries.values()],
+            values_count: entries.size,
+          },
+          "dictionary",
+          `metaobjects.${type}`,
+        ),
+      ]),
+    );
+  }
   function amount(value: bigint): number {
     if (value > BigInt(Number.MAX_SAFE_INTEGER))
       throw new Error("Cart amount exceeds safe Liquid numeric precision");
@@ -654,6 +1272,7 @@ export function liquidObjects(
       )
       .join(" / ");
     const lineImage = source.images.find((image) => image.file === variantSource.image);
+    const variantPath = `products[${snapshot.products.indexOf(source)}].variants[${variantIndex}]`;
     return tracked(
       {
         id: id(line.variantId),
@@ -670,10 +1289,22 @@ export function liquidObjects(
         vendor: source.vendor,
         sku: variantSource.sku,
         image: lineImage
-          ? image(lineImage, source.images.indexOf(lineImage))
+          ? ((Array.isArray(product.images)
+              ? product.images[source.images.indexOf(lineImage)]
+              : null) ?? null)
           : product.featured_image,
         url: `/products/${source.handle}?variant=${encodeURIComponent(line.variantId)}`,
-        options_with_values: variantSource.optionValues,
+        options_with_values: tracked(
+          variantSource.optionValues.map((value, valueIndex) =>
+            tracked(
+              { ...value },
+              "option_with_value",
+              `${variantPath}.optionValues[${valueIndex}]`,
+            ),
+          ),
+          "option_with_value",
+          `${variantPath}.optionValues`,
+        ),
         original_price: price,
         final_price: price,
         price,
@@ -722,6 +1353,13 @@ export function liquidObjects(
     items.reduce((sum, item) => sum + BigInt(Number(item.final_line_price)), 0n),
   );
   const count = amount(snapshot.cart.lines.reduce((sum, line) => sum + BigInt(line.quantity), 0n));
+  // The selected country's currency supplies names when it is the shop currency.
+  const shopCurrency = [
+    ...(snapshot.localization?.availableCountries.filter(
+      (country) => country.isoCode === snapshot.localization?.country,
+    ) ?? []),
+    ...(snapshot.localization?.availableCountries ?? []),
+  ].find((country) => country.currency?.isoCode === snapshot.shop.currency)?.currency;
   const cart = tracked(
     {
       items,
@@ -735,17 +1373,25 @@ export function liquidObjects(
       cart_level_discount_applications: [],
       discount_applications: [],
       attributes: {},
-      currency: {
-        iso_code: snapshot.shop.currency,
-        symbol:
-          new Intl.NumberFormat("en", {
-            style: "currency",
-            currency: snapshot.shop.currency,
-            currencyDisplay: "narrowSymbol",
-          })
-            .formatToParts(0)
-            .find((part) => part.type === "currency")?.value ?? snapshot.shop.currency,
-      },
+      currency: tracked(
+        {
+          iso_code: snapshot.shop.currency,
+          symbol:
+            shopCurrency?.symbol ??
+            new Intl.NumberFormat("en", {
+              style: "currency",
+              currency: snapshot.shop.currency,
+              currencyDisplay: "narrowSymbol",
+            })
+              .formatToParts(0)
+              .find((part) => part.type === "currency")?.value ??
+            snapshot.shop.currency,
+          ...availableFields({ name: shopCurrency?.name }),
+        },
+        "currency",
+        "shop",
+        { iso_code: "currency", symbol: null, name: null },
+      ),
       ...availableFields({
         taxes_included: snapshot.cart.taxesIncluded,
         duties_included: snapshot.cart.dutiesIncluded,
@@ -802,6 +1448,12 @@ export function liquidObjects(
           price: null,
         });
     }
+  const productSourceOf = new WeakMap<object, Snapshot["products"][number]>();
+  for (const source of snapshot.products) {
+    const value = products.get(source.handle);
+    if (value) productSourceOf.set(value, source);
+  }
+  const resultSources = new WeakMap<object, Snapshot["products"][number]>();
   let results: LiquidRecord[] | undefined;
   function matching(): LiquidRecord[] {
     if (results) return results;
@@ -825,6 +1477,8 @@ export function liquidObjects(
         },
       });
       objectKinds.set(result, candidate.type);
+      const source = productSourceOf.get(candidate.value);
+      if (source) resultSources.set(result, source);
       return result;
     });
     return results;
@@ -847,43 +1501,151 @@ export function liquidObjects(
         { name: "Relevance", value: "relevance" },
         { name: "Price, low to high", value: "price-ascending" },
         { name: "Price, high to low", value: "price-descending" },
-      ],
+      ].map((option) => tracked(option, "sort_option")),
       get filters() {
-        return storefrontFilters(
-          matching().filter((value) => liquidObjectKind(value) === "product"),
-        );
+        const query = new URL(route.path, "https://offline.invalid").searchParams;
+        if (
+          snapshot.filters.some((filter) =>
+            [...query.keys()].some((key) => key.startsWith(filter.id)),
+          )
+        )
+          hooks.unsupportedOperation?.(
+            "Storefront filters are not applied to search results offline.",
+          );
+        return storefrontQuery(
+          snapshot,
+          route.path,
+          matching().flatMap((value) => {
+            const source = resultSources.get(value);
+            return source ? [{ source, value }] : [];
+          }),
+          {
+            apply: false,
+            sortBy: null,
+            defaultSortBy: "relevance",
+            track: tracked,
+            unsupported: (message) => hooks.unsupportedOperation?.(message),
+            missing: (message) =>
+              hooks.missing ? hooks.missing(message) : hooks.unsupportedOperation?.(message),
+          },
+        ).filters;
       },
     },
     "search",
     "search",
   );
-  const globals: LiquidRecord = {
-    images: new ImageDirectory(snapshot.images, hooks.read, (property) =>
-      hooks.unsupported("image", property),
+  const languages = (snapshot.localization?.availableLanguages ?? []).map((language, index) =>
+    tracked(
+      {
+        iso_code: language.isoCode,
+        direction: direction(language.isoCode),
+        ...availableFields({
+          name: language.name,
+          endonym_name: language.endonymName,
+          primary: language.primary,
+          root_url: language.rootUrl,
+        }),
+      },
+      "shop_locale",
+      `localization.availableLanguages[${index}]`,
+      {
+        iso_code: "isoCode",
+        direction: "isoCode",
+        endonym_name: "endonymName",
+        root_url: "rootUrl",
+      },
     ),
+  );
+  let localization: LiquidRecord | undefined;
+  if (snapshot.localization) {
+    const source = snapshot.localization;
+    const countries = source.availableCountries.map((country, index) =>
+      tracked(
+        {
+          iso_code: country.isoCode,
+          ...availableFields({
+            name: country.name,
+            currency: country.currency
+              ? tracked(
+                  {
+                    iso_code: country.currency.isoCode,
+                    ...availableFields({
+                      symbol: country.currency.symbol,
+                      name: country.currency.name,
+                    }),
+                  },
+                  "currency",
+                  `localization.availableCountries[${index}].currency`,
+                  { iso_code: "isoCode" },
+                )
+              : undefined,
+          }),
+        },
+        "country",
+        `localization.availableCountries[${index}]`,
+        { iso_code: "isoCode" },
+      ),
+    );
+    localization = tracked(
+      {
+        available_countries: countries,
+        available_languages: languages,
+        country: countries.find((country) => country.iso_code === source.country),
+        language: languages.find((language) => language.iso_code === source.language),
+      },
+      "localization",
+      "localization",
+      { available_countries: "availableCountries", available_languages: "availableLanguages" },
+    );
+  }
+  // The request locale is the shop's language entry when the snapshot lists its languages.
+  const requestLocale =
+    languages.find((language) => language.iso_code === snapshot.shop.locale) ??
+    tracked(
+      {
+        iso_code: snapshot.shop.locale,
+        direction: direction(snapshot.shop.locale),
+        ...availableFields({
+          name: undefined,
+          endonym_name: undefined,
+          primary: undefined,
+          root_url: undefined,
+        }),
+      },
+      "shop_locale",
+      "shop",
+      { iso_code: "locale", direction: "locale" },
+    );
+  const globals: LiquidRecord = {
+    images: new ImageDirectory(snapshot.images, {
+      read: hooks.read,
+      unsupported: (property) => hooks.unsupported("image", property),
+      missing: (property) => absent("image", property),
+    }),
     shop: tracked(
       {
         ...Object.fromEntries(
           Object.entries(snapshot.shop).filter(
-            ([key]) => !["seo", "permanentDomain"].includes(key),
+            ([key]) => !["seo", "permanentDomain", "socialSharingImage"].includes(key),
           ),
         ),
         ...availableFields({
           id: snapshot.shop.id === undefined ? undefined : id(snapshot.shop.id),
           permanent_domain: snapshot.shop.permanentDomain,
-        }),
-        products_count: snapshot.products.length,
-        collections_count: snapshot.collections.length,
-        ...(snapshot.shop.features
-          ? { features: tracked(snapshot.shop.features, "shop.features", "shop.features") }
-          : {}),
-        ...(snapshot.shop.policies
-          ? {
-              policies: snapshot.shop.policies.map((source, index) => {
+          // Optional shop metadata; an omission is missing data.
+          description: snapshot.shop.description,
+          customer_accounts_enabled: snapshot.shop.customer_accounts_enabled,
+          customer_accounts_optional: snapshot.shop.customer_accounts_optional,
+          enabled_payment_types: snapshot.shop.enabled_payment_types,
+          features: snapshot.shop.features
+            ? tracked(snapshot.shop.features, "shop.features", "shop.features")
+            : undefined,
+          policies: snapshot.shop.policies
+            ? snapshot.shop.policies.map((source, index) => {
                 class Policy extends Drop {
                   #field(key: "id" | "title" | "body" | "url") {
                     hooks.read(`shop.policies[${index}].${key}`);
-                    if (!Object.hasOwn(source, key)) hooks.unsupported("policy", key);
+                    if (!Object.hasOwn(source, key)) absent("policy", key);
                     return key === "id" && source.id ? id(source.id) : source[key];
                   }
                   get id() {
@@ -902,14 +1664,22 @@ export function liquidObjects(
                     return this.body;
                   }
                   liquidMethodMissing(key: string) {
-                    if (!internal.has(key)) hooks.unsupported("policy", key);
+                    if (!internalKeys.has(key)) hooks.unsupported("policy", key);
                     return undefined;
                   }
                 }
-                return new Policy();
-              }),
-            }
-          : {}),
+                const policy = new Policy();
+                objectKinds.set(policy, "policy");
+                return policy;
+              })
+            : undefined,
+        }),
+        // Without a policy list, the policy aliases are missing data too.
+        ...(snapshot.shop.policies
+          ? {}
+          : availableFields(Object.fromEntries(policyAliases.map((key) => [key, undefined])))),
+        products_count: snapshot.products.length,
+        collections_count: snapshot.collections.length,
       },
       "shop",
       "shop",
@@ -922,6 +1692,7 @@ export function liquidObjects(
     pages: tracked(Object.fromEntries(pages), "dictionary", "pages"),
     blogs: tracked(Object.fromEntries(blogs), "dictionary", "blogs"),
     linklists: tracked(menuMap, "dictionary", "linklists"),
+    metaobjects: tracked(metaobjectDefinitions(), "dictionary", "metaobjects"),
     request: tracked(
       {
         path:
@@ -929,85 +1700,31 @@ export function liquidObjects(
         page_type: route.pageType,
         design_mode: route.designMode,
         visual_preview_mode: false,
-        locale: { iso_code: snapshot.shop.locale },
+        locale: requestLocale,
         host: snapshot.shop.domain,
         origin: `https://${snapshot.shop.domain}`,
       },
       "request",
       "request",
     ),
-    routes: {
-      root_url: "/",
-      cart_url: "/cart",
-      search_url: "/search",
-      all_products_collection_url: "/collections/all",
-    },
+    // Derived paths, not snapshot reads: no source path is recorded for them.
+    routes: tracked(
+      { ...routePaths },
+      "routes",
+      "routes",
+      Object.fromEntries(Object.keys(routePaths).map((key) => [key, null])),
+    ),
   };
-  if (snapshot.localization) {
-    const source = snapshot.localization;
-    const countries = source.availableCountries.map((country, index) =>
-      tracked(
-        {
-          iso_code: country.isoCode,
-          ...availableFields({ name: country.name }),
-          ...(country.currency
-            ? {
-                currency: tracked(
-                  {
-                    iso_code: country.currency.isoCode,
-                    ...availableFields({
-                      symbol: country.currency.symbol,
-                      name: country.currency.name,
-                    }),
-                  },
-                  "currency",
-                  `localization.availableCountries[${index}].currency`,
-                  { iso_code: "isoCode" },
-                ),
-              }
-            : {}),
-        },
-        "country",
-        `localization.availableCountries[${index}]`,
-        { iso_code: "isoCode" },
-      ),
-    );
-    const languages = source.availableLanguages.map((language, index) =>
-      tracked(
-        {
-          iso_code: language.isoCode,
-          ...availableFields({
-            name: language.name,
-            endonym_name: language.endonymName,
-            primary: language.primary,
-            root_url: language.rootUrl,
-          }),
-        },
-        "shop_locale",
-        `localization.availableLanguages[${index}]`,
-        { iso_code: "isoCode", endonym_name: "endonymName", root_url: "rootUrl" },
-      ),
-    );
-    globals.localization = tracked(
-      {
-        available_countries: countries,
-        available_languages: languages,
-        country: countries.find((country) => country.iso_code === source.country),
-        language: languages.find((language) => language.iso_code === source.language),
-      },
-      "localization",
-      "localization",
-      { available_countries: "availableCountries", available_languages: "availableLanguages" },
-    );
-  } else {
+  if (localization) globals.localization = localization;
+  else
     Object.defineProperty(globals, "localization", {
       enumerable: true,
       get() {
-        hooks.unsupportedOperation?.("Localization availability is absent from the snapshot.");
+        if (hooks.missing) hooks.missing("Localization availability is absent from the snapshot.");
+        else hooks.unsupportedOperation?.("Localization availability is absent from the snapshot.");
         return null;
       },
     });
-  }
   if (snapshot.shop.policies !== undefined) {
     const shop = globals.shop;
     if (
@@ -1017,13 +1734,7 @@ export function liquidObjects(
       Array.isArray(shop.policies)
     ) {
       const policies = shop.policies;
-      for (const key of [
-        "shipping_policy",
-        "privacy_policy",
-        "refund_policy",
-        "terms_of_service",
-        "subscription_policy",
-      ])
+      for (const key of policyAliases)
         Object.defineProperty(shop, key, {
           enumerable: true,
           get() {
@@ -1053,9 +1764,61 @@ export function liquidObjects(
       page: globals.page ?? null,
       blog: globals.blog ?? null,
       article: globals.article ?? null,
+      // Metaobject pages are not rendered offline.
+      metaobject: null,
     },
     "closest",
     "closest",
   );
+  // Documented globals beyond the resources: nil where the preview has no such state, and a
+  // diagnostic where the value exists on Shopify but not offline.
+  Object.assign(globals, {
+    articles: tracked(
+      Object.fromEntries(
+        [...articles].flatMap(([blog, entries]) =>
+          [...entries].map(([handle, value]) => [`${blog}/${handle}`, value]),
+        ),
+      ),
+      "dictionary",
+      "articles",
+    ),
+    handle: route.resourceHandle,
+    customer: null, // No customer session exists offline.
+    self: null, // Metaobject templates are not rendered.
+    current_tags: null, // Tag-filtered collection and blog URLs are not routed.
+    // Product recommendations come from a separate storefront request; a page render has none.
+    // Dawn and Horizon read `performed` as well as the documented `performed?`.
+    recommendations: tracked(
+      { "performed?": false, performed: false, products: [], products_count: 0, intent: null },
+      "recommendations",
+    ),
+  });
+  for (const [key, value, message] of [
+    [
+      "additional_checkout_buttons",
+      false,
+      "Accelerated checkout buttons are omitted; they require Shopify's live checkout.",
+    ],
+    [
+      "content_for_additional_checkout_buttons",
+      "",
+      "Accelerated checkout buttons are omitted; they require Shopify's live checkout.",
+    ],
+  ] as const)
+    Object.defineProperty(globals, key, {
+      enumerable: true,
+      get() {
+        hooks.serverOnly?.(message);
+        return value;
+      },
+    });
+  for (const key of unavailableGlobals)
+    Object.defineProperty(globals, key, {
+      enumerable: true,
+      get() {
+        hooks.unsupportedOperation?.(`Global object ${key} is not available offline.`);
+        return null;
+      },
+    });
   return globals;
 }

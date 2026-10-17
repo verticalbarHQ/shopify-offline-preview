@@ -1,17 +1,43 @@
 import { Drop } from "liquidjs";
+import { focalPoint, focalPointPercent } from "./scalar-drop.js";
 import type { Snapshot } from "./schema.js";
+
+export { focalPointPercent };
 
 export type NamedImage = NonNullable<Snapshot["images"]>[number];
 type SourceImage = Snapshot["products"][number]["images"][number] &
-  Partial<Pick<NamedImage, "filename" | "id" | "focalPoint">>;
+  Partial<Pick<NamedImage, "filename">>;
+/** Image hooks: absent snapshot fields are missing data; other properties are not implemented. */
+export interface ImageHooks {
+  read(path: string): void;
+  unsupported(property: string): void;
+  missing(property: string): void;
+}
 export function snapshotImageEntries(snapshot: Snapshot): [string, SourceImage][] {
   return [
-    ...snapshot.products.flatMap((product, index) =>
-      product.images.map((image, imageIndex): [string, SourceImage] => [
+    ...snapshot.products.flatMap((product, index) => [
+      ...product.images.map((image, imageIndex): [string, SourceImage] => [
         `products[${index}].images[${imageIndex}]`,
         image,
       ]),
-    ),
+      ...(product.media ?? []).flatMap((media, mediaIndex): [string, SourceImage][] =>
+        media.mediaType === "image"
+          ? []
+          : [[`products[${index}].media[${mediaIndex}].previewImage`, media.previewImage]],
+      ),
+      ...product.options.flatMap((option, optionIndex) =>
+        (option.swatches ?? []).flatMap((swatch, valueIndex): [string, SourceImage][] =>
+          swatch?.image
+            ? [
+                [
+                  `products[${index}].options[${optionIndex}].swatches[${valueIndex}].image`,
+                  swatch.image,
+                ],
+              ]
+            : [],
+        ),
+      ),
+    ]),
     ...snapshot.collections.flatMap((collection, index): [string, SourceImage][] =>
       collection.image ? [[`collections[${index}].image`, collection.image]] : [],
     ),
@@ -20,24 +46,30 @@ export function snapshotImageEntries(snapshot: Snapshot): [string, SourceImage][
         article.image ? [[`blogs[${index}].articles[${articleIndex}].image`, article.image]] : [],
       ),
     ),
+    ...(snapshot.shop.socialSharingImage
+      ? [["shop.socialSharingImage", snapshot.shop.socialSharingImage] as [string, SourceImage]]
+      : []),
     ...(snapshot.images ?? []).map((image, index): [string, SourceImage] => [
       `images[${index}]`,
       image,
     ]),
   ];
 }
+/** Local video and 3D model source files, served next to the images. */
+export function snapshotMediaFiles(snapshot: Snapshot): string[] {
+  return snapshot.products.flatMap((product) =>
+    (product.media ?? []).flatMap((media) =>
+      media.mediaType === "video" || media.mediaType === "model"
+        ? media.sources.map((source) => source.file)
+        : [],
+    ),
+  );
+}
 export function snapshotImages(snapshot: Snapshot): SourceImage[] {
   return snapshotImageEntries(snapshot).map(([, image]) => image);
 }
 export function localImageUrl(file: string): string {
   return `/sop/images/${file.split("/").map(encodeURIComponent).join("/")}`;
-}
-export function focalPointPercent(value: string): string {
-  const [whole = "0", fraction = ""] = value.split(".");
-  const scale = 10n ** BigInt(fraction.length);
-  const amount = (BigInt(whole) * scale + BigInt(fraction || "0")) * 100n;
-  const decimals = (amount % scale).toString().padStart(fraction.length, "0").replace(/0+$/, "");
-  return `${amount / scale}${decimals ? `.${decimals}` : ""}%`;
 }
 /** Native missing image lookups are truthy empty drops, distinct from a nil picker setting. */
 export class MissingImage extends Drop {
@@ -61,26 +93,18 @@ export class MissingImage extends Drop {
 export class NamedImageDrop extends Drop {
   #source: NamedImage;
   #path: string;
-  #read: (path: string) => void;
-  #unsupported: (property: string) => void;
+  #hooks: ImageHooks;
   #preview: boolean;
-  constructor(
-    source: NamedImage,
-    path: string,
-    read: (path: string) => void,
-    unsupported: (property: string) => void,
-    preview = false,
-  ) {
+  constructor(source: NamedImage, path: string, hooks: ImageHooks, preview = false) {
     super();
     this.#source = source;
     this.#path = path;
-    this.#read = read;
-    this.#unsupported = unsupported;
+    this.#hooks = hooks;
     this.#preview = preview;
   }
   #field(key: "file" | "alt" | "width" | "height" | "id") {
-    this.#read(`${this.#path}.${key}`);
-    if (!Object.hasOwn(this.#source, key)) this.#unsupported(key);
+    this.#hooks.read(`${this.#path}.${key}`);
+    if (!Object.hasOwn(this.#source, key)) this.#hooks.missing(key);
     return this.#source[key];
   }
   get src() {
@@ -124,26 +148,30 @@ export class NamedImageDrop extends Drop {
     return this.#preview ? null : "image";
   }
   get preview_image(): NamedImageDrop | null {
-    return this.#preview
-      ? null
-      : new NamedImageDrop(this.#source, this.#path, this.#read, this.#unsupported, true);
+    return this.#preview ? null : new NamedImageDrop(this.#source, this.#path, this.#hooks, true);
   }
   get presentation() {
     if (this.#preview) return null;
     const point = this.#source.focalPoint;
-    if (!point) {
-      this.#unsupported("presentation");
+    if (point === undefined) {
+      this.#hooks.missing("presentation");
       return undefined;
     }
-    this.#read(`${this.#path}.focalPoint.x`);
-    this.#read(`${this.#path}.focalPoint.y`);
-    return new ImagePresentation(point, (key) => this.#unsupported(`presentation.${key}`));
+    if (point === null) this.#hooks.read(`${this.#path}.focalPoint`);
+    else {
+      this.#hooks.read(`${this.#path}.focalPoint.x`);
+      this.#hooks.read(`${this.#path}.focalPoint.y`);
+    }
+    // Shopify reports the image center when no focal point is set.
+    return new ImagePresentation(point ?? { x: "0.5", y: "0.5" }, (key) =>
+      this.#hooks.unsupported(`presentation.${key}`),
+    );
   }
   valueOf() {
     return this.src;
   }
   liquidMethodMissing(property: string) {
-    this.#unsupported(property);
+    this.#hooks.unsupported(property);
     return undefined;
   }
 }
@@ -156,7 +184,7 @@ class ImagePresentation extends Drop {
     this.#unsupported = unsupported;
   }
   get focal_point() {
-    return `${focalPointPercent(this.#point.x)} ${focalPointPercent(this.#point.y)}`;
+    return focalPoint(this.#point, (key) => this.#unsupported(`focal_point.${key}`));
   }
   valueOf() {
     return { focalPoint: this.#point };
@@ -176,21 +204,15 @@ export class ImageDirectory extends Drop {
     *[Symbol.iterator](): Generator<never> {},
   };
   #supplied: boolean;
-  #read: (path: string) => void;
-  #unsupported: (property: string) => void;
-  constructor(
-    images: Snapshot["images"],
-    read: (path: string) => void,
-    unsupported: (property: string) => void,
-  ) {
+  #hooks: ImageHooks;
+  constructor(images: Snapshot["images"], hooks: ImageHooks) {
     super();
     this.#supplied = images !== undefined;
-    this.#read = read;
-    this.#unsupported = unsupported;
+    this.#hooks = hooks;
     this.#images = new Map(
       (images ?? []).map((source, index) => [
         source.filename,
-        new NamedImageDrop(source, `images[${index}]`, read, unsupported),
+        new NamedImageDrop(source, `images[${index}]`, hooks),
       ]),
     );
   }
@@ -203,8 +225,8 @@ export class ImageDirectory extends Drop {
   *[Symbol.iterator](): Generator<never> {}
   liquidMethodMissing(filename: string | number) {
     if (typeof filename !== "string") throw new Error("Expected image filename to be a String");
-    this.#read("images");
-    if (!this.#supplied) this.#unsupported("images source metadata");
+    this.#hooks.read("images");
+    if (!this.#supplied) this.#hooks.missing("images source metadata");
     return this.#images.get(filename) ?? new MissingImage();
   }
 }

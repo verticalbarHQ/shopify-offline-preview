@@ -1,4 +1,5 @@
 import { init, parse } from "es-module-lexer";
+import { missingImageSvg } from "../../dev/src/missing-image.js";
 import type { BrowserFiles } from "./files.js";
 
 const virtualOrigin = "https://sop-preview.invalid";
@@ -21,6 +22,12 @@ export function mime(file: string): string {
         webp: "image/webp",
         avif: "image/avif",
         gif: "image/gif",
+        mp4: "video/mp4",
+        webm: "video/webm",
+        mov: "video/quicktime",
+        m3u8: "application/x-mpegURL",
+        glb: "model/gltf-binary",
+        usdz: "model/vnd.usdz+zip",
         woff: "font/woff",
         woff2: "font/woff2",
         ttf: "font/ttf",
@@ -67,6 +74,7 @@ export interface BrowserResources {
 export async function prepareResources(
   files: BrowserFiles,
   images: BrowserFiles,
+  declared: readonly { file: string; width: number; height: number }[] = [],
 ): Promise<BrowserResources> {
   const urls: Record<string, string> = Object.create(null);
   const imports: Record<string, string> = Object.create(null);
@@ -74,6 +82,13 @@ export async function prepareResources(
     decoder = new TextDecoder();
   for (const [file, bytes] of Object.entries(images))
     urls[resourceUrl(file)] = dataUrl(bytes, mime(file));
+  // Like the dev server, a snapshot image without its file shows a placeholder.
+  for (const image of declared)
+    if (!Object.hasOwn(images, image.file))
+      urls[resourceUrl(image.file)] ??= dataUrl(
+        encoder.encode(missingImageSvg(image.width, image.height)),
+        "image/svg+xml",
+      );
   for (const [file, bytes] of Object.entries(files))
     if (file.startsWith("assets/") && !/\.(css|m?js)$/.test(file))
       urls[resourceUrl(file)] = dataUrl(bytes, mime(file));

@@ -6,6 +6,10 @@ import type { ResolvedRoute } from "./routes.js";
 interface Hooks {
   read(path: string): void;
   unsupported(message: string): void;
+  /** Metadata the snapshot does not supply. */
+  missing(message: string): void;
+  /** The snapshot image as a Liquid image object. */
+  image(value: NonNullable<Snapshot["shop"]["socialSharingImage"]>, path: string): unknown;
 }
 const titles: Readonly<Record<string, string>> = translations;
 function escapeHtml(value: string): string {
@@ -49,8 +53,8 @@ export function registerPageMetadata(
     field: string,
   ): string {
     if (seo?.title === undefined)
-      hooks.unsupported(
-        `SEO title metadata for ${prefix} is missing; the source ${field} is used.`,
+      hooks.missing(
+        `SEO title metadata for ${prefix} is absent from the snapshot; the source ${field} is used.`,
       );
     else hooks.read(`${prefix}.seo.title`);
     if (seo?.title) return escapeHtml(seo.title);
@@ -91,6 +95,45 @@ export function registerPageMetadata(
       return system("not_found");
     },
   });
+  Object.defineProperty(globals, "canonical_url", {
+    enumerable: true,
+    get() {
+      // Query parameters other than pagination select views of the same canonical page.
+      hooks.read("shop.domain");
+      const url = new URL(route.path, "https://offline.invalid");
+      const page = Number(route.query.page ?? 1);
+      const pathname = url.pathname.replace(/(.)\/$/, "$1");
+      return `https://${snapshot.shop.domain}${pathname}${Number.isInteger(page) && page > 1 ? `?page=${page}` : ""}`;
+    },
+  });
+  Object.defineProperty(globals, "page_image", {
+    enumerable: true,
+    get() {
+      const resource =
+        route.pageType === "product"
+          ? globals.product
+          : route.pageType === "collection"
+            ? globals.collection
+            : route.pageType === "article"
+              ? globals.article
+              : null;
+      const image =
+        resource !== null && typeof resource === "object"
+          ? Reflect.get(resource, route.pageType === "product" ? "featured_image" : "image")
+          : null;
+      if (image) return image;
+      const sharing = snapshot.shop.socialSharingImage;
+      if (sharing) return hooks.image(sharing, "shop.socialSharingImage");
+      if (sharing === null) {
+        hooks.read("shop.socialSharingImage");
+        return null;
+      }
+      hooks.missing(
+        "The shop's social sharing image is absent from the snapshot; page_image is nil.",
+      );
+      return null;
+    },
+  });
   Object.defineProperty(globals, "page_description", {
     get() {
       if (source) {
@@ -98,7 +141,7 @@ export function registerPageMetadata(
           hooks.read(`${path}.seo.description`);
           return source.seo.description;
         }
-        hooks.unsupported(`Resolved SEO description for ${path} is missing.`);
+        hooks.missing(`Resolved SEO description for ${path} is absent from the snapshot.`);
         return null;
       }
       if (route.pageType === "index" || route.pageType === "search") {
@@ -110,7 +153,7 @@ export function registerPageMetadata(
           hooks.read("shop.description");
           return snapshot.shop.description;
         }
-        hooks.unsupported("Resolved SEO description for shop is missing.");
+        hooks.missing("Resolved SEO description for shop is absent from the snapshot.");
       }
       return null;
     },

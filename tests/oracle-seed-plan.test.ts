@@ -50,7 +50,7 @@ test("scenario-specific desired states preserve options, inventory, images and l
   );
   assert.equal(product(plan, "single-variant").variants.length, 1);
   assert.deepEqual(product(plan, "single-variant").options, [
-    { name: "Title", values: ["Default Title"] },
+    { name: "Title", values: ["Default Title"], valueIds: ["900001"], swatches: [null] },
   ]);
   assert.equal(product(plan, "no-images").images.length, 0);
   assert.equal(product(plan, "long-content").images.length, 16);

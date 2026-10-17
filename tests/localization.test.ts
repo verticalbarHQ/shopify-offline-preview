@@ -36,7 +36,7 @@ test("source localization controls selectors and selected values without inventi
   result = await renderTheme(theme, "/", { snapshot });
   assert.ok(
     result.diagnostics.some(
-      (d) => d.code === "not-implemented" && d.message.includes("Localization availability"),
+      (d) => d.code === "missing-resource" && d.message.includes("Localization availability"),
     ),
   );
 });

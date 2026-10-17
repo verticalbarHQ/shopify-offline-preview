@@ -43,11 +43,11 @@ const knownFilters = new Set([...Object.keys(registry.filters), ...Object.keys(r
 // https://shopify.dev/docs/storefronts/themes/architecture/sections/section-schema
 const knownTags = new Set([...Object.keys(registry.tags), "schema"]);
 const aliases: Record<string, string> = registry.aliases;
+// SPEC §9.3 page types; alternate templates of these types are included.
 const pageTypes = new Set([
   "index",
   "product",
   "collection",
-  "list-collections",
   "page",
   "search",
   "cart",
@@ -272,8 +272,10 @@ function scanLiquid(text: string, file: string, bindings: Symbols): Scan {
       if (node.type === NodeTypes.LiquidRawTag && node.name === "schema") {
         schema = z.record(z.string(), z.unknown()).parse(parseThemeJson(node.body.value, file));
       }
+      // Inline comments (`{% # … %}`, `# …` inside `{% liquid %}`) keep their text as markup.
       if (
         node.type === NodeTypes.LiquidTag &&
+        node.name !== "#" &&
         typeof node.markup === "string" &&
         node.markup.trim()
       ) {

@@ -15,6 +15,7 @@
     "money_format": "USD {{amount}}",
     "money_with_currency_format": "USD {{amount}}",
     "description": "A synthetic catalog for local theme development.",
+    "socialSharingImage": null,
     "customer_accounts_enabled": false,
     "customer_accounts_optional": true,
     "enabled_payment_types": [],
@@ -23,6 +24,30 @@
     },
     "policies": [],
     "timezone": "UTC"
+  },
+  "localization": {
+    "availableCountries": [
+      {
+        "isoCode": "US",
+        "name": "United States",
+        "currency": {
+          "isoCode": "USD",
+          "symbol": "$",
+          "name": "United States Dollar"
+        }
+      }
+    ],
+    "availableLanguages": [
+      {
+        "isoCode": "en",
+        "name": "English",
+        "endonymName": "English",
+        "primary": true,
+        "rootUrl": "/"
+      }
+    ],
+    "country": "US",
+    "language": "en"
   },
   "products": [
     {
@@ -50,6 +75,14 @@
           "values": [
             "Red",
             "Blue"
+          ],
+          "valueIds": [
+            "900001",
+            "900002"
+          ],
+          "swatches": [
+            null,
+            null
           ]
         },
         {
@@ -57,6 +90,14 @@
           "values": [
             "Small",
             "Large"
+          ],
+          "valueIds": [
+            "900003",
+            "900004"
+          ],
+          "swatches": [
+            null,
+            null
           ]
         },
         {
@@ -64,6 +105,14 @@
           "values": [
             "Cotton",
             "Linen"
+          ],
+          "valueIds": [
+            "900005",
+            "900006"
+          ],
+          "swatches": [
+            null,
+            null
           ]
         }
       ],
@@ -393,14 +442,20 @@
         {
           "file": "pattern-01.png",
           "alt": "Synthetic pattern 1",
+          "id": "600001",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700001"
         },
         {
           "file": "pattern-02.png",
           "alt": "Synthetic pattern 2",
+          "id": "600002",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700002"
         }
       ],
       "metafields": {},
@@ -433,6 +488,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900011"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -474,8 +535,11 @@
         {
           "file": "pattern-02.png",
           "alt": "Synthetic pattern 2",
+          "id": "600021",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700021"
         }
       ],
       "metafields": {},
@@ -508,6 +572,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900021"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -549,8 +619,11 @@
         {
           "file": "pattern-03.png",
           "alt": "Synthetic pattern 3",
+          "id": "600041",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700041"
         }
       ],
       "metafields": {},
@@ -583,6 +656,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900031"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -624,8 +703,11 @@
         {
           "file": "pattern-04.png",
           "alt": "Synthetic pattern 4",
+          "id": "600061",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700061"
         }
       ],
       "metafields": {},
@@ -658,6 +740,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900041"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -699,8 +787,11 @@
         {
           "file": "pattern-05.png",
           "alt": "Synthetic pattern 5",
+          "id": "600081",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700081"
         }
       ],
       "metafields": {},
@@ -733,6 +824,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900051"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -774,8 +871,11 @@
         {
           "file": "pattern-06.png",
           "alt": "Synthetic pattern 6",
+          "id": "600101",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700101"
         }
       ],
       "metafields": {},
@@ -808,6 +908,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900061"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -849,8 +955,11 @@
         {
           "file": "pattern-07.png",
           "alt": "Synthetic pattern 7",
+          "id": "600121",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700121"
         }
       ],
       "metafields": {},
@@ -883,6 +992,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900071"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -924,8 +1039,11 @@
         {
           "file": "pattern-08.png",
           "alt": "Synthetic pattern 8",
+          "id": "600141",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700141"
         }
       ],
       "metafields": {},
@@ -958,6 +1076,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900081"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -999,8 +1123,11 @@
         {
           "file": "pattern-09.png",
           "alt": "Synthetic pattern 9",
+          "id": "600161",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700161"
         }
       ],
       "metafields": {},
@@ -1033,6 +1160,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900091"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -1074,8 +1207,11 @@
         {
           "file": "pattern-10.png",
           "alt": "Synthetic pattern 10",
+          "id": "600181",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700181"
         }
       ],
       "metafields": {},
@@ -1108,6 +1244,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900101"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -1149,8 +1291,11 @@
         {
           "file": "pattern-11.png",
           "alt": "Synthetic pattern 11",
+          "id": "600201",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700201"
         }
       ],
       "metafields": {},
@@ -1183,6 +1328,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900111"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -1224,8 +1375,11 @@
         {
           "file": "pattern-12.png",
           "alt": "Synthetic pattern 12",
+          "id": "600221",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700221"
         }
       ],
       "metafields": {},
@@ -1258,6 +1412,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900121"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -1299,8 +1459,11 @@
         {
           "file": "pattern-13.png",
           "alt": "Synthetic pattern 13",
+          "id": "600241",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700241"
         }
       ],
       "metafields": {},
@@ -1333,6 +1496,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900131"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -1374,8 +1543,11 @@
         {
           "file": "pattern-14.png",
           "alt": "Synthetic pattern 14",
+          "id": "600261",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700261"
         }
       ],
       "metafields": {},
@@ -1408,6 +1580,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900141"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -1449,8 +1627,11 @@
         {
           "file": "pattern-15.png",
           "alt": "Synthetic pattern 15",
+          "id": "600281",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700281"
         }
       ],
       "metafields": {},
@@ -1483,6 +1664,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900151"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -1524,8 +1711,11 @@
         {
           "file": "pattern-16.png",
           "alt": "Synthetic pattern 16",
+          "id": "600301",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700301"
         }
       ],
       "metafields": {},
@@ -1558,6 +1748,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900161"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -1599,8 +1795,11 @@
         {
           "file": "pattern-01.png",
           "alt": "Synthetic pattern 1",
+          "id": "600321",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700321"
         }
       ],
       "metafields": {},
@@ -1633,6 +1832,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900171"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -1674,8 +1879,11 @@
         {
           "file": "pattern-02.png",
           "alt": "Synthetic pattern 2",
+          "id": "600341",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700341"
         }
       ],
       "metafields": {},
@@ -1708,6 +1916,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900181"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -1749,8 +1963,11 @@
         {
           "file": "pattern-03.png",
           "alt": "Synthetic pattern 3",
+          "id": "600361",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700361"
         }
       ],
       "metafields": {},
@@ -1783,6 +2000,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900191"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -1824,8 +2047,11 @@
         {
           "file": "pattern-04.png",
           "alt": "Synthetic pattern 4",
+          "id": "600381",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700381"
         }
       ],
       "metafields": {},
@@ -1858,6 +2084,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900201"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -1899,8 +2131,11 @@
         {
           "file": "pattern-05.png",
           "alt": "Synthetic pattern 5",
+          "id": "600401",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700401"
         }
       ],
       "metafields": {},
@@ -1933,6 +2168,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900211"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -1974,8 +2215,11 @@
         {
           "file": "pattern-06.png",
           "alt": "Synthetic pattern 6",
+          "id": "600421",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700421"
         }
       ],
       "metafields": {},
@@ -2008,6 +2252,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900221"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -2049,8 +2299,11 @@
         {
           "file": "pattern-07.png",
           "alt": "Synthetic pattern 7",
+          "id": "600441",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700441"
         }
       ],
       "metafields": {},
@@ -2083,6 +2336,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900231"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -2124,8 +2383,11 @@
         {
           "file": "pattern-08.png",
           "alt": "Synthetic pattern 8",
+          "id": "600461",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700461"
         }
       ],
       "metafields": {},
@@ -2158,6 +2420,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900241"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -2199,8 +2467,11 @@
         {
           "file": "pattern-09.png",
           "alt": "Synthetic pattern 9",
+          "id": "600481",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700481"
         }
       ],
       "metafields": {},
@@ -2233,6 +2504,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900251"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -2274,8 +2551,11 @@
         {
           "file": "pattern-10.png",
           "alt": "Synthetic pattern 10",
+          "id": "600501",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700501"
         }
       ],
       "metafields": {},
@@ -2308,6 +2588,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900261"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -2349,8 +2635,11 @@
         {
           "file": "pattern-11.png",
           "alt": "Synthetic pattern 11",
+          "id": "600521",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700521"
         }
       ],
       "metafields": {},
@@ -2383,6 +2672,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900271"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -2424,8 +2719,11 @@
         {
           "file": "pattern-12.png",
           "alt": "Synthetic pattern 12",
+          "id": "600541",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700541"
         }
       ],
       "metafields": {},
@@ -2458,6 +2756,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900281"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -2499,8 +2803,11 @@
         {
           "file": "pattern-13.png",
           "alt": "Synthetic pattern 13",
+          "id": "600561",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700561"
         }
       ],
       "metafields": {},
@@ -2533,6 +2840,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900291"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -2574,8 +2887,11 @@
         {
           "file": "pattern-14.png",
           "alt": "Synthetic pattern 14",
+          "id": "600581",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700581"
         }
       ],
       "metafields": {},
@@ -2608,6 +2924,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900301"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -2649,8 +2971,11 @@
         {
           "file": "pattern-15.png",
           "alt": "Synthetic pattern 15",
+          "id": "600601",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700601"
         }
       ],
       "metafields": {},
@@ -2683,6 +3008,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900311"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -2724,8 +3055,11 @@
         {
           "file": "pattern-16.png",
           "alt": "Synthetic pattern 16",
+          "id": "600621",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700621"
         }
       ],
       "metafields": {},
@@ -2758,6 +3092,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900321"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -2799,8 +3139,11 @@
         {
           "file": "pattern-01.png",
           "alt": "Synthetic pattern 1",
+          "id": "600641",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700641"
         }
       ],
       "metafields": {},
@@ -2833,6 +3176,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900331"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -2874,8 +3223,11 @@
         {
           "file": "pattern-02.png",
           "alt": "Synthetic pattern 2",
+          "id": "600661",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700661"
         }
       ],
       "metafields": {},
@@ -2908,6 +3260,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900341"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -2949,8 +3307,11 @@
         {
           "file": "pattern-03.png",
           "alt": "Synthetic pattern 3",
+          "id": "600681",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700681"
         }
       ],
       "metafields": {},
@@ -2983,6 +3344,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900351"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -3024,8 +3391,11 @@
         {
           "file": "pattern-04.png",
           "alt": "Synthetic pattern 4",
+          "id": "600701",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700701"
         }
       ],
       "metafields": {},
@@ -3058,6 +3428,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900361"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -3099,8 +3475,11 @@
         {
           "file": "pattern-05.png",
           "alt": "Synthetic pattern 5",
+          "id": "600721",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700721"
         }
       ],
       "metafields": {},
@@ -3133,6 +3512,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900371"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -3174,8 +3559,11 @@
         {
           "file": "pattern-06.png",
           "alt": "Synthetic pattern 6",
+          "id": "600741",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700741"
         }
       ],
       "metafields": {},
@@ -3208,6 +3596,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900381"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -3249,8 +3643,11 @@
         {
           "file": "pattern-07.png",
           "alt": "Synthetic pattern 7",
+          "id": "600761",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700761"
         }
       ],
       "metafields": {},
@@ -3283,6 +3680,12 @@
           "name": "Title",
           "values": [
             "Default Title"
+          ],
+          "valueIds": [
+            "900391"
+          ],
+          "swatches": [
+            null
           ]
         }
       ],
@@ -3324,8 +3727,11 @@
         {
           "file": "pattern-08.png",
           "alt": "Synthetic pattern 8",
+          "id": "600781",
           "width": 64,
-          "height": 64
+          "height": 64,
+          "focalPoint": null,
+          "mediaId": "700781"
         }
       ],
       "metafields": {},
@@ -3348,8 +3754,10 @@
       "image": {
         "file": "pattern-01.png",
         "alt": "Synthetic pattern 1",
+        "id": "650001",
         "width": 64,
-        "height": 64
+        "height": 64,
+        "focalPoint": null
       },
       "products": [
         "sop-matrix-needle",
@@ -3440,8 +3848,10 @@
           "image": {
             "file": "pattern-01.png",
             "alt": "Synthetic pattern 1",
+            "id": "660001",
             "width": 64,
-            "height": 64
+            "height": 64,
+            "focalPoint": null
           },
           "tags": [
             "example"
@@ -3489,8 +3899,10 @@
           "image": {
             "file": "pattern-03.png",
             "alt": "Synthetic pattern 3",
+            "id": "660003",
             "width": 64,
-            "height": 64
+            "height": 64,
+            "focalPoint": null
           },
           "tags": [
             "example"
@@ -3535,6 +3947,19 @@
       "handle": "footer",
       "title": "Footer",
       "links": []
+    },
+    {
+      "handle": "customer-account-main-menu",
+      "title": "Customer account main menu",
+      "links": [
+        {
+          "title": "Shop",
+          "url": "/",
+          "type": "http_link",
+          "resourceHandle": null,
+          "links": []
+        }
+      ]
     }
   ],
   "metaobjects": [],
@@ -3573,6 +3998,14 @@
               "values": [
                 "Red",
                 "Blue"
+              ],
+              "valueIds": [
+                "900001",
+                "900002"
+              ],
+              "swatches": [
+                null,
+                null
               ]
             },
             {
@@ -3580,6 +4013,14 @@
               "values": [
                 "Small",
                 "Large"
+              ],
+              "valueIds": [
+                "900003",
+                "900004"
+              ],
+              "swatches": [
+                null,
+                null
               ]
             },
             {
@@ -3587,6 +4028,14 @@
               "values": [
                 "Cotton",
                 "Linen"
+              ],
+              "valueIds": [
+                "900005",
+                "900006"
+              ],
+              "swatches": [
+                null,
+                null
               ]
             }
           ],
@@ -3916,14 +4365,20 @@
             {
               "file": "pattern-01.png",
               "alt": "Synthetic pattern 1",
+              "id": "600001",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700001"
             },
             {
               "file": "pattern-02.png",
               "alt": "Synthetic pattern 2",
+              "id": "600002",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700002"
             }
           ],
           "metafields": {},
@@ -3956,6 +4411,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900011"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -3997,8 +4458,11 @@
             {
               "file": "pattern-02.png",
               "alt": "Synthetic pattern 2",
+              "id": "600021",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700021"
             }
           ],
           "metafields": {},
@@ -4031,6 +4495,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900021"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -4072,8 +4542,11 @@
             {
               "file": "pattern-03.png",
               "alt": "Synthetic pattern 3",
+              "id": "600041",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700041"
             }
           ],
           "metafields": {},
@@ -4106,6 +4579,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900031"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -4147,8 +4626,11 @@
             {
               "file": "pattern-04.png",
               "alt": "Synthetic pattern 4",
+              "id": "600061",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700061"
             }
           ],
           "metafields": {},
@@ -4181,6 +4663,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900041"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -4222,8 +4710,11 @@
             {
               "file": "pattern-05.png",
               "alt": "Synthetic pattern 5",
+              "id": "600081",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700081"
             }
           ],
           "metafields": {},
@@ -4256,6 +4747,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900051"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -4297,8 +4794,11 @@
             {
               "file": "pattern-06.png",
               "alt": "Synthetic pattern 6",
+              "id": "600101",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700101"
             }
           ],
           "metafields": {},
@@ -4331,6 +4831,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900061"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -4372,8 +4878,11 @@
             {
               "file": "pattern-07.png",
               "alt": "Synthetic pattern 7",
+              "id": "600121",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700121"
             }
           ],
           "metafields": {},
@@ -4406,6 +4915,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900071"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -4447,8 +4962,11 @@
             {
               "file": "pattern-08.png",
               "alt": "Synthetic pattern 8",
+              "id": "600141",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700141"
             }
           ],
           "metafields": {},
@@ -4481,6 +4999,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900081"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -4522,8 +5046,11 @@
             {
               "file": "pattern-09.png",
               "alt": "Synthetic pattern 9",
+              "id": "600161",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700161"
             }
           ],
           "metafields": {},
@@ -4556,6 +5083,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900091"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -4597,8 +5130,11 @@
             {
               "file": "pattern-10.png",
               "alt": "Synthetic pattern 10",
+              "id": "600181",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700181"
             }
           ],
           "metafields": {},
@@ -4631,6 +5167,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900101"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -4672,8 +5214,11 @@
             {
               "file": "pattern-11.png",
               "alt": "Synthetic pattern 11",
+              "id": "600201",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700201"
             }
           ],
           "metafields": {},
@@ -4706,6 +5251,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900111"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -4747,8 +5298,11 @@
             {
               "file": "pattern-12.png",
               "alt": "Synthetic pattern 12",
+              "id": "600221",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700221"
             }
           ],
           "metafields": {},
@@ -4781,6 +5335,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900121"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -4822,8 +5382,11 @@
             {
               "file": "pattern-13.png",
               "alt": "Synthetic pattern 13",
+              "id": "600241",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700241"
             }
           ],
           "metafields": {},
@@ -4856,6 +5419,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900131"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -4897,8 +5466,11 @@
             {
               "file": "pattern-14.png",
               "alt": "Synthetic pattern 14",
+              "id": "600261",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700261"
             }
           ],
           "metafields": {},
@@ -4931,6 +5503,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900141"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -4972,8 +5550,11 @@
             {
               "file": "pattern-15.png",
               "alt": "Synthetic pattern 15",
+              "id": "600281",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700281"
             }
           ],
           "metafields": {},
@@ -5006,6 +5587,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900151"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -5047,8 +5634,11 @@
             {
               "file": "pattern-16.png",
               "alt": "Synthetic pattern 16",
+              "id": "600301",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700301"
             }
           ],
           "metafields": {},
@@ -5081,6 +5671,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900161"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -5122,8 +5718,11 @@
             {
               "file": "pattern-01.png",
               "alt": "Synthetic pattern 1",
+              "id": "600321",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700321"
             }
           ],
           "metafields": {},
@@ -5156,6 +5755,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900171"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -5197,8 +5802,11 @@
             {
               "file": "pattern-02.png",
               "alt": "Synthetic pattern 2",
+              "id": "600341",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700341"
             }
           ],
           "metafields": {},
@@ -5231,6 +5839,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900181"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -5272,8 +5886,11 @@
             {
               "file": "pattern-03.png",
               "alt": "Synthetic pattern 3",
+              "id": "600361",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700361"
             }
           ],
           "metafields": {},
@@ -5306,6 +5923,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900191"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -5347,8 +5970,11 @@
             {
               "file": "pattern-04.png",
               "alt": "Synthetic pattern 4",
+              "id": "600381",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700381"
             }
           ],
           "metafields": {},
@@ -5381,6 +6007,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900201"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -5422,8 +6054,11 @@
             {
               "file": "pattern-05.png",
               "alt": "Synthetic pattern 5",
+              "id": "600401",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700401"
             }
           ],
           "metafields": {},
@@ -5456,6 +6091,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900211"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -5497,8 +6138,11 @@
             {
               "file": "pattern-06.png",
               "alt": "Synthetic pattern 6",
+              "id": "600421",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700421"
             }
           ],
           "metafields": {},
@@ -5531,6 +6175,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900221"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -5572,8 +6222,11 @@
             {
               "file": "pattern-07.png",
               "alt": "Synthetic pattern 7",
+              "id": "600441",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700441"
             }
           ],
           "metafields": {},
@@ -5606,6 +6259,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900231"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -5647,8 +6306,11 @@
             {
               "file": "pattern-08.png",
               "alt": "Synthetic pattern 8",
+              "id": "600461",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700461"
             }
           ],
           "metafields": {},
@@ -5681,6 +6343,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900241"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -5722,8 +6390,11 @@
             {
               "file": "pattern-09.png",
               "alt": "Synthetic pattern 9",
+              "id": "600481",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700481"
             }
           ],
           "metafields": {},
@@ -5756,6 +6427,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900251"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -5797,8 +6474,11 @@
             {
               "file": "pattern-10.png",
               "alt": "Synthetic pattern 10",
+              "id": "600501",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700501"
             }
           ],
           "metafields": {},
@@ -5831,6 +6511,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900261"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -5872,8 +6558,11 @@
             {
               "file": "pattern-11.png",
               "alt": "Synthetic pattern 11",
+              "id": "600521",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700521"
             }
           ],
           "metafields": {},
@@ -5906,6 +6595,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900271"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -5947,8 +6642,11 @@
             {
               "file": "pattern-12.png",
               "alt": "Synthetic pattern 12",
+              "id": "600541",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700541"
             }
           ],
           "metafields": {},
@@ -5981,6 +6679,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900281"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -6022,8 +6726,11 @@
             {
               "file": "pattern-13.png",
               "alt": "Synthetic pattern 13",
+              "id": "600561",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700561"
             }
           ],
           "metafields": {},
@@ -6056,6 +6763,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900291"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -6097,8 +6810,11 @@
             {
               "file": "pattern-14.png",
               "alt": "Synthetic pattern 14",
+              "id": "600581",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700581"
             }
           ],
           "metafields": {},
@@ -6131,6 +6847,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900301"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -6172,8 +6894,11 @@
             {
               "file": "pattern-15.png",
               "alt": "Synthetic pattern 15",
+              "id": "600601",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700601"
             }
           ],
           "metafields": {},
@@ -6206,6 +6931,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900311"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -6247,8 +6978,11 @@
             {
               "file": "pattern-16.png",
               "alt": "Synthetic pattern 16",
+              "id": "600621",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700621"
             }
           ],
           "metafields": {},
@@ -6281,6 +7015,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900321"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -6322,8 +7062,11 @@
             {
               "file": "pattern-01.png",
               "alt": "Synthetic pattern 1",
+              "id": "600641",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700641"
             }
           ],
           "metafields": {},
@@ -6356,6 +7099,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900331"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -6397,8 +7146,11 @@
             {
               "file": "pattern-02.png",
               "alt": "Synthetic pattern 2",
+              "id": "600661",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700661"
             }
           ],
           "metafields": {},
@@ -6431,6 +7183,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900341"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -6472,8 +7230,11 @@
             {
               "file": "pattern-03.png",
               "alt": "Synthetic pattern 3",
+              "id": "600681",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700681"
             }
           ],
           "metafields": {},
@@ -6506,6 +7267,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900351"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -6547,8 +7314,11 @@
             {
               "file": "pattern-04.png",
               "alt": "Synthetic pattern 4",
+              "id": "600701",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700701"
             }
           ],
           "metafields": {},
@@ -6581,6 +7351,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900361"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -6622,8 +7398,11 @@
             {
               "file": "pattern-05.png",
               "alt": "Synthetic pattern 5",
+              "id": "600721",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700721"
             }
           ],
           "metafields": {},
@@ -6656,6 +7435,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900371"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -6697,8 +7482,11 @@
             {
               "file": "pattern-06.png",
               "alt": "Synthetic pattern 6",
+              "id": "600741",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700741"
             }
           ],
           "metafields": {},
@@ -6731,6 +7519,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900381"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -6772,8 +7566,11 @@
             {
               "file": "pattern-07.png",
               "alt": "Synthetic pattern 7",
+              "id": "600761",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700761"
             }
           ],
           "metafields": {},
@@ -6806,6 +7603,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900391"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -6847,8 +7650,11 @@
             {
               "file": "pattern-08.png",
               "alt": "Synthetic pattern 8",
+              "id": "600781",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700781"
             }
           ],
           "metafields": {},
@@ -6885,6 +7691,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900001"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -6926,14 +7738,20 @@
             {
               "file": "pattern-01.png",
               "alt": "Synthetic pattern 1",
+              "id": "600001",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700001"
             },
             {
               "file": "pattern-02.png",
               "alt": "Synthetic pattern 2",
+              "id": "600002",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700002"
             }
           ],
           "metafields": {},
@@ -6966,6 +7784,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900011"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -7007,8 +7831,11 @@
             {
               "file": "pattern-02.png",
               "alt": "Synthetic pattern 2",
+              "id": "600021",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700021"
             }
           ],
           "metafields": {},
@@ -7041,6 +7868,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900021"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -7082,8 +7915,11 @@
             {
               "file": "pattern-03.png",
               "alt": "Synthetic pattern 3",
+              "id": "600041",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700041"
             }
           ],
           "metafields": {},
@@ -7116,6 +7952,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900031"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -7157,8 +7999,11 @@
             {
               "file": "pattern-04.png",
               "alt": "Synthetic pattern 4",
+              "id": "600061",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700061"
             }
           ],
           "metafields": {},
@@ -7191,6 +8036,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900041"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -7232,8 +8083,11 @@
             {
               "file": "pattern-05.png",
               "alt": "Synthetic pattern 5",
+              "id": "600081",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700081"
             }
           ],
           "metafields": {},
@@ -7266,6 +8120,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900051"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -7307,8 +8167,11 @@
             {
               "file": "pattern-06.png",
               "alt": "Synthetic pattern 6",
+              "id": "600101",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700101"
             }
           ],
           "metafields": {},
@@ -7341,6 +8204,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900061"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -7382,8 +8251,11 @@
             {
               "file": "pattern-07.png",
               "alt": "Synthetic pattern 7",
+              "id": "600121",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700121"
             }
           ],
           "metafields": {},
@@ -7416,6 +8288,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900071"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -7457,8 +8335,11 @@
             {
               "file": "pattern-08.png",
               "alt": "Synthetic pattern 8",
+              "id": "600141",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700141"
             }
           ],
           "metafields": {},
@@ -7491,6 +8372,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900081"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -7532,8 +8419,11 @@
             {
               "file": "pattern-09.png",
               "alt": "Synthetic pattern 9",
+              "id": "600161",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700161"
             }
           ],
           "metafields": {},
@@ -7566,6 +8456,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900091"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -7607,8 +8503,11 @@
             {
               "file": "pattern-10.png",
               "alt": "Synthetic pattern 10",
+              "id": "600181",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700181"
             }
           ],
           "metafields": {},
@@ -7641,6 +8540,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900101"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -7682,8 +8587,11 @@
             {
               "file": "pattern-11.png",
               "alt": "Synthetic pattern 11",
+              "id": "600201",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700201"
             }
           ],
           "metafields": {},
@@ -7716,6 +8624,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900111"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -7757,8 +8671,11 @@
             {
               "file": "pattern-12.png",
               "alt": "Synthetic pattern 12",
+              "id": "600221",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700221"
             }
           ],
           "metafields": {},
@@ -7791,6 +8708,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900121"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -7832,8 +8755,11 @@
             {
               "file": "pattern-13.png",
               "alt": "Synthetic pattern 13",
+              "id": "600241",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700241"
             }
           ],
           "metafields": {},
@@ -7866,6 +8792,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900131"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -7907,8 +8839,11 @@
             {
               "file": "pattern-14.png",
               "alt": "Synthetic pattern 14",
+              "id": "600261",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700261"
             }
           ],
           "metafields": {},
@@ -7941,6 +8876,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900141"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -7982,8 +8923,11 @@
             {
               "file": "pattern-15.png",
               "alt": "Synthetic pattern 15",
+              "id": "600281",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700281"
             }
           ],
           "metafields": {},
@@ -8016,6 +8960,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900151"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -8057,8 +9007,11 @@
             {
               "file": "pattern-16.png",
               "alt": "Synthetic pattern 16",
+              "id": "600301",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700301"
             }
           ],
           "metafields": {},
@@ -8091,6 +9044,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900161"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -8132,8 +9091,11 @@
             {
               "file": "pattern-01.png",
               "alt": "Synthetic pattern 1",
+              "id": "600321",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700321"
             }
           ],
           "metafields": {},
@@ -8166,6 +9128,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900171"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -8207,8 +9175,11 @@
             {
               "file": "pattern-02.png",
               "alt": "Synthetic pattern 2",
+              "id": "600341",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700341"
             }
           ],
           "metafields": {},
@@ -8241,6 +9212,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900181"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -8282,8 +9259,11 @@
             {
               "file": "pattern-03.png",
               "alt": "Synthetic pattern 3",
+              "id": "600361",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700361"
             }
           ],
           "metafields": {},
@@ -8316,6 +9296,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900191"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -8357,8 +9343,11 @@
             {
               "file": "pattern-04.png",
               "alt": "Synthetic pattern 4",
+              "id": "600381",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700381"
             }
           ],
           "metafields": {},
@@ -8391,6 +9380,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900201"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -8432,8 +9427,11 @@
             {
               "file": "pattern-05.png",
               "alt": "Synthetic pattern 5",
+              "id": "600401",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700401"
             }
           ],
           "metafields": {},
@@ -8466,6 +9464,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900211"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -8507,8 +9511,11 @@
             {
               "file": "pattern-06.png",
               "alt": "Synthetic pattern 6",
+              "id": "600421",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700421"
             }
           ],
           "metafields": {},
@@ -8541,6 +9548,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900221"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -8582,8 +9595,11 @@
             {
               "file": "pattern-07.png",
               "alt": "Synthetic pattern 7",
+              "id": "600441",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700441"
             }
           ],
           "metafields": {},
@@ -8616,6 +9632,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900231"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -8657,8 +9679,11 @@
             {
               "file": "pattern-08.png",
               "alt": "Synthetic pattern 8",
+              "id": "600461",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700461"
             }
           ],
           "metafields": {},
@@ -8691,6 +9716,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900241"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -8732,8 +9763,11 @@
             {
               "file": "pattern-09.png",
               "alt": "Synthetic pattern 9",
+              "id": "600481",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700481"
             }
           ],
           "metafields": {},
@@ -8766,6 +9800,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900251"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -8807,8 +9847,11 @@
             {
               "file": "pattern-10.png",
               "alt": "Synthetic pattern 10",
+              "id": "600501",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700501"
             }
           ],
           "metafields": {},
@@ -8841,6 +9884,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900261"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -8882,8 +9931,11 @@
             {
               "file": "pattern-11.png",
               "alt": "Synthetic pattern 11",
+              "id": "600521",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700521"
             }
           ],
           "metafields": {},
@@ -8916,6 +9968,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900271"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -8957,8 +10015,11 @@
             {
               "file": "pattern-12.png",
               "alt": "Synthetic pattern 12",
+              "id": "600541",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700541"
             }
           ],
           "metafields": {},
@@ -8991,6 +10052,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900281"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -9032,8 +10099,11 @@
             {
               "file": "pattern-13.png",
               "alt": "Synthetic pattern 13",
+              "id": "600561",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700561"
             }
           ],
           "metafields": {},
@@ -9066,6 +10136,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900291"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -9107,8 +10183,11 @@
             {
               "file": "pattern-14.png",
               "alt": "Synthetic pattern 14",
+              "id": "600581",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700581"
             }
           ],
           "metafields": {},
@@ -9141,6 +10220,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900301"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -9182,8 +10267,11 @@
             {
               "file": "pattern-15.png",
               "alt": "Synthetic pattern 15",
+              "id": "600601",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700601"
             }
           ],
           "metafields": {},
@@ -9216,6 +10304,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900311"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -9257,8 +10351,11 @@
             {
               "file": "pattern-16.png",
               "alt": "Synthetic pattern 16",
+              "id": "600621",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700621"
             }
           ],
           "metafields": {},
@@ -9291,6 +10388,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900321"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -9332,8 +10435,11 @@
             {
               "file": "pattern-01.png",
               "alt": "Synthetic pattern 1",
+              "id": "600641",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700641"
             }
           ],
           "metafields": {},
@@ -9366,6 +10472,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900331"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -9407,8 +10519,11 @@
             {
               "file": "pattern-02.png",
               "alt": "Synthetic pattern 2",
+              "id": "600661",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700661"
             }
           ],
           "metafields": {},
@@ -9441,6 +10556,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900341"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -9482,8 +10603,11 @@
             {
               "file": "pattern-03.png",
               "alt": "Synthetic pattern 3",
+              "id": "600681",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700681"
             }
           ],
           "metafields": {},
@@ -9516,6 +10640,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900351"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -9557,8 +10687,11 @@
             {
               "file": "pattern-04.png",
               "alt": "Synthetic pattern 4",
+              "id": "600701",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700701"
             }
           ],
           "metafields": {},
@@ -9591,6 +10724,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900361"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -9632,8 +10771,11 @@
             {
               "file": "pattern-05.png",
               "alt": "Synthetic pattern 5",
+              "id": "600721",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700721"
             }
           ],
           "metafields": {},
@@ -9666,6 +10808,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900371"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -9707,8 +10855,11 @@
             {
               "file": "pattern-06.png",
               "alt": "Synthetic pattern 6",
+              "id": "600741",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700741"
             }
           ],
           "metafields": {},
@@ -9741,6 +10892,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900381"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -9782,8 +10939,11 @@
             {
               "file": "pattern-07.png",
               "alt": "Synthetic pattern 7",
+              "id": "600761",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700761"
             }
           ],
           "metafields": {},
@@ -9816,6 +10976,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900391"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -9857,8 +11023,11 @@
             {
               "file": "pattern-08.png",
               "alt": "Synthetic pattern 8",
+              "id": "600781",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700781"
             }
           ],
           "metafields": {},
@@ -9896,6 +11065,14 @@
               "values": [
                 "Red",
                 "Blue"
+              ],
+              "valueIds": [
+                "900001",
+                "900002"
+              ],
+              "swatches": [
+                null,
+                null
               ]
             },
             {
@@ -9903,6 +11080,14 @@
               "values": [
                 "Small",
                 "Large"
+              ],
+              "valueIds": [
+                "900003",
+                "900004"
+              ],
+              "swatches": [
+                null,
+                null
               ]
             },
             {
@@ -9910,6 +11095,14 @@
               "values": [
                 "Cotton",
                 "Linen"
+              ],
+              "valueIds": [
+                "900005",
+                "900006"
+              ],
+              "swatches": [
+                null,
+                null
               ]
             }
           ],
@@ -10266,6 +11459,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900011"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -10307,8 +11506,11 @@
             {
               "file": "pattern-02.png",
               "alt": "Synthetic pattern 2",
+              "id": "600021",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700021"
             }
           ],
           "metafields": {},
@@ -10341,6 +11543,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900021"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -10382,8 +11590,11 @@
             {
               "file": "pattern-03.png",
               "alt": "Synthetic pattern 3",
+              "id": "600041",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700041"
             }
           ],
           "metafields": {},
@@ -10416,6 +11627,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900031"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -10457,8 +11674,11 @@
             {
               "file": "pattern-04.png",
               "alt": "Synthetic pattern 4",
+              "id": "600061",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700061"
             }
           ],
           "metafields": {},
@@ -10491,6 +11711,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900041"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -10532,8 +11758,11 @@
             {
               "file": "pattern-05.png",
               "alt": "Synthetic pattern 5",
+              "id": "600081",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700081"
             }
           ],
           "metafields": {},
@@ -10566,6 +11795,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900051"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -10607,8 +11842,11 @@
             {
               "file": "pattern-06.png",
               "alt": "Synthetic pattern 6",
+              "id": "600101",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700101"
             }
           ],
           "metafields": {},
@@ -10641,6 +11879,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900061"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -10682,8 +11926,11 @@
             {
               "file": "pattern-07.png",
               "alt": "Synthetic pattern 7",
+              "id": "600121",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700121"
             }
           ],
           "metafields": {},
@@ -10716,6 +11963,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900071"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -10757,8 +12010,11 @@
             {
               "file": "pattern-08.png",
               "alt": "Synthetic pattern 8",
+              "id": "600141",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700141"
             }
           ],
           "metafields": {},
@@ -10791,6 +12047,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900081"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -10832,8 +12094,11 @@
             {
               "file": "pattern-09.png",
               "alt": "Synthetic pattern 9",
+              "id": "600161",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700161"
             }
           ],
           "metafields": {},
@@ -10866,6 +12131,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900091"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -10907,8 +12178,11 @@
             {
               "file": "pattern-10.png",
               "alt": "Synthetic pattern 10",
+              "id": "600181",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700181"
             }
           ],
           "metafields": {},
@@ -10941,6 +12215,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900101"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -10982,8 +12262,11 @@
             {
               "file": "pattern-11.png",
               "alt": "Synthetic pattern 11",
+              "id": "600201",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700201"
             }
           ],
           "metafields": {},
@@ -11016,6 +12299,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900111"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -11057,8 +12346,11 @@
             {
               "file": "pattern-12.png",
               "alt": "Synthetic pattern 12",
+              "id": "600221",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700221"
             }
           ],
           "metafields": {},
@@ -11091,6 +12383,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900121"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -11132,8 +12430,11 @@
             {
               "file": "pattern-13.png",
               "alt": "Synthetic pattern 13",
+              "id": "600241",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700241"
             }
           ],
           "metafields": {},
@@ -11166,6 +12467,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900131"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -11207,8 +12514,11 @@
             {
               "file": "pattern-14.png",
               "alt": "Synthetic pattern 14",
+              "id": "600261",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700261"
             }
           ],
           "metafields": {},
@@ -11241,6 +12551,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900141"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -11282,8 +12598,11 @@
             {
               "file": "pattern-15.png",
               "alt": "Synthetic pattern 15",
+              "id": "600281",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700281"
             }
           ],
           "metafields": {},
@@ -11316,6 +12635,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900151"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -11357,8 +12682,11 @@
             {
               "file": "pattern-16.png",
               "alt": "Synthetic pattern 16",
+              "id": "600301",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700301"
             }
           ],
           "metafields": {},
@@ -11391,6 +12719,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900161"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -11432,8 +12766,11 @@
             {
               "file": "pattern-01.png",
               "alt": "Synthetic pattern 1",
+              "id": "600321",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700321"
             }
           ],
           "metafields": {},
@@ -11466,6 +12803,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900171"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -11507,8 +12850,11 @@
             {
               "file": "pattern-02.png",
               "alt": "Synthetic pattern 2",
+              "id": "600341",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700341"
             }
           ],
           "metafields": {},
@@ -11541,6 +12887,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900181"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -11582,8 +12934,11 @@
             {
               "file": "pattern-03.png",
               "alt": "Synthetic pattern 3",
+              "id": "600361",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700361"
             }
           ],
           "metafields": {},
@@ -11616,6 +12971,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900191"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -11657,8 +13018,11 @@
             {
               "file": "pattern-04.png",
               "alt": "Synthetic pattern 4",
+              "id": "600381",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700381"
             }
           ],
           "metafields": {},
@@ -11691,6 +13055,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900201"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -11732,8 +13102,11 @@
             {
               "file": "pattern-05.png",
               "alt": "Synthetic pattern 5",
+              "id": "600401",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700401"
             }
           ],
           "metafields": {},
@@ -11766,6 +13139,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900211"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -11807,8 +13186,11 @@
             {
               "file": "pattern-06.png",
               "alt": "Synthetic pattern 6",
+              "id": "600421",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700421"
             }
           ],
           "metafields": {},
@@ -11841,6 +13223,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900221"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -11882,8 +13270,11 @@
             {
               "file": "pattern-07.png",
               "alt": "Synthetic pattern 7",
+              "id": "600441",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700441"
             }
           ],
           "metafields": {},
@@ -11916,6 +13307,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900231"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -11957,8 +13354,11 @@
             {
               "file": "pattern-08.png",
               "alt": "Synthetic pattern 8",
+              "id": "600461",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700461"
             }
           ],
           "metafields": {},
@@ -11991,6 +13391,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900241"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -12032,8 +13438,11 @@
             {
               "file": "pattern-09.png",
               "alt": "Synthetic pattern 9",
+              "id": "600481",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700481"
             }
           ],
           "metafields": {},
@@ -12066,6 +13475,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900251"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -12107,8 +13522,11 @@
             {
               "file": "pattern-10.png",
               "alt": "Synthetic pattern 10",
+              "id": "600501",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700501"
             }
           ],
           "metafields": {},
@@ -12141,6 +13559,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900261"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -12182,8 +13606,11 @@
             {
               "file": "pattern-11.png",
               "alt": "Synthetic pattern 11",
+              "id": "600521",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700521"
             }
           ],
           "metafields": {},
@@ -12216,6 +13643,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900271"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -12257,8 +13690,11 @@
             {
               "file": "pattern-12.png",
               "alt": "Synthetic pattern 12",
+              "id": "600541",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700541"
             }
           ],
           "metafields": {},
@@ -12291,6 +13727,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900281"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -12332,8 +13774,11 @@
             {
               "file": "pattern-13.png",
               "alt": "Synthetic pattern 13",
+              "id": "600561",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700561"
             }
           ],
           "metafields": {},
@@ -12366,6 +13811,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900291"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -12407,8 +13858,11 @@
             {
               "file": "pattern-14.png",
               "alt": "Synthetic pattern 14",
+              "id": "600581",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700581"
             }
           ],
           "metafields": {},
@@ -12441,6 +13895,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900301"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -12482,8 +13942,11 @@
             {
               "file": "pattern-15.png",
               "alt": "Synthetic pattern 15",
+              "id": "600601",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700601"
             }
           ],
           "metafields": {},
@@ -12516,6 +13979,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900311"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -12557,8 +14026,11 @@
             {
               "file": "pattern-16.png",
               "alt": "Synthetic pattern 16",
+              "id": "600621",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700621"
             }
           ],
           "metafields": {},
@@ -12591,6 +14063,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900321"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -12632,8 +14110,11 @@
             {
               "file": "pattern-01.png",
               "alt": "Synthetic pattern 1",
+              "id": "600641",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700641"
             }
           ],
           "metafields": {},
@@ -12666,6 +14147,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900331"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -12707,8 +14194,11 @@
             {
               "file": "pattern-02.png",
               "alt": "Synthetic pattern 2",
+              "id": "600661",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700661"
             }
           ],
           "metafields": {},
@@ -12741,6 +14231,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900341"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -12782,8 +14278,11 @@
             {
               "file": "pattern-03.png",
               "alt": "Synthetic pattern 3",
+              "id": "600681",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700681"
             }
           ],
           "metafields": {},
@@ -12816,6 +14315,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900351"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -12857,8 +14362,11 @@
             {
               "file": "pattern-04.png",
               "alt": "Synthetic pattern 4",
+              "id": "600701",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700701"
             }
           ],
           "metafields": {},
@@ -12891,6 +14399,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900361"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -12932,8 +14446,11 @@
             {
               "file": "pattern-05.png",
               "alt": "Synthetic pattern 5",
+              "id": "600721",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700721"
             }
           ],
           "metafields": {},
@@ -12966,6 +14483,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900371"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -13007,8 +14530,11 @@
             {
               "file": "pattern-06.png",
               "alt": "Synthetic pattern 6",
+              "id": "600741",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700741"
             }
           ],
           "metafields": {},
@@ -13041,6 +14567,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900381"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -13082,8 +14614,11 @@
             {
               "file": "pattern-07.png",
               "alt": "Synthetic pattern 7",
+              "id": "600761",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700761"
             }
           ],
           "metafields": {},
@@ -13116,6 +14651,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900391"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -13157,8 +14698,11 @@
             {
               "file": "pattern-08.png",
               "alt": "Synthetic pattern 8",
+              "id": "600781",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700781"
             }
           ],
           "metafields": {},
@@ -13196,6 +14740,14 @@
               "values": [
                 "Red",
                 "Blue"
+              ],
+              "valueIds": [
+                "900001",
+                "900002"
+              ],
+              "swatches": [
+                null,
+                null
               ]
             },
             {
@@ -13203,6 +14755,14 @@
               "values": [
                 "Small",
                 "Large"
+              ],
+              "valueIds": [
+                "900003",
+                "900004"
+              ],
+              "swatches": [
+                null,
+                null
               ]
             },
             {
@@ -13210,6 +14770,14 @@
               "values": [
                 "Cotton",
                 "Linen"
+              ],
+              "valueIds": [
+                "900005",
+                "900006"
+              ],
+              "swatches": [
+                null,
+                null
               ]
             }
           ],
@@ -13539,98 +15107,146 @@
             {
               "file": "pattern-01.png",
               "alt": "Synthetic pattern 1",
+              "id": "600001",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700001"
             },
             {
               "file": "pattern-02.png",
               "alt": "Synthetic pattern 2",
+              "id": "600002",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700002"
             },
             {
               "file": "pattern-03.png",
               "alt": "Synthetic pattern 3",
+              "id": "600003",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700003"
             },
             {
               "file": "pattern-04.png",
               "alt": "Synthetic pattern 4",
+              "id": "600004",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700004"
             },
             {
               "file": "pattern-05.png",
               "alt": "Synthetic pattern 5",
+              "id": "600005",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700005"
             },
             {
               "file": "pattern-06.png",
               "alt": "Synthetic pattern 6",
+              "id": "600006",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700006"
             },
             {
               "file": "pattern-07.png",
               "alt": "Synthetic pattern 7",
+              "id": "600007",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700007"
             },
             {
               "file": "pattern-08.png",
               "alt": "Synthetic pattern 8",
+              "id": "600008",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700008"
             },
             {
               "file": "pattern-09.png",
               "alt": "Synthetic pattern 9",
+              "id": "600009",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700009"
             },
             {
               "file": "pattern-10.png",
               "alt": "Synthetic pattern 10",
+              "id": "600010",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700010"
             },
             {
               "file": "pattern-11.png",
               "alt": "Synthetic pattern 11",
+              "id": "600011",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700011"
             },
             {
               "file": "pattern-12.png",
               "alt": "Synthetic pattern 12",
+              "id": "600012",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700012"
             },
             {
               "file": "pattern-13.png",
               "alt": "Synthetic pattern 13",
+              "id": "600013",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700013"
             },
             {
               "file": "pattern-14.png",
               "alt": "Synthetic pattern 14",
+              "id": "600014",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700014"
             },
             {
               "file": "pattern-15.png",
               "alt": "Synthetic pattern 15",
+              "id": "600015",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700015"
             },
             {
               "file": "pattern-16.png",
               "alt": "Synthetic pattern 16",
+              "id": "600016",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700016"
             }
           ],
           "metafields": {},
@@ -13663,6 +15279,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900011"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -13704,8 +15326,11 @@
             {
               "file": "pattern-02.png",
               "alt": "Synthetic pattern 2",
+              "id": "600021",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700021"
             }
           ],
           "metafields": {},
@@ -13738,6 +15363,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900021"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -13779,8 +15410,11 @@
             {
               "file": "pattern-03.png",
               "alt": "Synthetic pattern 3",
+              "id": "600041",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700041"
             }
           ],
           "metafields": {},
@@ -13813,6 +15447,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900031"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -13854,8 +15494,11 @@
             {
               "file": "pattern-04.png",
               "alt": "Synthetic pattern 4",
+              "id": "600061",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700061"
             }
           ],
           "metafields": {},
@@ -13888,6 +15531,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900041"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -13929,8 +15578,11 @@
             {
               "file": "pattern-05.png",
               "alt": "Synthetic pattern 5",
+              "id": "600081",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700081"
             }
           ],
           "metafields": {},
@@ -13963,6 +15615,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900051"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -14004,8 +15662,11 @@
             {
               "file": "pattern-06.png",
               "alt": "Synthetic pattern 6",
+              "id": "600101",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700101"
             }
           ],
           "metafields": {},
@@ -14038,6 +15699,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900061"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -14079,8 +15746,11 @@
             {
               "file": "pattern-07.png",
               "alt": "Synthetic pattern 7",
+              "id": "600121",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700121"
             }
           ],
           "metafields": {},
@@ -14113,6 +15783,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900071"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -14154,8 +15830,11 @@
             {
               "file": "pattern-08.png",
               "alt": "Synthetic pattern 8",
+              "id": "600141",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700141"
             }
           ],
           "metafields": {},
@@ -14188,6 +15867,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900081"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -14229,8 +15914,11 @@
             {
               "file": "pattern-09.png",
               "alt": "Synthetic pattern 9",
+              "id": "600161",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700161"
             }
           ],
           "metafields": {},
@@ -14263,6 +15951,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900091"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -14304,8 +15998,11 @@
             {
               "file": "pattern-10.png",
               "alt": "Synthetic pattern 10",
+              "id": "600181",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700181"
             }
           ],
           "metafields": {},
@@ -14338,6 +16035,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900101"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -14379,8 +16082,11 @@
             {
               "file": "pattern-11.png",
               "alt": "Synthetic pattern 11",
+              "id": "600201",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700201"
             }
           ],
           "metafields": {},
@@ -14413,6 +16119,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900111"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -14454,8 +16166,11 @@
             {
               "file": "pattern-12.png",
               "alt": "Synthetic pattern 12",
+              "id": "600221",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700221"
             }
           ],
           "metafields": {},
@@ -14488,6 +16203,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900121"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -14529,8 +16250,11 @@
             {
               "file": "pattern-13.png",
               "alt": "Synthetic pattern 13",
+              "id": "600241",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700241"
             }
           ],
           "metafields": {},
@@ -14563,6 +16287,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900131"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -14604,8 +16334,11 @@
             {
               "file": "pattern-14.png",
               "alt": "Synthetic pattern 14",
+              "id": "600261",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700261"
             }
           ],
           "metafields": {},
@@ -14638,6 +16371,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900141"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -14679,8 +16418,11 @@
             {
               "file": "pattern-15.png",
               "alt": "Synthetic pattern 15",
+              "id": "600281",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700281"
             }
           ],
           "metafields": {},
@@ -14713,6 +16455,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900151"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -14754,8 +16502,11 @@
             {
               "file": "pattern-16.png",
               "alt": "Synthetic pattern 16",
+              "id": "600301",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700301"
             }
           ],
           "metafields": {},
@@ -14788,6 +16539,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900161"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -14829,8 +16586,11 @@
             {
               "file": "pattern-01.png",
               "alt": "Synthetic pattern 1",
+              "id": "600321",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700321"
             }
           ],
           "metafields": {},
@@ -14863,6 +16623,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900171"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -14904,8 +16670,11 @@
             {
               "file": "pattern-02.png",
               "alt": "Synthetic pattern 2",
+              "id": "600341",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700341"
             }
           ],
           "metafields": {},
@@ -14938,6 +16707,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900181"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -14979,8 +16754,11 @@
             {
               "file": "pattern-03.png",
               "alt": "Synthetic pattern 3",
+              "id": "600361",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700361"
             }
           ],
           "metafields": {},
@@ -15013,6 +16791,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900191"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -15054,8 +16838,11 @@
             {
               "file": "pattern-04.png",
               "alt": "Synthetic pattern 4",
+              "id": "600381",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700381"
             }
           ],
           "metafields": {},
@@ -15088,6 +16875,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900201"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -15129,8 +16922,11 @@
             {
               "file": "pattern-05.png",
               "alt": "Synthetic pattern 5",
+              "id": "600401",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700401"
             }
           ],
           "metafields": {},
@@ -15163,6 +16959,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900211"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -15204,8 +17006,11 @@
             {
               "file": "pattern-06.png",
               "alt": "Synthetic pattern 6",
+              "id": "600421",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700421"
             }
           ],
           "metafields": {},
@@ -15238,6 +17043,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900221"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -15279,8 +17090,11 @@
             {
               "file": "pattern-07.png",
               "alt": "Synthetic pattern 7",
+              "id": "600441",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700441"
             }
           ],
           "metafields": {},
@@ -15313,6 +17127,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900231"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -15354,8 +17174,11 @@
             {
               "file": "pattern-08.png",
               "alt": "Synthetic pattern 8",
+              "id": "600461",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700461"
             }
           ],
           "metafields": {},
@@ -15388,6 +17211,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900241"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -15429,8 +17258,11 @@
             {
               "file": "pattern-09.png",
               "alt": "Synthetic pattern 9",
+              "id": "600481",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700481"
             }
           ],
           "metafields": {},
@@ -15463,6 +17295,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900251"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -15504,8 +17342,11 @@
             {
               "file": "pattern-10.png",
               "alt": "Synthetic pattern 10",
+              "id": "600501",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700501"
             }
           ],
           "metafields": {},
@@ -15538,6 +17379,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900261"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -15579,8 +17426,11 @@
             {
               "file": "pattern-11.png",
               "alt": "Synthetic pattern 11",
+              "id": "600521",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700521"
             }
           ],
           "metafields": {},
@@ -15613,6 +17463,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900271"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -15654,8 +17510,11 @@
             {
               "file": "pattern-12.png",
               "alt": "Synthetic pattern 12",
+              "id": "600541",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700541"
             }
           ],
           "metafields": {},
@@ -15688,6 +17547,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900281"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -15729,8 +17594,11 @@
             {
               "file": "pattern-13.png",
               "alt": "Synthetic pattern 13",
+              "id": "600561",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700561"
             }
           ],
           "metafields": {},
@@ -15763,6 +17631,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900291"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -15804,8 +17678,11 @@
             {
               "file": "pattern-14.png",
               "alt": "Synthetic pattern 14",
+              "id": "600581",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700581"
             }
           ],
           "metafields": {},
@@ -15838,6 +17715,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900301"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -15879,8 +17762,11 @@
             {
               "file": "pattern-15.png",
               "alt": "Synthetic pattern 15",
+              "id": "600601",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700601"
             }
           ],
           "metafields": {},
@@ -15913,6 +17799,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900311"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -15954,8 +17846,11 @@
             {
               "file": "pattern-16.png",
               "alt": "Synthetic pattern 16",
+              "id": "600621",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700621"
             }
           ],
           "metafields": {},
@@ -15988,6 +17883,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900321"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -16029,8 +17930,11 @@
             {
               "file": "pattern-01.png",
               "alt": "Synthetic pattern 1",
+              "id": "600641",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700641"
             }
           ],
           "metafields": {},
@@ -16063,6 +17967,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900331"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -16104,8 +18014,11 @@
             {
               "file": "pattern-02.png",
               "alt": "Synthetic pattern 2",
+              "id": "600661",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700661"
             }
           ],
           "metafields": {},
@@ -16138,6 +18051,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900341"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -16179,8 +18098,11 @@
             {
               "file": "pattern-03.png",
               "alt": "Synthetic pattern 3",
+              "id": "600681",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700681"
             }
           ],
           "metafields": {},
@@ -16213,6 +18135,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900351"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -16254,8 +18182,11 @@
             {
               "file": "pattern-04.png",
               "alt": "Synthetic pattern 4",
+              "id": "600701",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700701"
             }
           ],
           "metafields": {},
@@ -16288,6 +18219,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900361"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -16329,8 +18266,11 @@
             {
               "file": "pattern-05.png",
               "alt": "Synthetic pattern 5",
+              "id": "600721",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700721"
             }
           ],
           "metafields": {},
@@ -16363,6 +18303,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900371"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -16404,8 +18350,11 @@
             {
               "file": "pattern-06.png",
               "alt": "Synthetic pattern 6",
+              "id": "600741",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700741"
             }
           ],
           "metafields": {},
@@ -16438,6 +18387,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900381"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -16479,8 +18434,11 @@
             {
               "file": "pattern-07.png",
               "alt": "Synthetic pattern 7",
+              "id": "600761",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700761"
             }
           ],
           "metafields": {},
@@ -16513,6 +18471,12 @@
               "name": "Title",
               "values": [
                 "Default Title"
+              ],
+              "valueIds": [
+                "900391"
+              ],
+              "swatches": [
+                null
               ]
             }
           ],
@@ -16554,8 +18518,11 @@
             {
               "file": "pattern-08.png",
               "alt": "Synthetic pattern 8",
+              "id": "600781",
               "width": 64,
-              "height": 64
+              "height": 64,
+              "focalPoint": null,
+              "mediaId": "700781"
             }
           ],
           "metafields": {},
@@ -16580,8 +18547,10 @@
           "image": {
             "file": "pattern-01.png",
             "alt": "Synthetic pattern 1",
+            "id": "650001",
             "width": 64,
-            "height": 64
+            "height": 64,
+            "focalPoint": null
           },
           "products": [],
           "sortOrder": "manual",
@@ -16652,8 +18621,10 @@
               "image": {
                 "file": "pattern-01.png",
                 "alt": "Synthetic pattern 1",
+                "id": "660001",
                 "width": 64,
-                "height": 64
+                "height": 64,
+                "focalPoint": null
               },
               "tags": [
                 "example"
@@ -16701,8 +18672,10 @@
               "image": {
                 "file": "pattern-03.png",
                 "alt": "Synthetic pattern 3",
+                "id": "660003",
                 "width": 64,
-                "height": 64
+                "height": 64,
+                "focalPoint": null
               },
               "tags": [
                 "example"
@@ -16790,8 +18763,10 @@
               "image": {
                 "file": "pattern-03.png",
                 "alt": "Synthetic pattern 3",
+                "id": "660003",
                 "width": 64,
-                "height": 64
+                "height": 64,
+                "focalPoint": null
               },
               "tags": [
                 "example"

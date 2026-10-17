@@ -284,3 +284,38 @@ test("image assignment compatibility does not suppress errors from other filters
   assert.ok(result.diagnostics.some((d) => d.code === "liquid-error"));
   assert.ok(result.html.includes("After"));
 });
+
+test("image_tag removes attributes passed as Liquid nil, as Horizon's product media does", async () => {
+  const snapshot = defaultFixture();
+  const theme = new MemoryThemeFileSystem({
+    ...files,
+    "sections/main.liquid": `{{product.featured_image | image_url: width: 64 | image_tag: srcset: nil, sizes: null, width: nil, preload: nil, class: 'own'}}`,
+  });
+  const result = await renderTheme(theme, `/products/${snapshot.products[0]?.handle}`, {
+    snapshot,
+  });
+  assert.ok(result.html.includes('height="64" class="own">'), result.html);
+  for (const absent of ["srcset=", "sizes=", ' width="', "[object Object]", 'rel="preload"'])
+    assert.ok(!result.html.includes(absent), `${absent}: ${result.html}`);
+  assert.equal(result.diagnostics.length, 0);
+});
+
+test("default keeps a kept Liquid object instead of unwrapping it, as Horizon's color fallbacks need", async () => {
+  const theme = new MemoryThemeFileSystem({
+    "templates/index.json": '{"layout":false,"sections":{"m":{"type":"m"}},"order":["m"]}',
+    "config/settings_schema.json": JSON.stringify([
+      {
+        name: "Colors",
+        settings: [
+          { type: "color", id: "page", default: "#102030" },
+          { type: "color", id: "unset", default: "" },
+        ],
+      },
+    ]),
+    "sections/m.liquid":
+      "{% assign c = settings.unset | default: settings.page %}{% assign k = settings.page | default: '#ffffff' %}[{{ c }}|{{ c.rgb }}|{{ k.red }}|{{ template | default: 'x' }}|{{ '' | default: 'fallback' }}]",
+  });
+  const result = await renderTheme(theme, "/");
+  assert.ok(result.html.includes("[#102030|16 32 48|16|index|fallback]"), result.html);
+  assert.deepEqual(result.diagnostics, []);
+});

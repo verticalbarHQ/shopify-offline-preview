@@ -154,3 +154,33 @@ test("preview rewrites resources inside nested and declarative shadow templates"
   assert.match(html, /<script src="data:text\/javascript;base64,/);
   assert.ok(!html.includes('href="/sop/assets/shadow.css"'));
 });
+
+test("snapshot images without files show the dev server's placeholder instead of failing", async () => {
+  const snapshot = defaultFixture();
+  const resources = await prepareResources({}, {}, [{ file: "gone.png", width: 40, height: 20 }]);
+  const placeholder = resources.urls[resourceUrl("gone.png")];
+  assert.ok(placeholder);
+  assert.ok(placeholder.startsWith("data:image/svg+xml;base64,"));
+  assert.match(atob(placeholder.slice(26)), /width="40" height="20"/);
+  const files = {
+    "layout/theme.liquid": "{{ content_for_layout }}",
+    "templates/product.json": '{"sections":{"main":{"type":"main"}},"order":["main"]}',
+    "sections/main.liquid": "{{ product.featured_image | image_url: width: 32 | image_tag }}",
+  };
+  const result = await renderTheme(
+    new MemoryThemeFileSystem(files),
+    `/products/${snapshot.products[0]?.handle}`,
+    { snapshot },
+  );
+  const html = await playgroundPreview(
+    result,
+    snapshot,
+    Object.fromEntries(Object.entries(files).map(([name, text]) => [name, strToU8(text)])),
+    {},
+    "",
+    false,
+    "missing",
+    "https://inspector.test",
+  );
+  assert.match(html, /<img src="data:image\/svg\+xml;base64,/);
+});

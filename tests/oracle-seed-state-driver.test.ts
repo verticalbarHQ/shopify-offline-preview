@@ -260,7 +260,7 @@ test("full seven-state protocol creates once, applies explicit variant/member ch
     assert.deepEqual(repeated.counts, {
       created: 0,
       updated: 0,
-      reused: 64,
+      reused: 65,
       reordered: 0,
       published: 0,
     });
@@ -270,7 +270,7 @@ test("full seven-state protocol creates once, applies explicit variant/member ch
     assert.throws(() => inspectVerifiedSeedGenerated(generated));
   }
   assert.ok(updates > 0);
-  assert.equal(m.creations.size, 64);
+  assert.equal(m.creations.size, 65);
   assert.equal(
     [...m.creations.values()].every((count) => count === 1),
     true,

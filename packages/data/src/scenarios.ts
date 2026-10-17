@@ -92,6 +92,18 @@ export function validateSnapshotReferences(snapshot: Snapshot): void {
   const products = new Map(snapshot.products.map((p) => [p.handle, p]));
   for (const product of snapshot.products) {
     const files = new Set(product.images.map((i) => i.file));
+    if (product.media) {
+      // Every product image is image media exactly once; Shopify lists images among the media.
+      const listed = product.media.flatMap((media) =>
+        media.mediaType === "image" ? [media.file] : [],
+      );
+      if (
+        new Set(listed).size !== listed.length ||
+        listed.length !== files.size ||
+        listed.some((file) => !files.has(file))
+      )
+        throw new Error(`Product media must list each image of ${product.handle} once`);
+    }
     unique(
       product.options.map((option) => option.name),
       `option name on ${product.handle}`,

@@ -3,6 +3,7 @@ import { parseFragment } from "parse5";
 import { placeholderNames } from "../../../data/src/placeholders.js";
 import type { Snapshot } from "../../../data/src/schema.js";
 import { liquidFilterText } from "./core-language.js";
+import { namedArgs } from "./images.js";
 
 interface Hooks {
   read(path: string): void;
@@ -92,6 +93,37 @@ export function registerPlaceholderFilter(engine: Liquid, snapshot: Snapshot, ho
       cache.set(name, asset);
     }
     // Shopify inserts the supplied class text verbatim. Preserve the supplied artwork bytes.
+    return classes
+      ? `${asset.text.slice(0, asset.insertAt)} class="${classes}"${asset.text.slice(asset.insertAt)}`
+      : asset.text;
+  });
+}
+
+/** Payment icons are platform artwork too: the snapshot supplies their SVGs by payment type. */
+export function registerPaymentTypeFilter(engine: Liquid, snapshot: Snapshot, hooks: Hooks): void {
+  const cache = new Map<string, SvgTemplate>();
+  engine.registerFilter("payment_type_svg_tag", function (input: unknown, ...args: unknown[]) {
+    const type = liquidFilterText(toValue(input) ?? "");
+    const catalog: Readonly<Record<string, string>> = snapshot.paymentTypeSvgs ?? {};
+    hooks.read(`paymentTypeSvgs.${type}`);
+    const svg = Object.hasOwn(catalog, type) ? catalog[type] : undefined;
+    if (svg === undefined) {
+      hooks.diagnostic(
+        "missing-resource",
+        `Local SVG data for payment type ${type} is missing.`,
+        this.token.file ?? null,
+        this.token.getPosition()[0] ?? null,
+      );
+      return "";
+    }
+    const cssClass: unknown = toValue(namedArgs(args).class);
+    const classes = blank(cssClass) ? "" : liquidFilterText(cssClass);
+    this.context.memoryLimit.use(svg.length + classes.length);
+    let asset = cache.get(type);
+    if (!asset) {
+      asset = template(svg);
+      cache.set(type, asset);
+    }
     return classes
       ? `${asset.text.slice(0, asset.insertAt)} class="${classes}"${asset.text.slice(asset.insertAt)}`
       : asset.text;

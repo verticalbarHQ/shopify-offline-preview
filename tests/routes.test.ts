@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { benchmarkMatrix, defaultFixture } from "../packages/data/src/fixture.js";
 import { applyScenario } from "../packages/data/src/scenarios.js";
+import { renderTheme } from "../packages/render/src/index.js";
 import { resolveRoute } from "../packages/render/src/routes.js";
+import { MemoryThemeFileSystem } from "../packages/theme/src/index.js";
 
 test("routes resolve every benchmark case to the appropriate source resource and JSON template", () => {
   const fixture = defaultFixture();
@@ -51,4 +53,43 @@ test("unknown paths/resources render 404 while preserving explicit missing-resou
   assert.equal(missing.resource, null);
   assert.equal(missing.diagnostics[0]?.code, "missing-resource");
   assert.equal(resolveRoute(fixture, "/blogs/news/missing").pageType, "404");
+});
+
+test("an alternate template absent from the theme falls back to the assigned, then default template", async () => {
+  const fixture = defaultFixture();
+  const product = fixture.products[0];
+  assert.ok(product);
+  product.templateSuffix = "assigned";
+  const present = new Set(["templates/product.json", "templates/product.assigned.json"]);
+  const has = (file: string) => present.has(file);
+  let route = resolveRoute(fixture, `/products/${product.handle}?view=absent`, has);
+  assert.equal(route.template, "templates/product.assigned.json");
+  assert.deepEqual(
+    route.diagnostics.map((d) => `${d.code}: ${d.message}`),
+    [
+      "missing-resource: Template templates/product.absent.json is absent from the theme; templates/product.assigned.json is rendered.",
+    ],
+  );
+  present.delete("templates/product.assigned.json");
+  route = resolveRoute(fixture, `/products/${product.handle}`, has);
+  assert.equal(route.template, "templates/product.json");
+  assert.equal(route.diagnostics.length, 1);
+  assert.equal(
+    resolveRoute(fixture, `/products/${product.handle}?view=`, has).diagnostics.length,
+    0,
+  );
+  const theme = new MemoryThemeFileSystem({
+    "templates/product.json":
+      '{"layout":false,"sections":{"main":{"type":"main"}},"order":["main"]}',
+    "sections/main.liquid": "{{ template }}|{{ product.title }}",
+  });
+  const result = await renderTheme(theme, `/products/${product.handle}?view=absent`, {
+    snapshot: fixture,
+  });
+  assert.ok(result.html.includes("product|SOP Matrix Needle"), result.html);
+  assert.equal(result.route.template, "templates/product.json");
+  assert.deepEqual(
+    result.diagnostics.map((d) => d.code),
+    ["missing-resource"],
+  );
 });

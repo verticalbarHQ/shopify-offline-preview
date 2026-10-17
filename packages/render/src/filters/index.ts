@@ -1,6 +1,6 @@
-import { type Liquid, toValue } from "liquidjs";
+import { Drop, type Liquid, toValue } from "liquidjs";
 import { ImageDirectory, MissingImage, NamedImageDrop } from "../../../data/src/images.js";
-import { liquidObjectKind } from "../../../data/src/objects.js";
+import { liquidObjectKind, mediaProductTitle, ScalarDrop } from "../../../data/src/objects.js";
 import type { Snapshot } from "../../../data/src/schema.js";
 import { themePath } from "../../../theme/src/index.js";
 import { registerFontFilters } from "../fonts.js";
@@ -10,6 +10,7 @@ import { formKind } from "../shopify-tags.js";
 import { renderAnchor } from "./anchors.js";
 import { registerCollectionLinkFilters } from "./collection-links.js";
 import { registerColorFilters } from "./colors.js";
+import { registerCommerceFilters } from "./commerce.js";
 import { registerCoreLanguage } from "./core-language.js";
 import { registerDateFilters } from "./dates.js";
 import { registerEventFilters } from "./events.js";
@@ -17,8 +18,9 @@ import { handleize } from "./handle.js";
 import { ImageUrlDrop, imageFilters, namedArgs } from "./images.js";
 import { registerJsonFilter } from "./json.js";
 import { md5 } from "./md5.js";
+import { registerMediaFilters } from "./media.js";
 import { formatMoney, moneyAmount } from "./money.js";
-import { registerPlaceholderFilter } from "./placeholders.js";
+import { registerPaymentTypeFilter, registerPlaceholderFilter } from "./placeholders.js";
 import { registerSelectionFilters } from "./selection.js";
 import { registerStructuredDataFilter } from "./structured-data.js";
 import { translateFactory } from "./translations.js";
@@ -46,7 +48,14 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
       )
         return input;
       if (input instanceof ImageDirectory && name === "size") return 0;
-      return native.call(this, input, ...args);
+      // Option values and other scalar-like objects measure their value, as `value.size` does.
+      if (name === "size" && input instanceof ScalarDrop) return native.call(this, toValue(input));
+      const result: unknown = native.call(this, input, ...args);
+      // Shopify returns the input object itself when it is kept; LiquidJS would unwrap a Drop
+      // (a color or font setting, for example) into its scalar value.
+      return name === "default" && input instanceof Drop && result === toValue(input)
+        ? input
+        : result;
     });
   }
   registerCoreLanguage(engine);
@@ -62,6 +71,11 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
     read: hooks.readData,
     diagnostic: hooks.diagnostic,
   });
+  registerPaymentTypeFilter(engine, hooks.snapshot, {
+    read: hooks.readData,
+    diagnostic: hooks.diagnostic,
+  });
+  registerCommerceFilters(engine, hooks.snapshot, hooks.diagnostic);
   registerSelectionFilters(engine);
   registerRangeFilters(engine);
   engine.registerFilter("pluralize", (input: unknown, ...labels: unknown[]) => {
@@ -89,6 +103,18 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
       );
       return "";
     });
+  // SPEC §9.7 lists the Shop login button as output only Shopify's servers can produce.
+  engine.registerFilter("login_button", function (value: unknown) {
+    if (liquidObjectKind(value) !== "shop")
+      throw new Error("login_button requires the shop object");
+    hooks.diagnostic(
+      "shopify-server-only",
+      "The Shop login button is omitted; it requires Shopify's live account service.",
+      this.token.file ?? null,
+      this.token.getPosition()[0] ?? null,
+    );
+    return "";
+  });
   engine.registerFilter("item_count_for_variant", (input: unknown, variant: unknown) => {
     if (
       liquidObjectKind(input) !== "cart" ||
@@ -220,15 +246,16 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
       ),
     );
   });
+  registerMediaFilters(
+    engine,
+    (input, args) => images.imageTag(input, args),
+    (input, args) => images.imageUrl(input, args, () => {}),
+    (media) => mediaProductTitle(media),
+  );
   engine.registerFilter("image_tag", function (value: unknown, ...args: unknown[]) {
-    return images.imageTag(value, args, (message) =>
-      hooks.diagnostic(
-        "not-implemented",
-        message,
-        this.token.file ?? null,
-        this.token.getPosition()[0] ?? null,
-      ),
-    );
+    const report = (code: string) => (message: string) =>
+      hooks.diagnostic(code, message, this.token.file ?? null, this.token.getPosition()[0] ?? null);
+    return images.imageTag(value, args, report("not-implemented"), report("missing-resource"));
   });
   engine.registerFilter(
     "stylesheet_tag",

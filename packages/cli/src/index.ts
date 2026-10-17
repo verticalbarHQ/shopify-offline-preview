@@ -6,6 +6,7 @@ import { applyScenario, validateSnapshotReferences } from "../../data/src/scenar
 import { parseSnapshot } from "../../data/src/schema.js";
 import { startDevServer } from "../../dev/src/server.js";
 import { type RenderResult, renderTheme } from "../../render/src/index.js";
+import { rendererRegistration } from "../../render/src/registration.js";
 import { resolveRoute } from "../../render/src/routes.js";
 import { templateConfig } from "../../render/src/theme-config.js";
 import { registry } from "../../spec/src/index.js";
@@ -125,7 +126,8 @@ async function renderCommand(args: string[]): Promise<number> {
     );
     validateSnapshotReferences(snapshot);
     const theme = new NodeThemeFileSystem(target);
-    const route = resolveRoute(snapshot, path);
+    const themeFiles = new Set(await theme.listFiles());
+    const route = resolveRoute(snapshot, path, (file) => themeFiles.has(file));
     templateConfig(await theme.readText(route.template), route.template);
     phase = 4;
     const result = await renderTheme(theme, path, {
@@ -195,7 +197,7 @@ async function main(args: string[]): Promise<number> {
     return 2;
   }
   try {
-    const result = await checkTheme(new NodeThemeFileSystem(target));
+    const result = await checkTheme(new NodeThemeFileSystem(target), await rendererRegistration());
     if (flags.includes("--json")) console.log(JSON.stringify(result));
     else {
       console.log(

@@ -4,13 +4,14 @@ import { createServer, type IncomingMessage, type Server, type ServerResponse } 
 import { extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defaultFixture } from "../../data/src/fixture.js";
-import { snapshotImages } from "../../data/src/images.js";
+import { snapshotImages, snapshotMediaFiles } from "../../data/src/images.js";
 import { applyScenario, validateSnapshotReferences } from "../../data/src/scenarios.js";
 import { parseSnapshot, type Snapshot } from "../../data/src/schema.js";
 import { type RenderResult, renderTheme } from "../../render/src/index.js";
 import { themePath } from "../../theme/src/index.js";
 import { NodeThemeFileSystem } from "../../theme/src/node.js";
 import { isBlockedEndpoint } from "./endpoints.js";
+import { missingImageSvg } from "./missing-image.js";
 import { inspectorHtml } from "./shell.js";
 import { servedPreview } from "./view.js";
 
@@ -40,6 +41,12 @@ const mime: Record<string, string> = {
   ".webp": "image/webp",
   ".avif": "image/avif",
   ".gif": "image/gif",
+  ".mp4": "video/mp4",
+  ".webm": "video/webm",
+  ".mov": "video/quicktime",
+  ".m3u8": "application/x-mpegURL",
+  ".glb": "model/gltf-binary",
+  ".usdz": "model/vnd.usdz+zip",
   ".woff": "font/woff",
   ".woff2": "font/woff2",
   ".ttf": "font/ttf",
@@ -275,7 +282,10 @@ export async function startDevServer(options: DevOptions): Promise<DevSession> {
       const data = await snapshot();
       const images = snapshotImages(data);
       try {
-        if (!images.some((image) => image.file === file))
+        if (
+          !images.some((image) => image.file === file) &&
+          !snapshotMediaFiles(data).includes(file)
+        )
           throw new Error("Image is absent from the snapshot");
         const fs = new NodeThemeFileSystem(
           options.dataDirectory ? join(options.dataDirectory, "images") : fixtureImages,
@@ -286,11 +296,12 @@ export async function startDevServer(options: DevOptions): Promise<DevSession> {
         });
         response.end(bytes);
       } catch {
-        const dimension = (key: string) =>
-          Math.min(8192, Math.max(1, Number(url.searchParams.get(key)) || 64));
         response.writeHead(200, { "Content-Type": "image/svg+xml; charset=utf-8" });
         response.end(
-          `<svg xmlns="http://www.w3.org/2000/svg" width="${dimension("width")}" height="${dimension("height")}" viewBox="0 0 64 64"><rect width="64" height="64" fill="#e2e8f0"/><path d="M12 46l14-16 10 9 7-7 9 14z" fill="#94a3b8"/><circle cx="44" cy="20" r="6" fill="#94a3b8"/></svg>`,
+          missingImageSvg(
+            Number(url.searchParams.get("width")),
+            Number(url.searchParams.get("height")),
+          ),
         );
       }
       return;
