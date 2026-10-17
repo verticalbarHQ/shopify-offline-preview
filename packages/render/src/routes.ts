@@ -11,7 +11,8 @@ export type PageType =
   | "cart"
   | "404"
   | "blog"
-  | "article";
+  | "article"
+  | "list-collections";
 export interface ResolvedRoute {
   path: string;
   pageType: PageType;
@@ -54,6 +55,7 @@ export function resolveRoute(
   if (path === "/") pageType = "index";
   else if (path === "/search") pageType = "search";
   else if (path === "/cart") pageType = "cart";
+  else if (namespace === "collections" && decoded.length === 1) pageType = "list-collections";
   else if (namespace === "products" && handle && decoded.length === 2) {
     const product = snapshot.products.find((item) => item.handle === handle);
     if (product) {

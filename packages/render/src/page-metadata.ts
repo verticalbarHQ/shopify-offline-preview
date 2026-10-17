@@ -80,6 +80,7 @@ export function registerPageMetadata(
         return title(snapshot.shop.seo, snapshot.shop.name, "shop", "name");
       if (route.pageType === "cart") return system("shopping_cart");
       if (route.pageType === "collection") return system("products");
+      if (route.pageType === "list-collections") return system("collections");
       if (route.pageType === "search") {
         if (!route.query.q.trim()) return system("search");
         const search = globals.search;

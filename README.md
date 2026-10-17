@@ -116,7 +116,7 @@ stderr. `--out <file>` writes the HTML to a file instead.
 - **Paths.** These paths render:
   - `/`;
   - `/products/<handle>`;
-  - `/collections/<handle>` and `/collections/all`;
+  - `/collections`, `/collections/<handle>` and `/collections/all`;
   - `/pages/<handle>`;
   - `/blogs/<blog>` and `/blogs/<blog>/<article>`;
   - `/search?q=…`;

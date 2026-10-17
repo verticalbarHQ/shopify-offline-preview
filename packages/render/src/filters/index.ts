@@ -192,8 +192,7 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
   engine.registerFilter("inline_asset_content", async function (value: unknown) {
     if (typeof value !== "string") throw new Error("inline_asset_content requires an asset name");
     const path = themePath(`assets/${value}`);
-    if (!/\.(?:svg|js|css)$/i.test(path))
-      throw new Error("Only SVG, JS and CSS assets can be inlined");
+    // Shopify leaves a comment for a missing asset, whatever its name, rather than an error.
     if (!hooks.paths.has(path)) {
       hooks.diagnostic(
         "missing-resource",
@@ -201,8 +200,10 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
         this.token.file ?? null,
         this.token.getPosition()[0] ?? null,
       );
-      throw new Error("Theme asset is missing");
+      return "<!-- inline_asset_content: Asset not found. -->";
     }
+    if (!/\.(?:svg|js|css)$/i.test(path))
+      throw new Error("Only SVG, JS and CSS assets can be inlined");
     const bytes = await hooks.readAsset(path);
     if (bytes.byteLength >= 15 * 1024) throw new Error("Inline asset must be smaller than 15 KB");
     try {
