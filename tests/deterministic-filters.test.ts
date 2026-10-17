@@ -240,3 +240,21 @@ test("a named date format falls back to the theme's default locale before failin
   const { html } = await renderTheme(theme, "/", { snapshot });
   assert.ok(html.includes("<p>2026/10/17</p>"), html);
 });
+
+test("hsl hues wrap around and all_tags stops at Shopify's 1,000-tag limit", async () => {
+  const snapshot = defaultFixture();
+  const [first] = snapshot.products;
+  assert.ok(first);
+  first.tags = Array.from({ length: 1200 }, (_, i) => `tag-${String(i).padStart(4, "0")}`);
+  const theme = new MemoryThemeFileSystem({
+    "templates/index.json": '{"layout":false,"sections":{"main":{"type":"main"}},"order":["main"]}',
+    "sections/main.liquid":
+      "<p>{{ 'hsl(720, 100%, 50%)' | color_to_hsl }}|{{ 'hsl(480, 100%, 50%)' | color_mix: '#000000', 100 }}</p>" +
+      "<p>{{ collections['sop-catalog'].all_tags.size }}|{{ collections['sop-catalog'].all_tags.last }}</p>",
+  });
+  const { html } = await renderTheme(theme, "/", { snapshot });
+  const [colors, tags] = [...html.matchAll(/<p>(.*?)<\/p>/gs)].map((m) => m[1]);
+  assert.equal(colors, "hsl(0, 100%, 50%)|hsl(120, 100%, 50%)");
+  // The fixture's own tags (blue, red, sop-fixture) sort first.
+  assert.equal(tags, "1000|tag-0996");
+});

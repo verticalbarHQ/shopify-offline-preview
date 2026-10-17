@@ -23,7 +23,11 @@ function memberValues(members: readonly LiquidRecord[], key: "tags" | "type" | "
     const value: unknown = product[key];
     return Array.isArray(value) ? value : [value];
   });
-  return [...new Set(values.filter((v): v is string => typeof v === "string" && v !== ""))].sort();
+  const distinct = [
+    ...new Set(values.filter((v): v is string => typeof v === "string" && v !== "")),
+  ].sort();
+  // Shopify documents that all_tags returns at most 1,000 tags.
+  return key === "tags" ? distinct.slice(0, 1000) : distinct;
 }
 export function liquidObjectKind(value: unknown): string | undefined {
   return value !== null && typeof value === "object" ? objectKinds.get(value) : undefined;

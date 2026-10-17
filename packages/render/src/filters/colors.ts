@@ -90,7 +90,8 @@ function parsedColor(value: unknown): ParsedColor {
     text,
   );
   if (hsl) {
-    const h = Number(hsl[1]),
+    // CSS hues wrap around: 720 is 0 and 400 is 40.
+    const h = Number(hsl[1]) % 360,
       s = Number(hsl[2]),
       l = Number(hsl[3]),
       alpha = hsl[4] === undefined ? 1 : Number(hsl[4]);
