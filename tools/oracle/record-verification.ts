@@ -52,14 +52,21 @@ context._getFromScope = function* (this: Scope & Reader, scope: unknown, paths: 
   const parts = typeof paths === "string" ? paths.split(".") : (paths as unknown[]);
   const root = scope === this.globals || scope === this.environments || this.scopes.includes(scope);
   if (root && typeof parts[0] === "string") ran.add(`object:${parts[0]}`);
+  // `closest` is a plain container, so its documented properties are named after it.
+  if (root && parts[0] === "closest" && typeof parts[1] === "string")
+    ran.add(`object-property:closest.${parts[1]}`);
   let value: unknown = scope;
   for (const [index, part] of parts.entries()) {
     const owner = value;
     value = yield this.readProperty(value, part);
     const type =
       liquidObjectKind(owner) ?? dropTypes[(owner as object | null)?.constructor?.name ?? ""];
-    if ((index > 0 || !root) && type && typeof part === "string")
+    // Reading a property of a typed object (not of a list of them, such as its size) also shows
+    // that the object type itself was in use.
+    if ((index > 0 || !root) && type && typeof part === "string") {
+      if (!Array.isArray(owner)) ran.add(`object:${type}`);
       ran.add(`object-property:${type}.${part}`);
+    }
   }
   return value;
 };
@@ -93,6 +100,11 @@ const documented = new Set([
 // abstract `media` type that static analysis uses for a variable holding any media.
 const mediaTypes = new Set(["image", "video", "model", "external_video"]);
 function documentedNames(key: string): string[] {
+  const object = /^object:([a-z_]+)$/.exec(key);
+  if (object) {
+    const type = object[1] === "media_image" ? "image" : (object[1] ?? "");
+    return mediaTypes.has(type) ? [`object:${type}`, "object:media"] : [`object:${type}`];
+  }
   const match = /^object-property:([a-z_]+)\.(.+)$/.exec(key);
   if (!match) return [key];
   const [, owner = "", property = ""] = match;
