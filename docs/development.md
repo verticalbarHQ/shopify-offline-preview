@@ -33,6 +33,12 @@ through `ThemeFileSystem`, so the same code runs in the playground.
 `vendor/theme-liquid-docs/`. `pnpm generate` writes the generated data to
 `packages/spec/src/generated/`, and `pnpm generate:check` fails if it is out of date.
 
+`pnpm docs:drift-check` compares the vendored files with upstream's default branch and fails when
+they differ. The `docs-drift` workflow runs it every Monday and can be started by hand; it does
+not open pull requests. To take an upstream change, run `pnpm docs:drift-check --update`, which
+writes the new files and moves the pin. Then run `pnpm generate`, review the generated changes and
+open a pull request.
+
 ## Benchmark themes
 
 `benchmarks.json` pins Shopify's Dawn and Horizon themes. `pnpm benchmarks:fetch` downloads them
@@ -72,9 +78,42 @@ endpoints.
 - `browser`: the browser checks in a container without networking;
 - `license-guard`.
 
+`.github/workflows/docs-drift.yml` runs `pnpm docs:drift-check` every Monday and on demand (see
+[Generated Shopify data](#generated-shopify-data)).
+
 `.github/workflows/pages.yml` publishes the playground from `main`. Before that,
 `pnpm pages:artifact-check` confirms that the artifact contains no benchmark theme files or
 names. The `unit` job runs the same check on pull requests.
+
+## Agent eval
+
+`pnpm agent:eval` measures how well a coding agent completes ten theme tasks with only this
+package's CLI and file access (SPEC §9.12). It is a report, not a check, and it does not run in CI.
+
+```sh
+pnpm agent:eval --package @verticalbar/shopify-offline-preview@1.0.0 --self-test
+pnpm agent:eval --package @verticalbar/shopify-offline-preview@1.0.0 \
+  --agent 'codex exec --skip-git-repo-check "$(cat "$PROMPT_FILE")" < /dev/null' --env CODEX_HOME
+```
+
+Each task runs in a new folder outside the repository with a copy of the pinned Dawn theme and the
+package installed from npm.
+
+- The agent command runs there with `sh -c`, and `$PROMPT_FILE` holds the prompt.
+- The agent gets a `HOME` inside the folder and only `PATH`, `TMPDIR`, `LANG` and the variables
+  named with `--env`.
+- It still runs as your user without an OS sandbox. Run it on a machine or account that holds no
+  store credentials, or in a container.
+- After the agent exits, its process group is stopped, and the task's check script renders the
+  result with an untouched copy of the CLI to decide pass or fail.
+
+Two other modes skip the agent:
+
+- `--self-test` proves that each check fails on the untouched theme and passes on a known solution.
+- `--recheck <results.json>` judges a finished run's folders again with the current checks, using
+  the package and theme recorded with that run.
+
+The tasks and checks are in `tools/agent-eval/tasks.ts`; results go to `.local/agent-eval/`.
 
 ## Shopify comparison tools
 
@@ -119,7 +158,7 @@ None of the commands below changes a store.
 | Command | Purpose |
 |---|---|
 | `pnpm oracle:visual-compare <config>` | Captures and compares two origins as described above. The browser blocks every request that is not a read, including requests from the pages' own scripts, apart from the storefront password submission. |
-| `pnpm oracle:record-verification <config>` | Re-renders the pages a comparison judged similar and records which Shopify features ran, plus the documented filter examples that matched Shopify exactly, in `packages/spec/src/verification.ts`. `check` reports these features as `verified`. |
+| `pnpm oracle:record-verification <config>` | Re-renders the pages a comparison judged similar and records which Shopify features ran, plus the documented filter examples that matched Shopify exactly, in `packages/spec/src/verification.ts`. `check` reports these features as `verified`. A theme entry can carry its own `data`, `pages` and `date`, for a comparison on another store or day. |
 | `pnpm oracle:seed-prepare` | Plans the store state for the benchmark pages from a snapshot and its images. |
 | `pnpm oracle:seed-requests-prepare` | Compiles that plan into Admin API requests and validates them against an Admin API schema. |
 | `pnpm oracle:backup-audit`, `pnpm oracle:supplemental-backup-audit` | Audit the store exports taken before the store is wiped. |

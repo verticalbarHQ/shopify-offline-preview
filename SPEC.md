@@ -7,7 +7,7 @@
 | Status | Offline renderer, dev inspector, and static browser playground implemented. Real Shopify oracle parity and feature completion remain pending. |
 | Date | 2026-10-13 |
 | Repository | `verticalbarHQ/shopify-offline-preview` (public) |
-| npm package | `@verticalbar/shopify-offline-preview` (CLI command `shopify-offline-preview`) |
+| npm package | `@verticalbar/shopify-offline-preview` (CLI command `shopify-offline-preview`), not published yet |
 | License | MIT |
 | Language | TypeScript, Node.js ≥ 22 and evergreen browsers |
 
@@ -276,7 +276,10 @@ to a commit. A generator produces:
 - the registry of known filters, tags, and objects used by `check`;
 - the conformance corpus inputs (§9.10).
 
-A scheduled job opens a PR when upstream changes.
+A weekly job, which can also be run by hand, checks whether upstream has changed the pinned files.
+When it has, the job fails and names the files. A maintainer then moves the pin, regenerates and
+opens the pull request. GitHub Actions does not open pull requests in this repository (owner
+decision, 2026-10-18).
 
 ### 8.3 Module layout
 
@@ -487,6 +490,27 @@ Each difference goes into a findings list as **OK** or **fix**. **OK** is an all
 a gap in the input data rather than in the renderer. **Fix** items are fixed or filed as issues. The
 findings list stays with the maintainer's local results; user documentation does not list them.
 
+**Owner review, 2026-10-18.** The owner reviewed the comparison reports for both benchmarks at 1280
+and 390 px and found the pages similar (AC-1). The reports were rebuilt that day from `main` and
+covered the §9.3 page types, the extended section templates, extra states (a second collection page,
+no search results, an empty cart) and the feature pages. Every **fix** finding is fixed (AC-5).
+
+Before the owner confirmed, the code was checked for anything that would make the comparison match
+for the wrong reason:
+
+- The renderer has no branch on a theme, page, product or other resource name.
+- The comparison hides only Shopify's preview bar for unpublished themes and the preview's own
+  diagnostic overlay.
+- The renderer reads no stored Shopify page output. The only Shopify-made content it can draw is
+  artwork supplied in the snapshot (`placeholderSvgs`, `paymentTypeSvgs`). It reuses that artwork,
+  adding only a class the theme asks for to the SVG root.
+
+The comparison's snapshot did carry two kinds of input that the sample store lacks:
+
+- store settings that the setup API cannot set, such as the money format and time zone;
+- Shopify's placeholder artwork in `placeholderSvgs`, which `placeholder_svg_tag` reuses (owner
+  approved, 2026-10-18). Without that artwork, placeholders are empty boxes of the same size.
+
 ### 9.8 What is not done
 
 - No stored Shopify results gate pull requests.
@@ -501,8 +525,8 @@ findings list stays with the maintainer's local results; user documentation does
 | `parity` | PR | **off** (container `--network none`) | The full matrix for both benchmarks: repeatable renders, static and dynamic coverage, agent contract tests |
 | `browser` | PR | **off** for test steps; browsers come preinstalled in the image | Node vs. browser byte-identical HTML over the matrix; playground e2e |
 | `license-guard` | PR | on | No repo file hash equals any benchmark theme file; README disclaimer present |
-| `docs-drift` | Weekly | on | Regenerate from theme-liquid-docs, open PR on change |
-| `agent-eval` | Weekly, manual | on + API key | Report only (§9.12) |
+| `docs-drift` | Weekly, and by hand | on | Fails when theme-liquid-docs has changed the pinned files; a maintainer updates the pin and opens the PR (no automatic PR) |
+| `agent-eval` | Manual, on a maintainer's machine (not a CI lane) | on | Report only (§9.12) |
 | `release` | Tag | on | All of the above green |
 
 ### 9.10 Implemented, server-only and verified
@@ -550,9 +574,76 @@ type.
     find the change in `tree` and in that section's text. Introduce an unknown filter, run
     `check --json --strict`, and get exit code 5 with the filter listed.
 - **Report-only eval.**
-  - A fixed task set (10 tasks, for example "show the vendor above the product title and verify") is
-    run by a headless coding agent that has file access and this CLI, and no store credentials.
+  - A fixed task set (10 tasks, for example "show the product type above the product title and
+    verify") is run by a headless coding agent that has file access and this CLI, and no store
+    credentials.
   - Each task has an assertion script, and the success rate is recorded per run.
+  - `pnpm agent:eval` runs it (`tools/agent-eval/`). The tasks use the pinned Dawn theme:
+
+    | Task | The agent must |
+    |---|---|
+    | `product-type-above-title` | Show the product type above the product title, read from the product's data. |
+    | `announcement-text` | Change the announcement bar message. |
+    | `trust-badges-section` | Create a section with a heading and three items as blocks, after the main product section. |
+    | `fix-liquid-error` | Find and fix a Liquid error planted in the product section. |
+    | `new-product-data` | Make a snapshot from the bundled sample store and add a product that renders. |
+    | `sale-scenario` | Add a scenario that puts one product on sale, leaving the base data unchanged. |
+    | `add-to-cart-label` | Rename the add-to-cart button through the English translations. |
+    | `home-section-order` | Report the home page's sections in order, without changing the theme. |
+    | `server-only-features` | Report the product template's server-only features, without changing the theme. |
+    | `article-iso-date` | Show article dates as year-month-day, read from the article's data. |
+
+  - Isolation:
+    - each task runs in a new folder outside the repository, with the package installed from its
+      tarball;
+    - the agent gets a `HOME` inside that folder and only `PATH`, `TMPDIR`, `LANG` and the
+      variables it needs to run, so no store credentials are passed to it;
+    - the agent still runs as the maintainer's user without an OS sandbox. For a stronger
+      guarantee, run it on a machine or account that holds no store credentials, or in a
+      container;
+    - after the agent exits, its process group is stopped before the check reads the folder;
+    - the checks render with a separate, untouched install.
+  - Checks:
+    - they read only text that the markup does not hide;
+    - where typing a value into the theme could pass, they render again with changed data or
+      changed block settings;
+    - they compare snapshot changes with the bundled sample store.
+  - `--self-test` proves that every check fails on the untouched theme and passes on a known
+    solution. It passed for all ten tasks.
+
+#### Recorded runs
+
+Both runs on 2026-10-18 used the following setup:
+
+- the 1.0.0 package tarball built from commit `94011d1` (shasum `3fa3c8a5`);
+- pinned Dawn;
+- Codex CLI 0.162.1 with model `gpt-6-astra` at high reasoning effort;
+- MCP servers and computer use turned off;
+- tasks run one at a time, each limited to 20 minutes.
+
+| Task | Run 1 | Run 2 |
+|---|---|---|
+| `product-type-above-title` | pass, 45 s | pass, 48 s |
+| `announcement-text` | pass, 26 s | pass, 26 s |
+| `trust-badges-section` | fail, 87 s | pass, 77 s |
+| `fix-liquid-error` | pass, 48 s | pass, 41 s |
+| `new-product-data` | pass, 52 s | pass, 54 s |
+| `sale-scenario` | pass, 56 s | pass, 53 s |
+| `add-to-cart-label` | pass, 30 s | pass, 35 s |
+| `home-section-order` | pass, 27 s | pass, 46 s |
+| `server-only-features` | pass, 28 s | pass, 26 s |
+| `article-iso-date` | pass, 34 s | pass, 29 s |
+| **Success rate** | **9/10** | **10/10** |
+
+In both runs the agent had the maintainer's real `HOME`; the `HOME` inside the task folder came
+later. The logs show the agent's only reads outside its task folder: a Codex skill file under that
+`HOME`, read in 11 of the 20 task runs. No credential file was read. Both runs were judged again
+with the final checks (`--recheck`), with the same results.
+
+The run 1 failure came from the task's wording, not from the CLI. The prompt said "Add a new section",
+and the agent added Dawn's existing Multicolumn section with the heading and three editable column
+blocks. The check expects a new section file. Run 2 asked for "a new section file" and used the same
+check.
 
 ### 9.13 Browser and playground checks
 
@@ -570,11 +661,11 @@ Each criterion is checked by the lane or review named.
 
 | # | Criterion | Verified by |
 |---|---|---|
-| AC-1 | For Dawn and Horizon at their pinned commits, the comparison (§9.5) finds every §9.3 page type similar (§9.6) at desktop and mobile widths. | Maintainer review (§9.7) |
+| AC-1 | For Dawn and Horizon at their pinned commits, the comparison (§9.5) finds every §9.3 page type similar (§9.6) at desktop and mobile widths. | Maintainer review (§9.7); owner confirmed 2026-10-18 |
 | AC-2 | `check` reports 0 missing Shopify filters, tags, objects or object properties reachable from the §9.3 page types, for both benchmarks. "Missing" is defined in §9.10. | `parity` |
 | AC-3 | Rendering the full matrix produces 0 Liquid errors and 0 not-implemented events. | `parity` |
 | AC-4 | AC-2 and AC-3 pass with networking disabled. | `parity` (`--network none`) |
-| AC-5 | Every **fix** finding from the comparison is fixed or filed as an issue. | Findings list (§9.7) |
+| AC-5 | Every **fix** finding from the comparison is fixed or filed as an issue. | Findings list (§9.7); owner confirmed 2026-10-18 |
 | AC-6 | The agent contract tests pass (§9.12). | `parity` |
 | AC-7 | The browser build output is byte-identical to Node across the matrix. | `browser` |
 | AC-8 | Playground e2e passes, including the no-upload request check (§9.13). | `browser` |
@@ -639,7 +730,8 @@ implementation is claimed by M0.
 3. Create the public repository `verticalbarHQ/shopify-offline-preview`.
 4. Publish to npm as `@verticalbar/shopify-offline-preview` under the `@verticalbar` scope (owner
    decision, 2026-10-18), and set up GitHub Pages for the playground.
-5. Provide an API key secret for the report-only agent eval.
+5. None for the report-only agent eval: it runs a coding-agent CLI on a maintainer's machine, so it
+   needs no API key secret (owner decision, 2026-10-18).
 
 ## 15. Decision log (interview of 2026-10-13)
 
@@ -666,6 +758,8 @@ implementation is claimed by M0.
 | Missing data | Blank as on Shopify, marked; design-mode toggle | Auto-synthesis; all three modes |
 | Agent interface | CLI plus JSON | Screenshot command; MCP server |
 | Agent verification | Contract tests gate; real eval is report-only | Eval gates; contract tests only |
+| Upstream docs updates (owner decision, 2026-10-18) | A weekly check fails on upstream change, and a maintainer opens the PR | Actions opening pull requests, which the organization does not allow |
+| Agent eval runner (owner decision, 2026-10-18) | A coding-agent CLI (Codex) on a maintainer's machine, recorded in §9.12 | A weekly CI lane with an API key secret |
 | Engine | liquidjs plus local overrides, no upstream contributions | Fork; own engine |
 | Block comparison | Not compared on their own; block text is part of its section's text (2026-10-17; was an instrumented copy on both sides) | Instrumented copy on both sides; theme-editor capture |
 | Oracle store | Existing dev store, dedicated and wiped. Superseded on 2026-10-17: the store supplied on 2026-10-13 is used for other work, so the owner approved a new development store dedicated to the comparison (§9.1, §14) | Coexist with prefixes; a new store (the 2026-10-13 choice) |

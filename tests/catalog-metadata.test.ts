@@ -122,3 +122,26 @@ test("metadata validation rejects inconsistent IDs/rules and cart unit fields de
   variant.quantityRule = { min: 1, max: null, increment: 0 };
   assert.throws(() => parseSnapshot(JSON.stringify(snapshot)));
 });
+
+test("a unit price measurement keeps its quantity as a Float, as Shopify prints it", async () => {
+  const snapshot = defaultFixture(),
+    variant = snapshot.products[0]?.variants[0];
+  assert.ok(variant);
+  variant.unitPrice = "4.40";
+  variant.unitPriceMeasurement = {
+    measured_type: "volume",
+    quantity_unit: "ml",
+    quantity_value: 250,
+    reference_unit: "ml",
+    reference_value: 100,
+  };
+  const objects = liquidObjects(snapshot, route, { read() {}, unsupported() {} });
+  // Measured on a development store in Germany: the quantity is a Float, the reference an Integer.
+  assert.equal(
+    await new Liquid().parseAndRender(
+      "{% assign m = product.variants.first.unit_price_measurement %}{{m.measured_type}}|{{m.quantity_value}}|{{m.quantity_unit}}|{{m.reference_value}}|{{m.reference_unit}}|{% if m.quantity_value == 250 %}equal{% endif %}",
+      objects,
+    ),
+    "volume|250.0|ml|100|ml|equal",
+  );
+});

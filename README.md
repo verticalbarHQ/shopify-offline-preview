@@ -23,28 +23,7 @@ Your files are processed in the browser and are never uploaded.
 
 ### On your machine
 
-You need Node.js 22 or newer.
-
-```sh
-npx @verticalbar/shopify-offline-preview dev path/to/your-theme
-```
-
-Open the inspector at <http://127.0.0.1:3000/>. Saving a theme file reloads the preview.
-
-To keep it in a project, install it as a development dependency. The command is then
-`shopify-offline-preview`:
-
-```sh
-npm install --save-dev @verticalbar/shopify-offline-preview
-npx shopify-offline-preview dev path/to/your-theme
-```
-
-Until you add your own data, pages render with a bundled sample store. It has 40 products, a
-collection, a page, a blog with three articles, menus and a cart.
-
-### From source
-
-The repository also has a small sample theme. You need Node.js 22 or newer and pnpm 10.
+Build it from source. You need Node.js 22 or newer and pnpm 10.
 
 ```sh
 git clone https://github.com/verticalbarHQ/shopify-offline-preview.git
@@ -53,6 +32,14 @@ pnpm install --frozen-lockfile
 pnpm generate && pnpm build
 node dist/cli.js dev fixtures/sample-theme
 ```
+
+Open the inspector at <http://127.0.0.1:3000/>. To preview your own theme, replace
+`fixtures/sample-theme` with your theme folder. Saving a theme file reloads the preview.
+
+Until you add your own data, pages render with a bundled sample store. It has 40 products, a
+collection, a page, a blog with three articles, menus and a cart.
+
+An npm package, `@verticalbar/shopify-offline-preview`, is planned but not published yet.
 
 ## The inspector
 
@@ -97,20 +84,19 @@ listed in the inspector panel and in `render --json`. Most are also shown as bad
 Store data comes from a **snapshot**: a folder with a `snapshot.json` file and an `images/` folder.
 
 ```sh
-npx shopify-offline-preview dev path/to/theme --data path/to/snapshot
+node dist/cli.js dev path/to/theme --data path/to/snapshot
 ```
 
 The tool never connects to a store. Get your data out with any export tool, then convert it to the
-snapshot format. The quickest way to start is to copy the bundled sample store and edit it. It is
-in the package at `fixtures/default/`, for example
-`node_modules/@verticalbar/shopify-offline-preview/fixtures/default/`. If a snapshot is invalid, rendering stops and the error names the
+snapshot format. The quickest way to start is to copy the bundled sample store in
+`fixtures/default/` and edit it. If a snapshot is invalid, rendering stops and the error names the
 field at fault (exit code 3).
 
 A snapshot can also define **scenarios**: named variations of the data, such as a sold-out product
 or a full cart. Choose one with `--scenario <name>` or in the inspector.
 
 [The snapshot guide](https://github.com/verticalbarHQ/shopify-offline-preview/blob/main/docs/snapshot.md)
-describes every field. `npx shopify-offline-preview schema snapshot` prints the JSON Schema.
+describes every field. `node dist/cli.js schema snapshot` prints the JSON Schema.
 
 ## Commands
 

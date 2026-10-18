@@ -54,6 +54,7 @@
   "scripts": {
     "generate": "node tools/generate-spec.mjs && tsx tools/generate-schemas.ts && tsx tools/generate-fixture.ts",
     "generate:check": "node tools/generate-spec.mjs --check && tsx tools/generate-schemas.ts --check && tsx tools/generate-fixture.ts --check",
+    "docs:drift-check": "node tools/check-docs-drift.mjs",
     "oracle:instrumentation-check": "tsx tools/oracle/check-instrumentation.ts",
     "oracle:visual-compare": "tsx tools/oracle/visual-compare.ts",
     "oracle:record-verification": "tsx tools/oracle/record-verification.ts",
@@ -72,6 +73,7 @@
     "test:network-off": "node tools/network-off.mjs",
     "browser:playground-check": "tsx tools/check-playground-browser.ts",
     "agent:contract-check": "tsx tools/check-agent-contracts.ts",
+    "agent:eval": "tsx tools/agent-eval/run.ts",
     "browser:inspector-check": "tsx tools/check-inspector-matrix.ts",
     "test:browser-offline": "node tools/browser-network-off.mjs",
     "oracle:offline-check": "tsx tools/oracle/check-offline-comparison.ts",
