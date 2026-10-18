@@ -8,6 +8,7 @@
 //
 //   tsx tools/oracle/record-verification.ts <config.json>
 // config: { date, data, themes: [{name, path}], pages: [[path, scenario | null]], corpusMatches: [id] }
+// A theme entry may carry its own data, pages and date, for a comparison on another store or day.
 import { readFile, writeFile } from "node:fs/promises";
 import { Context, Filter, Liquid, Tag } from "liquidjs";
 import { z } from "zod";
@@ -23,7 +24,15 @@ const config = z
   .strictObject({
     date: z.iso.date(),
     data: z.string(),
-    themes: z.array(z.strictObject({ name: z.string().regex(/^[a-z0-9-]+$/), path: z.string() })),
+    themes: z.array(
+      z.strictObject({
+        name: z.string().regex(/^[a-z0-9-]+$/),
+        path: z.string(),
+        data: z.string().optional(),
+        pages: z.array(z.tuple([z.string(), z.string().nullable()])).optional(),
+        date: z.iso.date().optional(),
+      }),
+    ),
     pages: z.array(z.tuple([z.string(), z.string().nullable()])),
     corpusMatches: z.array(z.string().regex(/^[a-z_]+\/[a-z0-9_?]+\/\d+$/)),
   })
@@ -133,18 +142,19 @@ const note = (key: string, id: string) => {
   set.add(id);
   evidence.set(key, set);
 };
-const base = parseSnapshot(await readFile(`${config.data}/snapshot.json`, "utf8"));
 for (const theme of config.themes) {
   ran.clear();
   const fs = new NodeThemeFileSystem(theme.path);
-  for (const [path, scenario] of config.pages) {
+  const base = parseSnapshot(await readFile(`${theme.data ?? config.data}/snapshot.json`, "utf8"));
+  for (const [path, scenario] of theme.pages ?? config.pages) {
     const snapshot = scenario
       ? applyScenario(structuredClone(base), scenario)
       : structuredClone(base);
     await renderTheme(fs, path, { snapshot });
   }
   for (const key of ran)
-    for (const name of documentedNames(key)) note(name, `comparison/${config.date}/${theme.name}`);
+    for (const name of documentedNames(key))
+      note(name, `comparison/${theme.date ?? config.date}/${theme.name}`);
 }
 for (const id of config.corpusMatches)
   note(`filter:${id.split("/")[1]}`, `corpus/${config.date}/${id}`);
