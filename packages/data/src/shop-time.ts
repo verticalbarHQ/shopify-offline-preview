@@ -1,0 +1,150 @@
+import { Drop } from "liquidjs";
+
+interface Parts {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+  weekday: number;
+  /** Minutes east of UTC. */
+  offset: number;
+}
+const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+function parts(instant: number, timeZone: string): Parts {
+  const values = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      weekday: "short",
+      hourCycle: "h23",
+    })
+      .formatToParts(new Date(instant))
+      .map((part) => [part.type, part.value]),
+  );
+  const number = (key: string) => Number(values[key]);
+  const wall = Date.UTC(
+    number("year"),
+    number("month") - 1,
+    number("day"),
+    number("hour"),
+    number("minute"),
+    number("second"),
+  );
+  return {
+    year: number("year"),
+    month: number("month"),
+    day: number("day"),
+    hour: number("hour"),
+    minute: number("minute"),
+    second: number("second"),
+    weekday: weekdays.indexOf(String(values.weekday)),
+    offset: Math.round((wall - Math.floor(instant / 1000) * 1000) / 60000),
+  };
+}
+const pad = (value: number, width = 2) => String(value).padStart(width, "0");
+function offsetText(minutes: number, separator: string): string {
+  const sign = minutes < 0 ? "-" : "+";
+  const absolute = Math.abs(minutes);
+  return `${sign}${pad(Math.floor(absolute / 60))}${separator}${pad(absolute % 60)}`;
+}
+
+/**
+ * A snapshot timestamp as Shopify's Liquid shows it, in the shop's timezone (measured on a
+ * development store): output is Ruby's Time#to_s (`2026-10-17 07:10:31 -0400`), JSON inside an
+ * object is ISO 8601 with the offset, and the `json` filter on the value itself prints Time#to_a.
+ */
+const utcZones = new Set(["UTC", "Etc/UTC", "Etc/Universal", "Universal", "Etc/Zulu", "Zulu"]);
+
+export class ShopTime extends Drop {
+  readonly #instant: number;
+  readonly #timeZone: string;
+  constructor(iso: string, timeZone: string) {
+    super();
+    this.#instant = Date.parse(iso);
+    this.#timeZone = timeZone;
+  }
+  #parts(): Parts {
+    return parts(this.#instant, this.#timeZone);
+  }
+  valueOf(): string {
+    const p = this.#parts();
+    // Ruby writes a time in the UTC zone with "UTC" instead of an offset.
+    const zone = utcZones.has(this.#timeZone) ? "UTC" : offsetText(p.offset, "");
+    return `${p.year}-${pad(p.month)}-${pad(p.day)} ${pad(p.hour)}:${pad(p.minute)}:${pad(p.second)} ${zone}`;
+  }
+  override toString(): string {
+    return this.valueOf();
+  }
+  /** JavaScript ordering (as in sort) uses the instant; text conversion uses the printed form. */
+  [Symbol.toPrimitive](hint: string): string | number {
+    return hint === "number" ? this.#instant : this.valueOf();
+  }
+  // LiquidJS comparisons order timestamps by their instants, not by the printed text, which can
+  // sort wrongly across a daylight-saving change.
+  #compare(other: unknown): number {
+    if (other instanceof ShopTime) return Math.sign(this.#instant - other.#instant);
+    const text = this.valueOf(),
+      value = String(other ?? "");
+    return text < value ? -1 : text > value ? 1 : 0;
+  }
+  equals(other: unknown): boolean {
+    return this.#compare(other) === 0;
+  }
+  gt(other: unknown): boolean {
+    return this.#compare(other) > 0;
+  }
+  geq(other: unknown): boolean {
+    return this.#compare(other) >= 0;
+  }
+  lt(other: unknown): boolean {
+    return this.#compare(other) < 0;
+  }
+  leq(other: unknown): boolean {
+    return this.#compare(other) <= 0;
+  }
+  toJSON(): string {
+    const p = this.#parts();
+    const zone = utcZones.has(this.#timeZone) ? "Z" : offsetText(p.offset, ":");
+    return `${p.year}-${pad(p.month)}-${pad(p.day)}T${pad(p.hour)}:${pad(p.minute)}:${pad(p.second)}${zone}`;
+  }
+  /** Ruby's Time#to_a: sec, min, hour, day, month, year, wday, yday, isdst, zone. */
+  rubyArray(): unknown[] {
+    const p = this.#parts();
+    const yday = (Date.UTC(p.year, p.month - 1, p.day) - Date.UTC(p.year, 0, 1)) / 86_400_000 + 1;
+    // A named zone tells daylight-saving time by its long name ("…Daylight Time", "…Summer
+    // Time", and Ireland's summer "Irish Standard Time"); for a zone Intl names only by offset,
+    // any offset above the year's lowest counts.
+    const zoneName = (style: "short" | "long") =>
+      new Intl.DateTimeFormat("en-US", { timeZone: this.#timeZone, timeZoneName: style })
+        .formatToParts(new Date(this.#instant))
+        .find((part) => part.type === "timeZoneName")?.value ?? "";
+    const long = zoneName("long");
+    const isdst = /^GMT/.test(long)
+      ? p.offset >
+        Math.min(
+          ...Array.from(
+            { length: 24 },
+            (_, i) =>
+              parts(Date.UTC(p.year, Math.floor(i / 2), i % 2 ? 15 : 1), this.#timeZone).offset,
+          ),
+        )
+      : /Daylight|Summer|^Irish Standard Time$/.test(long);
+    const name = zoneName("short");
+    // Ruby names a zone without a letter abbreviation by its offset, such as +0545 or +04.
+    const numeric = /^GMT([+-])(\d{1,2})(?::(\d{2}))?$/.exec(name);
+    const zone = numeric ? `${numeric[1]}${pad(Number(numeric[2]))}${numeric[3] ?? ""}` : name;
+    return [p.second, p.minute, p.hour, p.day, p.month, p.year, p.weekday, yday, isdst, zone];
+  }
+}
+
+/** The timestamp as a ShopTime, or null when the snapshot has none. */
+export function shopTime(iso: string | null | undefined, timeZone: string): ShopTime | null {
+  return iso ? new ShopTime(iso, timeZone) : null;
+}

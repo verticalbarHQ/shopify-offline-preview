@@ -4,6 +4,7 @@ import { ImageDirectory, localImageUrl } from "./images.js";
 import { focalPoint, ScalarDrop } from "./scalar-drop.js";
 import type { MenuLink, ProductMedia, Snapshot } from "./schema.js";
 import { type SearchCandidate, searchResults } from "./search.js";
+import { shopTime } from "./shop-time.js";
 import { storefrontQuery } from "./storefront-filters.js";
 
 export { ScalarDrop };
@@ -322,6 +323,9 @@ export function liquidObjects(
   hooks: ObjectHooks,
   tracked: ObjectTracker = objectTracker(hooks),
 ): LiquidRecord {
+  // Timestamps print in the shop's timezone; an absent one stays absent.
+  const time = (iso: string | null | undefined) =>
+    iso === undefined ? undefined : shopTime(iso, snapshot.shop.timezone);
   function absent(type: string, property: string) {
     if (hooks.missing)
       hooks.missing(`Object property ${type}.${property} is absent from the snapshot.`);
@@ -782,8 +786,8 @@ export function liquidObjects(
     );
     const dto: LiquidRecord = {
       ...availableFields({
-        created_at: source.createdAt,
-        published_at: source.publishedAt,
+        created_at: time(source.createdAt),
+        published_at: time(source.publishedAt),
         category: trackedJson(source.category, "taxonomy_category", `${path}.category`),
         id: source.id === undefined ? undefined : id(source.id),
         "gift_card?": source.giftCard,
@@ -1074,8 +1078,8 @@ export function liquidObjects(
               {
                 ...availableFields({
                   comments_count: article.commentsCount,
-                  created_at: article.createdAt,
-                  updated_at: article.updatedAt,
+                  created_at: time(article.createdAt),
+                  updated_at: time(article.updatedAt),
                   // A snapshot carries no comments, so the list is known only when there are none.
                   comments: article.commentsCount === 0 ? [] : undefined,
                 }),
@@ -1085,7 +1089,7 @@ export function liquidObjects(
                 content: article.bodyHtml,
                 excerpt: article.excerptHtml,
                 author: article.author,
-                published_at: article.publishedAt,
+                published_at: time(article.publishedAt),
                 image: article.image
                   ? tracked(
                       {
