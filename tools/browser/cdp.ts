@@ -9,6 +9,13 @@ const protocolSchema = z.object({
   error: z.object({ message: z.string() }).optional(),
 });
 type Protocol = z.infer<typeof protocolSchema>;
+/**
+ * How long a browser step may take before the check reports a hang. Steps end on the page's own
+ * signals; this is not a speed budget, so a slow but correct run passes. A CDP call gets a little
+ * longer than an in-page wait, so the page's own error message is reported first.
+ */
+export const hangGuardMs = 120_000;
+
 /** Test-only CDP transport, scoped to the explicitly selected agent-browser session. */
 export class BrowserProtocol {
   private serial = 0;
@@ -65,7 +72,7 @@ export class BrowserProtocol {
       const timer = setTimeout(() => {
         this.waiting.delete(id);
         reject(new Error(`Browser command timed out: ${method}`));
-      }, 15000);
+      }, hangGuardMs + 10_000);
       this.waiting.set(id, { resolve, reject, timer });
       this.socket.send(JSON.stringify({ id, method, params, ...(sessionId ? { sessionId } : {}) }));
     });

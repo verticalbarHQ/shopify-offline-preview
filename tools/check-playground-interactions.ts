@@ -8,7 +8,7 @@ import { promisify } from "node:util";
 import { strToU8, zipSync } from "fflate";
 import { z } from "zod";
 import { defaultFixture } from "../packages/data/src/fixture.js";
-import { BrowserProtocol } from "./browser/cdp.js";
+import { BrowserProtocol, hangGuardMs } from "./browser/cdp.js";
 
 await mkdir(".local/results", { recursive: true });
 const root = resolve("dist/playground"),
@@ -97,7 +97,7 @@ const browser = async (...args: string[]) =>
   (
     await execute("agent-browser", ["--session", name, ...args], {
       encoding: "utf8",
-      timeout: 15000,
+      timeout: hangGuardMs,
     })
   ).stdout;
 let client: BrowserProtocol | undefined;
@@ -151,7 +151,7 @@ try {
     { autoAttach: true, waitForDebuggerOnStart: true, flatten: true },
     sessionId,
   );
-  const wait = `async predicate=>{const until=Date.now()+10000;while(!predicate()){if(Date.now()>until)throw new Error('Interaction timed out: '+document.querySelector('#status')?.textContent);await new Promise(r=>setTimeout(r,20));}}`;
+  const wait = `async predicate=>{const until=Date.now()+${hangGuardMs};while(!predicate()){if(Date.now()>until)throw new Error('Interaction timed out: '+document.querySelector('#status')?.textContent);await new Promise(r=>setTimeout(r,20));}}`;
   const parent = (code: string) => c.evaluate(sessionId, code);
   await browser("upload", "#theme-zip", themeZip);
   // The sample theme loads on first visit; wait until the uploaded theme has replaced it.

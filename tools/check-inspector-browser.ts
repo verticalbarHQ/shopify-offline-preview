@@ -8,7 +8,7 @@ import { benchmarkMatrix, defaultFixture } from "../packages/data/src/fixture.js
 import type { RenderNode } from "../packages/render/src/contracts.js";
 import { renderTheme } from "../packages/render/src/index.js";
 import { NodeThemeFileSystem } from "../packages/theme/src/node.js";
-import { BrowserProtocol } from "./browser/cdp.js";
+import { BrowserProtocol, hangGuardMs } from "./browser/cdp.js";
 
 const origins = process.argv.slice(2);
 if (
@@ -97,7 +97,7 @@ async function inPreview(previewUrl: string, expression: string): Promise<unknow
   }
   return null;
 }
-const wait = `async predicate => {const until=Date.now()+10000;while(!predicate()){if(Date.now()>until) throw new Error('Inspector did not become ready');await new Promise(resolve=>setTimeout(resolve,20));}}`;
+const wait = `async predicate => {const until=Date.now()+${hangGuardMs};while(!predicate()){if(Date.now()>until) throw new Error('Inspector did not become ready');await new Promise(resolve=>setTimeout(resolve,20));}}`;
 try {
   for (const [index, item] of manifest.entries()) {
     const origin = origins[index];
