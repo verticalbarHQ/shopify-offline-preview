@@ -87,4 +87,7 @@ test("the json form names a zone and its daylight-saving state as Ruby's Time#to
   // Casablanca's +01:00 period is daylight-saving time; its standard offset is +00:00 in Ramadan.
   assert.deepEqual(zone("2026-10-15T12:00:00Z", "Africa/Casablanca")[0], true);
   assert.deepEqual(zone("2026-01-15T12:00:00Z", "America/New_York"), [false, "EST"]);
+  // A permanent offset change is not daylight-saving time.
+  assert.equal(zone("2024-02-15T12:00:00Z", "Asia/Almaty")[0], false);
+  assert.equal(zone("2026-07-15T12:00:00Z", "Europe/Berlin")[0], true);
 });

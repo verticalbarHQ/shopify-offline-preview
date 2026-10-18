@@ -118,33 +118,28 @@ export class ShopTime extends Drop {
   rubyArray(): unknown[] {
     const p = this.#parts();
     const yday = (Date.UTC(p.year, p.month - 1, p.day) - Date.UTC(p.year, 0, 1)) / 86_400_000 + 1;
-    // Daylight-saving time is any offset above the year's lowest (standard) offset; sampling
-    // twice a month also catches zones whose exception is outside January and July.
-    const standard = Math.min(
-      ...Array.from(
-        { length: 24 },
-        (_, i) => parts(Date.UTC(p.year, Math.floor(i / 2), i % 2 ? 15 : 1), this.#timeZone).offset,
-      ),
-    );
-    const name =
-      new Intl.DateTimeFormat("en-US", { timeZone: this.#timeZone, timeZoneName: "short" })
+    // A named zone tells daylight-saving time by its long name ("…Daylight Time", "…Summer
+    // Time"); for a zone Intl names only by offset, any offset above the year's lowest counts.
+    const zoneName = (style: "short" | "long") =>
+      new Intl.DateTimeFormat("en-US", { timeZone: this.#timeZone, timeZoneName: style })
         .formatToParts(new Date(this.#instant))
         .find((part) => part.type === "timeZoneName")?.value ?? "";
+    const long = zoneName("long");
+    const isdst = /^GMT/.test(long)
+      ? p.offset >
+        Math.min(
+          ...Array.from(
+            { length: 24 },
+            (_, i) =>
+              parts(Date.UTC(p.year, Math.floor(i / 2), i % 2 ? 15 : 1), this.#timeZone).offset,
+          ),
+        )
+      : /Daylight|Summer/.test(long);
+    const name = zoneName("short");
     // Ruby names a zone without a letter abbreviation by its offset, such as +0545 or +04.
     const numeric = /^GMT([+-])(\d{1,2})(?::(\d{2}))?$/.exec(name);
     const zone = numeric ? `${numeric[1]}${pad(Number(numeric[2]))}${numeric[3] ?? ""}` : name;
-    return [
-      p.second,
-      p.minute,
-      p.hour,
-      p.day,
-      p.month,
-      p.year,
-      p.weekday,
-      yday,
-      p.offset > standard,
-      zone,
-    ];
+    return [p.second, p.minute, p.hour, p.day, p.month, p.year, p.weekday, yday, isdst, zone];
   }
 }
 
