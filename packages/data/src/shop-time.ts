@@ -82,6 +82,33 @@ export class ShopTime extends Drop {
   override toString(): string {
     return this.valueOf();
   }
+  /** JavaScript ordering (as in sort) uses the instant; text conversion uses the printed form. */
+  [Symbol.toPrimitive](hint: string): string | number {
+    return hint === "number" ? this.#instant : this.valueOf();
+  }
+  // LiquidJS comparisons order timestamps by their instants, not by the printed text, which can
+  // sort wrongly across a daylight-saving change.
+  #compare(other: unknown): number {
+    if (other instanceof ShopTime) return Math.sign(this.#instant - other.#instant);
+    const text = this.valueOf(),
+      value = String(other ?? "");
+    return text < value ? -1 : text > value ? 1 : 0;
+  }
+  equals(other: unknown): boolean {
+    return this.#compare(other) === 0;
+  }
+  gt(other: unknown): boolean {
+    return this.#compare(other) > 0;
+  }
+  geq(other: unknown): boolean {
+    return this.#compare(other) >= 0;
+  }
+  lt(other: unknown): boolean {
+    return this.#compare(other) < 0;
+  }
+  leq(other: unknown): boolean {
+    return this.#compare(other) <= 0;
+  }
   toJSON(): string {
     const p = this.#parts();
     const zone = utcZones.has(this.#timeZone) ? "Z" : offsetText(p.offset, ":");
@@ -91,12 +118,21 @@ export class ShopTime extends Drop {
   rubyArray(): unknown[] {
     const p = this.#parts();
     const yday = (Date.UTC(p.year, p.month - 1, p.day) - Date.UTC(p.year, 0, 1)) / 86_400_000 + 1;
-    const january = parts(Date.UTC(p.year, 0, 1), this.#timeZone).offset;
-    const july = parts(Date.UTC(p.year, 6, 1), this.#timeZone).offset;
-    const zone =
+    // Daylight-saving time is any offset above the year's lowest (standard) offset; sampling
+    // twice a month also catches zones whose exception is outside January and July.
+    const standard = Math.min(
+      ...Array.from(
+        { length: 24 },
+        (_, i) => parts(Date.UTC(p.year, Math.floor(i / 2), i % 2 ? 15 : 1), this.#timeZone).offset,
+      ),
+    );
+    const name =
       new Intl.DateTimeFormat("en-US", { timeZone: this.#timeZone, timeZoneName: "short" })
         .formatToParts(new Date(this.#instant))
         .find((part) => part.type === "timeZoneName")?.value ?? "";
+    // Ruby names a zone without a letter abbreviation by its offset, such as +0545 or +04.
+    const numeric = /^GMT([+-])(\d{1,2})(?::(\d{2}))?$/.exec(name);
+    const zone = numeric ? `${numeric[1]}${pad(Number(numeric[2]))}${numeric[3] ?? ""}` : name;
     return [
       p.second,
       p.minute,
@@ -106,7 +142,7 @@ export class ShopTime extends Drop {
       p.year,
       p.weekday,
       yday,
-      january !== july && p.offset === Math.max(january, july),
+      p.offset > standard,
       zone,
     ];
   }
