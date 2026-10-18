@@ -39,7 +39,9 @@ export async function authoredBenchmark(name: "dawn" | "horizon" = "dawn", unsaf
     if (unsafeLink) await symlink("/outside", join(source, "layout/escape.liquid"));
     await promisify(execFile)("tar", ["-czf", archive, "-C", root, folder]);
     const bytes = await readFile(archive);
-    return preparePinnedBenchmarkTheme(name, async (url, init) => {
+    // Await inside the try: returning the bare promise would leave it unhandled while the
+    // cleanup below runs, so an early rejection was reported as an unhandled one.
+    return await preparePinnedBenchmarkTheme(name, async (url, init) => {
       if (
         String(url) !== `https://codeload.github.com/Shopify/${name}/tar.gz/${pin.commit}` ||
         init?.redirect !== "manual"
