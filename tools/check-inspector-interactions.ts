@@ -113,7 +113,7 @@ async function frameContext() {
     .string()
     .url()
     .parse(await parent("document.querySelector('#preview').src"));
-  for (let attempt = 0; attempt < 200; attempt++) {
+  for (const until = Date.now() + hangGuardMs; Date.now() < until; ) {
     const frames = z
       .object({
         frameTree: z.object({

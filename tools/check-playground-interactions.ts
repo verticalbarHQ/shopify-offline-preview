@@ -159,7 +159,7 @@ try {
     `(async()=>{await (${wait})(()=>document.querySelector('#status').dataset.state==='ready'&&document.querySelector('#input-status').textContent.startsWith(${JSON.stringify(`${Object.keys(files).length} theme files`)}));return true;})()`,
   );
   async function frame(code: string) {
-    for (let i = 0; i < 50; i++) {
+    for (const until = Date.now() + hangGuardMs; Date.now() < until; ) {
       const all = z
         .object({
           targetInfos: z.array(

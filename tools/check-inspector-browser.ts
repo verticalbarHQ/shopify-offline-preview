@@ -68,7 +68,7 @@ function flatten(nodes: RenderNode[]): RenderNode[] {
 }
 /** Evaluates in the preview frame at `previewUrl` once it returns a non-null value. */
 async function inPreview(previewUrl: string, expression: string): Promise<unknown> {
-  for (let attempt = 0; attempt < 200; attempt++) {
+  for (const until = Date.now() + hangGuardMs; Date.now() < until; ) {
     const frames = z
       .object({
         frameTree: z.object({
@@ -108,7 +108,7 @@ try {
     // A late load event from the previous page can arrive after navigation starts.
     // Match the navigation loader before readiness, even for a same-origin reload.
     // Retry only destroyed navigation contexts.
-    for (let attempt = 0; attempt < 200; attempt++) {
+    for (const until = Date.now() + hangGuardMs; Date.now() < until; ) {
       try {
         const document = z
           .object({ frameTree: z.object({ frame: z.object({ loaderId: z.string() }) }) })
