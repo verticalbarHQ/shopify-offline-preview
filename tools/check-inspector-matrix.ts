@@ -21,8 +21,8 @@ try {
       ...sessions.map((session) => session.inspectorOrigin),
     ],
     // A last resort for the whole check: every step inside has its own hang guard, which should
-    // report first with a precise message.
-    { timeout: 30 * 60_000, maxBuffer: 8 * 1024 * 1024 },
+    // report first with a precise message. It stays well inside the CI job's 20-minute limit.
+    { timeout: 10 * 60_000, maxBuffer: 8 * 1024 * 1024 },
   );
   process.stdout.write(stdout);
   process.stderr.write(stderr);

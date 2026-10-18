@@ -21,7 +21,10 @@ if (
   throw new Error("Provide Dawn and Horizon loopback inspector origins");
 const session = "sop-inspector-e2e";
 const browser = (...args: string[]) =>
-  execFileSync("agent-browser", ["--session", session, ...args], { encoding: "utf8" });
+  execFileSync("agent-browser", ["--session", session, ...args], {
+    encoding: "utf8",
+    timeout: hangGuardMs,
+  });
 browser("open", `${origins[0]}/`);
 const client = await BrowserProtocol.connect(browser("get", "cdp-url").trim());
 const targets = z
