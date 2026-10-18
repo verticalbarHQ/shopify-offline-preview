@@ -276,7 +276,10 @@ to a commit. A generator produces:
 - the registry of known filters, tags, and objects used by `check`;
 - the conformance corpus inputs (§9.10).
 
-A scheduled job opens a PR when upstream changes.
+A weekly job, which can also be run by hand, checks whether upstream has changed the pinned files.
+When it has, the job fails and names the files. A maintainer then moves the pin, regenerates and
+opens the pull request. GitHub Actions does not open pull requests in this repository (owner
+decision, 2026-10-18).
 
 ### 8.3 Module layout
 
@@ -501,7 +504,7 @@ findings list stays with the maintainer's local results; user documentation does
 | `parity` | PR | **off** (container `--network none`) | The full matrix for both benchmarks: repeatable renders, static and dynamic coverage, agent contract tests |
 | `browser` | PR | **off** for test steps; browsers come preinstalled in the image | Node vs. browser byte-identical HTML over the matrix; playground e2e |
 | `license-guard` | PR | on | No repo file hash equals any benchmark theme file; README disclaimer present |
-| `docs-drift` | Weekly | on | Regenerate from theme-liquid-docs, open PR on change |
+| `docs-drift` | Weekly, and by hand | on | Fails when theme-liquid-docs has changed the pinned files; a maintainer updates the pin and opens the PR (no automatic PR) |
 | `agent-eval` | Manual, on a maintainer's machine (not a CI lane) | on | Report only (§9.12) |
 | `release` | Tag | on | All of the above green |
 
@@ -734,6 +737,7 @@ implementation is claimed by M0.
 | Missing data | Blank as on Shopify, marked; design-mode toggle | Auto-synthesis; all three modes |
 | Agent interface | CLI plus JSON | Screenshot command; MCP server |
 | Agent verification | Contract tests gate; real eval is report-only | Eval gates; contract tests only |
+| Upstream docs updates (owner decision, 2026-10-18) | A weekly check fails on upstream change, and a maintainer opens the PR | Actions opening pull requests, which the organization does not allow |
 | Agent eval runner (owner decision, 2026-10-18) | A coding-agent CLI (Codex) on a maintainer's machine, recorded in §9.12 | A weekly CI lane with an API key secret |
 | Engine | liquidjs plus local overrides, no upstream contributions | Fork; own engine |
 | Block comparison | Not compared on their own; block text is part of its section's text (2026-10-17; was an instrumented copy on both sides) | Instrumented copy on both sides; theme-editor capture |

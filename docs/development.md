@@ -33,6 +33,12 @@ through `ThemeFileSystem`, so the same code runs in the playground.
 `vendor/theme-liquid-docs/`. `pnpm generate` writes the generated data to
 `packages/spec/src/generated/`, and `pnpm generate:check` fails if it is out of date.
 
+`pnpm docs:drift-check` compares the vendored files with upstream's default branch and fails when
+they differ. The `docs-drift` workflow runs it every Monday and can be started by hand; it does
+not open pull requests. To take an upstream change, run `pnpm docs:drift-check --update`, which
+writes the new files and moves the pin. Then run `pnpm generate`, review the generated changes and
+open a pull request.
+
 ## Benchmark themes
 
 `benchmarks.json` pins Shopify's Dawn and Horizon themes. `pnpm benchmarks:fetch` downloads them
@@ -71,6 +77,9 @@ endpoints.
 - `network-off`: the main checks in a container without networking;
 - `browser`: the browser checks in a container without networking;
 - `license-guard`.
+
+`.github/workflows/docs-drift.yml` runs `pnpm docs:drift-check` every Monday and on demand (see
+[Generated Shopify data](#generated-shopify-data)).
 
 `.github/workflows/pages.yml` publishes the playground from `main`. Before that,
 `pnpm pages:artifact-check` confirms that the artifact contains no benchmark theme files or
