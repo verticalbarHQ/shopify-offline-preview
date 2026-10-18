@@ -119,7 +119,8 @@ export class ShopTime extends Drop {
     const p = this.#parts();
     const yday = (Date.UTC(p.year, p.month - 1, p.day) - Date.UTC(p.year, 0, 1)) / 86_400_000 + 1;
     // A named zone tells daylight-saving time by its long name ("…Daylight Time", "…Summer
-    // Time"); for a zone Intl names only by offset, any offset above the year's lowest counts.
+    // Time", and Ireland's summer "Irish Standard Time"); for a zone Intl names only by offset,
+    // any offset above the year's lowest counts.
     const zoneName = (style: "short" | "long") =>
       new Intl.DateTimeFormat("en-US", { timeZone: this.#timeZone, timeZoneName: style })
         .formatToParts(new Date(this.#instant))
@@ -134,7 +135,7 @@ export class ShopTime extends Drop {
               parts(Date.UTC(p.year, Math.floor(i / 2), i % 2 ? 15 : 1), this.#timeZone).offset,
           ),
         )
-      : /Daylight|Summer/.test(long);
+      : /Daylight|Summer|^Irish Standard Time$/.test(long);
     const name = zoneName("short");
     // Ruby names a zone without a letter abbreviation by its offset, such as +0545 or +04.
     const numeric = /^GMT([+-])(\d{1,2})(?::(\d{2}))?$/.exec(name);

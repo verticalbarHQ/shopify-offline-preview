@@ -85,7 +85,12 @@ test("the json form names a zone and its daylight-saving state as Ruby's Time#to
   assert.deepEqual(zone("2026-10-15T12:00:00Z", "Asia/Kathmandu"), [false, "+0545"]);
   assert.deepEqual(zone("2026-10-15T12:00:00Z", "Asia/Dubai"), [false, "+04"]);
   // Casablanca's +01:00 period is daylight-saving time; its standard offset is +00:00 in Ramadan.
-  assert.deepEqual(zone("2026-10-15T12:00:00Z", "Africa/Casablanca")[0], true);
+  // Settled past dates keep these cases independent of Node's timezone data version.
+  assert.equal(zone("2024-10-15T12:00:00Z", "Africa/Casablanca")[0], true);
+  assert.equal(zone("2024-03-15T12:00:00Z", "Africa/Casablanca")[0], false);
+  // Ireland's summer time is named "Irish Standard Time" but is daylight-saving time in Ruby.
+  assert.equal(zone("2024-07-15T12:00:00Z", "Europe/Dublin")[0], true);
+  assert.equal(zone("2024-01-15T12:00:00Z", "Europe/Dublin")[0], false);
   assert.deepEqual(zone("2026-01-15T12:00:00Z", "America/New_York"), [false, "EST"]);
   // A permanent offset change is not daylight-saving time.
   assert.equal(zone("2024-02-15T12:00:00Z", "Asia/Almaty")[0], false);
