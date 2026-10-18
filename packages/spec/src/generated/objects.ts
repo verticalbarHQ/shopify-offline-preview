@@ -1,4 +1,4 @@
-// Generated from Shopify/theme-liquid-docs@7db55a524269b9cc2257bf4beefd1fd04b38df2b. Do not edit.
+// Generated from Shopify/theme-liquid-docs@e729cbf736095ecca9ec84a2fff658e155c8e54f. Do not edit.
 // Documentation types are optional and nullable; untyped values remain unknown.
 export interface LiquidAdditionalCheckoutButtons {
 
