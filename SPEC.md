@@ -487,6 +487,25 @@ Each difference goes into a findings list as **OK** or **fix**. **OK** is an all
 a gap in the input data rather than in the renderer. **Fix** items are fixed or filed as issues. The
 findings list stays with the maintainer's local results; user documentation does not list them.
 
+**Owner review, 2026-10-18.** The owner reviewed the comparison reports for both benchmarks at 1280
+and 390 px and found the pages similar (AC-1). The reports were rebuilt that day from `main` and
+covered the §9.3 page types, the extended section templates, extra states (a second collection page,
+no search results, an empty cart) and the feature pages. Every **fix** finding is fixed (AC-5).
+
+Before the owner confirmed, the code was checked for anything that would make the comparison match
+for the wrong reason:
+
+- The renderer has no branch on a theme, page, product or other resource name.
+- The comparison hides only Shopify's preview bar for unpublished themes and the preview's own
+  diagnostic overlay.
+- The renderer reads no stored Shopify output.
+
+The comparison's snapshot did carry two kinds of input that the sample store lacks:
+
+- store settings that the setup API cannot set, such as the money format and time zone;
+- Shopify's placeholder artwork, which `placeholder_svg_tag` draws from the snapshot. Without that
+  artwork, placeholders are empty boxes of the same size.
+
 ### 9.8 What is not done
 
 - No stored Shopify results gate pull requests.
@@ -637,11 +656,11 @@ Each criterion is checked by the lane or review named.
 
 | # | Criterion | Verified by |
 |---|---|---|
-| AC-1 | For Dawn and Horizon at their pinned commits, the comparison (§9.5) finds every §9.3 page type similar (§9.6) at desktop and mobile widths. | Maintainer review (§9.7) |
+| AC-1 | For Dawn and Horizon at their pinned commits, the comparison (§9.5) finds every §9.3 page type similar (§9.6) at desktop and mobile widths. | Maintainer review (§9.7); owner confirmed 2026-10-18 |
 | AC-2 | `check` reports 0 missing Shopify filters, tags, objects or object properties reachable from the §9.3 page types, for both benchmarks. "Missing" is defined in §9.10. | `parity` |
 | AC-3 | Rendering the full matrix produces 0 Liquid errors and 0 not-implemented events. | `parity` |
 | AC-4 | AC-2 and AC-3 pass with networking disabled. | `parity` (`--network none`) |
-| AC-5 | Every **fix** finding from the comparison is fixed or filed as an issue. | Findings list (§9.7) |
+| AC-5 | Every **fix** finding from the comparison is fixed or filed as an issue. | Findings list (§9.7); owner confirmed 2026-10-18 |
 | AC-6 | The agent contract tests pass (§9.12). | `parity` |
 | AC-7 | The browser build output is byte-identical to Node across the matrix. | `browser` |
 | AC-8 | Playground e2e passes, including the no-upload request check (§9.13). | `browser` |
