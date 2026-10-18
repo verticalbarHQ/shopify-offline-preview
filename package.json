@@ -1,9 +1,26 @@
 {
-  "name": "shopify-offline-preview",
-  "version": "0.0.0",
-  "private": true,
+  "name": "@verticalbar/shopify-offline-preview",
+  "version": "1.0.0",
+  "description": "Unofficial offline preview for Shopify Online Store 2.0 themes: a dev server with an inspector, a CLI with JSON output and a browser playground.",
+  "keywords": [
+    "shopify",
+    "liquid",
+    "theme",
+    "preview",
+    "offline",
+    "cli"
+  ],
+  "homepage": "https://verticalbarhq.github.io/shopify-offline-preview/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/verticalbarHQ/shopify-offline-preview.git"
+  },
+  "bugs": "https://github.com/verticalbarHQ/shopify-offline-preview/issues",
   "type": "module",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=22"
   },
@@ -44,6 +61,7 @@
     "lint": "biome check .",
     "format": "biome check --write .",
     "build": "node tools/build.mjs",
+    "prepack": "node tools/build.mjs",
     "test": "node --import tsx --test tests/*.test.ts",
     "verify": "pnpm generate:check && pnpm typecheck && pnpm lint && pnpm build && pnpm test",
     "benchmarks:fetch": "node tools/fetch-benchmarks.mjs",
