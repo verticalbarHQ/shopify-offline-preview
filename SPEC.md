@@ -501,7 +501,7 @@ findings list stays with the maintainer's local results; user documentation does
 | `browser` | PR | **off** for test steps; browsers come preinstalled in the image | Node vs. browser byte-identical HTML over the matrix; playground e2e |
 | `license-guard` | PR | on | No repo file hash equals any benchmark theme file; README disclaimer present |
 | `docs-drift` | Weekly | on | Regenerate from theme-liquid-docs, open PR on change |
-| `agent-eval` | Weekly, manual | on + API key | Report only (§9.12) |
+| `agent-eval` | Manual, on a maintainer's machine (not a CI lane) | on | Report only (§9.12) |
 | `release` | Tag | on | All of the above green |
 
 ### 9.10 Implemented, server-only and verified
@@ -549,9 +549,61 @@ type.
     find the change in `tree` and in that section's text. Introduce an unknown filter, run
     `check --json --strict`, and get exit code 5 with the filter listed.
 - **Report-only eval.**
-  - A fixed task set (10 tasks, for example "show the vendor above the product title and verify") is
-    run by a headless coding agent that has file access and this CLI, and no store credentials.
+  - A fixed task set (10 tasks, for example "show the product type above the product title and
+    verify") is run by a headless coding agent that has file access and this CLI, and no store
+    credentials.
   - Each task has an assertion script, and the success rate is recorded per run.
+  - `pnpm agent:eval` runs it (`tools/agent-eval/`). The tasks use the pinned Dawn theme:
+
+    | Task | The agent must |
+    |---|---|
+    | `product-type-above-title` | Show the product type above the product title, read from the product's data. |
+    | `announcement-text` | Change the announcement bar message. |
+    | `trust-badges-section` | Create a section with a heading and three items as blocks, after the main product section. |
+    | `fix-liquid-error` | Find and fix a Liquid error planted in the product section. |
+    | `new-product-data` | Make a snapshot from the bundled sample store and add a product that renders. |
+    | `sale-scenario` | Add a scenario that puts one product on sale, leaving the base data unchanged. |
+    | `add-to-cart-label` | Rename the add-to-cart button through the English translations. |
+    | `home-section-order` | Report the home page's sections in order, without changing the theme. |
+    | `server-only-features` | Report the product template's server-only features, without changing the theme. |
+    | `article-iso-date` | Show article dates as year-month-day, read from the article's data. |
+
+  - Isolation:
+    - each task runs in a new folder outside the repository, with the package installed from its
+      tarball;
+    - the agent gets only `PATH`, `HOME`, `TMPDIR`, `LANG` and the variables it needs to run;
+    - the checks render with a separate, untouched install.
+  - `--self-test` proves that every check fails on the untouched theme and passes on a known
+    solution. It passed for all ten tasks.
+
+#### Recorded runs
+
+Both runs on 2026-10-18 used the following setup:
+
+- the 1.0.0 package tarball built from commit `94011d1` (shasum `3fa3c8a5`);
+- pinned Dawn;
+- Codex CLI 0.162.1 with model `gpt-6-astra` at high reasoning effort;
+- MCP servers and computer use turned off;
+- tasks run one at a time, each limited to 20 minutes.
+
+| Task | Run 1 | Run 2 |
+|---|---|---|
+| `product-type-above-title` | pass, 45 s | pass, 48 s |
+| `announcement-text` | pass, 26 s | pass, 26 s |
+| `trust-badges-section` | fail, 87 s | pass, 77 s |
+| `fix-liquid-error` | pass, 48 s | pass, 41 s |
+| `new-product-data` | pass, 52 s | pass, 54 s |
+| `sale-scenario` | pass, 56 s | pass, 53 s |
+| `add-to-cart-label` | pass, 30 s | pass, 35 s |
+| `home-section-order` | pass, 27 s | pass, 46 s |
+| `server-only-features` | pass, 28 s | pass, 26 s |
+| `article-iso-date` | pass, 34 s | pass, 29 s |
+| **Success rate** | **9/10** | **10/10** |
+
+The run 1 failure came from the task's wording, not from the CLI. The prompt said "Add a new section",
+and the agent added Dawn's existing Multicolumn section with the heading and three editable column
+blocks. The check expects a new section file. Run 2 asked for "a new section file" and used the same
+check.
 
 ### 9.13 Browser and playground checks
 
@@ -638,7 +690,8 @@ implementation is claimed by M0.
 3. Create the public repository `verticalbarHQ/shopify-offline-preview`.
 4. Set up the npm publishing account and 2FA for `shopify-offline-preview`, and GitHub Pages for the
    playground.
-5. Provide an API key secret for the report-only agent eval.
+5. None for the report-only agent eval: it runs a coding-agent CLI on a maintainer's machine, so it
+   needs no API key secret (owner decision, 2026-10-18).
 
 ## 15. Decision log (interview of 2026-10-13)
 
@@ -665,6 +718,7 @@ implementation is claimed by M0.
 | Missing data | Blank as on Shopify, marked; design-mode toggle | Auto-synthesis; all three modes |
 | Agent interface | CLI plus JSON | Screenshot command; MCP server |
 | Agent verification | Contract tests gate; real eval is report-only | Eval gates; contract tests only |
+| Agent eval runner (owner decision, 2026-10-18) | A coding-agent CLI (Codex) on a maintainer's machine, recorded in §9.12 | A weekly CI lane with an API key secret |
 | Engine | liquidjs plus local overrides, no upstream contributions | Fork; own engine |
 | Block comparison | Not compared on their own; block text is part of its section's text (2026-10-17; was an instrumented copy on both sides) | Instrumented copy on both sides; theme-editor capture |
 | Oracle store | Existing dev store, dedicated and wiped. Superseded on 2026-10-17: the store supplied on 2026-10-13 is used for other work, so the owner approved a new development store dedicated to the comparison (§9.1, §14) | Coexist with prefixes; a new store (the 2026-10-13 choice) |

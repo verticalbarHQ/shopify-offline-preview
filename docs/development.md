@@ -76,6 +76,25 @@ endpoints.
 `pnpm pages:artifact-check` confirms that the artifact contains no benchmark theme files or
 names. The `unit` job runs the same check on pull requests.
 
+## Agent eval
+
+`pnpm agent:eval` measures how well a coding agent completes ten theme tasks with only this
+package's CLI and file access (SPEC §9.12). It is a report, not a check, and it does not run in CI.
+
+```sh
+pnpm agent:eval --package @verticalbar/shopify-offline-preview@1.0.0 --self-test
+pnpm agent:eval --package @verticalbar/shopify-offline-preview@1.0.0 \
+  --agent 'codex exec --skip-git-repo-check "$(cat "$PROMPT_FILE")" < /dev/null' --env CODEX_HOME
+```
+
+Each task runs in a new folder outside the repository with a copy of the pinned Dawn theme and the
+package installed from npm. The agent command runs there with `sh -c`; `$PROMPT_FILE` holds the
+prompt, and only `PATH`, `HOME`, `TMPDIR`, `LANG` and the variables named with `--env` are passed
+on, so store credentials never reach the agent. After the agent exits, the task's check script
+renders the result with an untouched copy of the CLI and decides pass or fail. `--self-test` skips
+the agent and proves each check fails on the untouched theme and passes on a known solution. The
+tasks and checks are in `tools/agent-eval/tasks.ts`; results go to `.local/agent-eval/`.
+
 ## Shopify comparison tools
 
 `tools/oracle/` holds the tools for comparing the preview with a real Shopify store. They are
