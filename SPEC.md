@@ -499,14 +499,14 @@ for the wrong reason:
 - The comparison hides only Shopify's preview bar for unpublished themes and the preview's own
   diagnostic overlay.
 - The renderer reads no stored Shopify page output. The only Shopify-made content it can draw is
-  artwork supplied in the snapshot (`placeholderSvgs`, `paymentTypeSvgs`), which it outputs as
-  given.
+  artwork supplied in the snapshot (`placeholderSvgs`, `paymentTypeSvgs`). It reuses that artwork,
+  adding only a class the theme asks for to the SVG root.
 
 The comparison's snapshot did carry two kinds of input that the sample store lacks:
 
 - store settings that the setup API cannot set, such as the money format and time zone;
-- Shopify's placeholder artwork in `placeholderSvgs`, which `placeholder_svg_tag` outputs unchanged.
-  Without that artwork, placeholders are empty boxes of the same size.
+- Shopify's placeholder artwork in `placeholderSvgs`, which `placeholder_svg_tag` reuses (owner
+  approved, 2026-10-18). Without that artwork, placeholders are empty boxes of the same size.
 
 ### 9.8 What is not done
 
