@@ -101,7 +101,8 @@ package installed from npm.
 Two other modes skip the agent:
 
 - `--self-test` proves that each check fails on the untouched theme and passes on a known solution.
-- `--recheck <results.json>` judges a finished run's folders again with the current checks.
+- `--recheck <results.json>` judges a finished run's folders again with the current checks, using
+  the package and theme recorded with that run.
 
 The tasks and checks are in `tools/agent-eval/tasks.ts`; results go to `.local/agent-eval/`.
 

@@ -9,7 +9,7 @@
  *   pnpm agent:eval --package <npm spec or .tgz> --self-test
  *   pnpm agent:eval --package <spec> --agent '<shell command>' \
  *     [--env CODEX_HOME] [--tasks id,id] [--timeout-minutes 20] [--theme <dawn>] [--out <dir>]
- *   pnpm agent:eval --package <spec> --recheck <results.json>   (judge a run's folders again)
+ *   pnpm agent:eval --recheck <results.json>   (judge a run's folders again, with its package and theme)
  *
  * The agent command runs with `sh -c` in the task folder; $PROMPT_FILE names a file holding the
  * prompt. --theme defaults to the Dawn copy from `pnpm benchmarks:fetch`.
@@ -36,13 +36,38 @@ const { values } = parseArgs({
     recheck: { type: "string" },
   },
 });
-if (!values.package || (!values["self-test"] && !values.agent && !values.recheck)) {
+const resultSchema = z.object({
+  task: z.string(),
+  pass: z.boolean(),
+  seconds: z.number().optional(),
+  exit: z.string().optional(),
+  reason: z.string().optional(),
+  workspace: z.string(),
+});
+type Result = z.infer<typeof resultSchema>;
+// A recheck judges the folders against the package and theme the run used, never other inputs.
+const recorded = values.recheck
+  ? z
+      .object({ package: z.string(), theme: z.string(), results: z.array(resultSchema) })
+      .parse(JSON.parse(await readFile(values.recheck, "utf8")))
+  : undefined;
+if (
+  recorded &&
+  ((values.package && resolvePackage(values.package) !== recorded.package) ||
+    (values.theme && resolve(values.theme) !== recorded.theme))
+) {
+  console.error("--recheck uses the package and theme recorded with the run; omit them.");
+  process.exit(2);
+}
+const packageSpec = recorded?.package ?? (values.package && resolvePackage(values.package));
+if (!packageSpec || (!values["self-test"] && !values.agent && !recorded)) {
   console.error(
-    "Usage: run.ts --package <spec> (--self-test | --agent <command> | --recheck <results.json>)",
+    "Usage: run.ts (--package <spec> (--self-test | --agent <command>) | --recheck <results.json>)",
   );
   process.exit(2);
 }
 const theme =
+  recorded?.theme ??
   values.theme ??
   z
     .array(z.object({ name: z.string(), path: z.string() }))
@@ -59,11 +84,10 @@ await mkdir(out, { recursive: true });
 // One untouched install for the checks, and the source of every workspace's node_modules.
 const install = await mkdtemp(join(tmpdir(), "sop-agent-eval-package-"));
 await writeFile(join(install, "package.json"), '{ "private": true }\n');
-const npm = spawnSync(
-  "npm",
-  ["install", "--no-audit", "--no-fund", "--save-dev", resolvePackage(values.package)],
-  { cwd: install, encoding: "utf8" },
-);
+const npm = spawnSync("npm", ["install", "--no-audit", "--no-fund", "--save-dev", packageSpec], {
+  cwd: install,
+  encoding: "utf8",
+});
 if (npm.status !== 0) throw new Error(`npm install failed: ${npm.stderr}`);
 const installed = join(install, "node_modules/@verticalbar/shopify-offline-preview");
 const context: Context = {
@@ -138,18 +162,8 @@ async function runAgent(task: Task, dir: string): Promise<{ seconds: number; exi
   return { seconds, exit: timedOut ? "timeout" : String(code ?? signal) };
 }
 
-interface Result {
-  task: string;
-  pass: boolean;
-  seconds?: number;
-  exit?: string;
-  reason?: string;
-  workspace: string;
-}
 const results: Result[] = [];
-const previous = values.recheck
-  ? (JSON.parse(await readFile(values.recheck, "utf8")).results as Result[])
-  : undefined;
+const previous = recorded?.results;
 for (const task of selected) {
   const earlier = previous?.find((item) => item.task === task.id);
   if (previous && !earlier) continue;
@@ -192,7 +206,7 @@ const report = {
   date: new Date().toISOString(),
   mode: values["self-test"] ? "self-test" : values.recheck ? "recheck" : "agent",
   ...(values.recheck ? { recheckOf: resolve(values.recheck) } : {}),
-  package: values.package,
+  package: packageSpec,
   theme: context.sourceTheme,
   agent: values.agent ?? null,
   passed,
