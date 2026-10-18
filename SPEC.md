@@ -7,7 +7,7 @@
 | Status | Offline renderer, dev inspector, and static browser playground implemented. Real Shopify oracle parity and feature completion remain pending. |
 | Date | 2026-10-13 |
 | Repository | `verticalbarHQ/shopify-offline-preview` (public) |
-| npm package (planned) | `shopify-offline-preview` (name unclaimed on npm as of 2026-10-13) |
+| npm package | `@verticalbar/shopify-offline-preview` (CLI command `shopify-offline-preview`) |
 | License | MIT |
 | Language | TypeScript, Node.js ≥ 22 and evergreen browsers |
 
@@ -280,8 +280,9 @@ A scheduled job opens a PR when upstream changes.
 
 ### 8.3 Module layout
 
-The repository is a pnpm workspace. It publishes **one** npm package with subpath exports:
-`shopify-offline-preview` (the CLI bin), `/render`, `/check`, and `/browser`.
+The repository is a pnpm workspace. It publishes **one** npm package,
+`@verticalbar/shopify-offline-preview`, with the CLI bin `shopify-offline-preview` and the subpath
+exports `/render`, `/check`, and `/browser`.
 
 ```
 packages/
@@ -636,8 +637,8 @@ implementation is claimed by M0.
    only on the dedicated stores. Their credentials and the storefront password stay with the
    maintainer who runs the comparison.
 3. Create the public repository `verticalbarHQ/shopify-offline-preview`.
-4. Set up the npm publishing account and 2FA for `shopify-offline-preview`, and GitHub Pages for the
-   playground.
+4. Publish to npm as `@verticalbar/shopify-offline-preview` under the `@verticalbar` scope (owner
+   decision, 2026-10-18), and set up GitHub Pages for the playground.
 5. Provide an API key secret for the report-only agent eval.
 
 ## 15. Decision log (interview of 2026-10-13)
