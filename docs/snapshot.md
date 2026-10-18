@@ -103,7 +103,8 @@ diagnostic.
 - **Files** are paths relative to `images/`. A missing image file renders as a placeholder of
   the requested size.
 - **Times** are ISO 8601 with an offset. `meta.now` is the time the page is rendered at: `now`,
-  `today` and every relative date use it. Dates are shown in `shop.timezone`, an IANA zone name.
+  `today` and every relative date use it. Dates are shown in `shop.timezone`, an IANA zone name:
+  `{{ article.published_at }}` prints like `2026-10-12 20:00:00 -0400`, as on Shopify.
 
 ## Top-level fields
 

@@ -2,6 +2,7 @@ import { findNodeAtLocation, parseTree } from "jsonc-parser";
 import { type Liquid, toValue } from "liquidjs";
 import { ImageDirectory, MissingImage } from "../../../data/src/images.js";
 import { liquidObjectKind, ScalarDrop } from "../../../data/src/objects.js";
+import { ShopTime } from "../../../data/src/shop-time.js";
 import { LiquidFloat } from "../numbers.js";
 import { TableRowLoop } from "../tablerow-tag.js";
 
@@ -91,6 +92,8 @@ export function registerJsonFilter(engine: Liquid) {
       input instanceof TableRowLoop
     )
       return jsonString({ error: "json not allowed for this object" });
+    // Shopify serializes a bare timestamp as Ruby's Time#to_a; inside an object it is ISO 8601.
+    if (input instanceof ShopTime) return jsonString(input.rubyArray());
     const paths = new WeakMap<object, (string | number)[]>();
     const projectedVariants = new WeakSet<object>();
     const floats: { path: (string | number)[]; text: string }[] = [];
