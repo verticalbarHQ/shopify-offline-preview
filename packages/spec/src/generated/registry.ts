@@ -1,12 +1,12 @@
-// Generated from Shopify/theme-liquid-docs@7db55a524269b9cc2257bf4beefd1fd04b38df2b. Do not edit.
+// Generated from Shopify/theme-liquid-docs@e729cbf736095ecca9ec84a2fff658e155c8e54f. Do not edit.
 export const registry = {
   "repository": "Shopify/theme-liquid-docs",
-  "commit": "7db55a524269b9cc2257bf4beefd1fd04b38df2b",
+  "commit": "e729cbf736095ecca9ec84a2fff658e155c8e54f",
   "hashes": {
     "filters.json": "2bdd44cbd5805560ed7cc1da5f096e65a0f36792046714ad728e8cd43dab1559",
     "objects.json": "c92813ebddde1bebfe33f5d349597d8be57fdc3a107fe6dea6f64f13f799c11a",
     "tags.json": "2d9baeb7d5038719950bc47fe0c943f5f66067e38278fc5e49c1d1deeba27136",
-    "shopify_system_translations.json": "5c6d843c33f35d1519005e4a82a2e00f4e56c70869d2f52bbcb5ca4ba5ebab0e"
+    "shopify_system_translations.json": "38176132d6ae67b2ffe7c043c54320872109fec251be76bbfb8ed2b3558556da"
   },
   "aliases": {
     "t": "translate",
