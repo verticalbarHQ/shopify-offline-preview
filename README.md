@@ -97,7 +97,7 @@ listed in the inspector panel and in `render --json`. Most are also shown as bad
 Store data comes from a **snapshot**: a folder with a `snapshot.json` file and an `images/` folder.
 
 ```sh
-shopify-offline-preview dev path/to/theme --data path/to/snapshot
+npx shopify-offline-preview dev path/to/theme --data path/to/snapshot
 ```
 
 The tool never connects to a store. Get your data out with any export tool, then convert it to the
@@ -109,8 +109,8 @@ field at fault (exit code 3).
 A snapshot can also define **scenarios**: named variations of the data, such as a sold-out product
 or a full cart. Choose one with `--scenario <name>` or in the inspector.
 
-[docs/snapshot.md](docs/snapshot.md) describes every field. `shopify-offline-preview schema snapshot`
-prints the JSON Schema.
+[The snapshot guide](https://github.com/verticalbarHQ/shopify-offline-preview/blob/main/docs/snapshot.md)
+describes every field. `npx shopify-offline-preview schema snapshot` prints the JSON Schema.
 
 ## Commands
 

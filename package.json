@@ -61,6 +61,7 @@
     "lint": "biome check .",
     "format": "biome check --write .",
     "build": "node tools/build.mjs",
+    "prepack": "node tools/build.mjs",
     "test": "node --import tsx --test tests/*.test.ts",
     "verify": "pnpm generate:check && pnpm typecheck && pnpm lint && pnpm build && pnpm test",
     "benchmarks:fetch": "node tools/fetch-benchmarks.mjs",
