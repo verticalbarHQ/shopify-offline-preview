@@ -53,13 +53,16 @@ const recorded = values.recheck
   : undefined;
 if (
   recorded &&
-  ((values.package && resolvePackage(values.package) !== recorded.package) ||
+  ((values.package && resolvePackage(values.package) !== resolvePackage(recorded.package)) ||
     (values.theme && resolve(values.theme) !== recorded.theme))
 ) {
   console.error("--recheck uses the package and theme recorded with the run; omit them.");
   process.exit(2);
 }
-const packageSpec = recorded?.package ?? (values.package && resolvePackage(values.package));
+// Reports written before tarball paths were stored resolved may hold a relative path.
+const packageSpec = recorded
+  ? resolvePackage(recorded.package)
+  : values.package && resolvePackage(values.package);
 if (!packageSpec || (!values["self-test"] && !values.agent && !recorded)) {
   console.error(
     "Usage: run.ts (--package <spec> (--self-test | --agent <command>) | --recheck <results.json>)",
