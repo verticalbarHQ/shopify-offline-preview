@@ -47,8 +47,12 @@ const origin = `http://127.0.0.1:${address.port}`;
 const name = "sop-playground-matrix";
 const run = promisify(execFile);
 const browser = async (...args: string[]) =>
-  (await run("agent-browser", ["--session", name, ...args], { encoding: "utf8", timeout: hangGuardMs }))
-    .stdout;
+  (
+    await run("agent-browser", ["--session", name, ...args], {
+      encoding: "utf8",
+      timeout: hangGuardMs,
+    })
+  ).stdout;
 let client: BrowserProtocol | undefined;
 const rows = [];
 const requests: { url: string; method: string; body: string; sessionId: string }[] = [];
