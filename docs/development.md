@@ -158,7 +158,7 @@ None of the commands below changes a store.
 | Command | Purpose |
 |---|---|
 | `pnpm oracle:visual-compare <config>` | Captures and compares two origins as described above. The browser blocks every request that is not a read, including requests from the pages' own scripts, apart from the storefront password submission. |
-| `pnpm oracle:record-verification <config>` | Re-renders the pages a comparison judged similar and records which Shopify features ran, plus the documented filter examples that matched Shopify exactly, in `packages/spec/src/verification.ts`. `check` reports these features as `verified`. |
+| `pnpm oracle:record-verification <config>` | Re-renders the pages a comparison judged similar and records which Shopify features ran, plus the documented filter examples that matched Shopify exactly, in `packages/spec/src/verification.ts`. `check` reports these features as `verified`. A theme entry can carry its own `data`, `pages` and `date`, for a comparison on another store or day. |
 | `pnpm oracle:seed-prepare` | Plans the store state for the benchmark pages from a snapshot and its images. |
 | `pnpm oracle:seed-requests-prepare` | Compiles that plan into Admin API requests and validates them against an Admin API schema. |
 | `pnpm oracle:backup-audit`, `pnpm oracle:supplemental-backup-audit` | Audit the store exports taken before the store is wiped. |

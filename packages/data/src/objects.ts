@@ -1,4 +1,5 @@
 import { Drop } from "liquidjs";
+import { LiquidFloat } from "./float.js";
 import { handleize } from "./handle.js";
 import { ImageDirectory, localImageUrl } from "./images.js";
 import { focalPoint, ScalarDrop } from "./scalar-drop.js";
@@ -407,6 +408,7 @@ export function liquidObjects(
     );
   }
   function trackedJson(value: unknown, type: string, path: string): unknown {
+    if (value instanceof Number) return value;
     if (Array.isArray(value))
       return tracked(
         value.map((item, index) => trackedJson(item, type, `${path}[${index}]`)),
@@ -635,7 +637,12 @@ export function liquidObjects(
                   ? null
                   : liquidPrice(variant.unitPrice),
             unit_price_measurement: trackedJson(
-              variant.unitPriceMeasurement,
+              variant.unitPriceMeasurement && {
+                ...variant.unitPriceMeasurement,
+                // Shopify keeps the quantity as a Float, so 250 prints as 250.0 (measured on a
+                // store in Germany); the reference value is an Integer.
+                quantity_value: new LiquidFloat(variant.unitPriceMeasurement.quantity_value),
+              },
               "unit_price_measurement",
               `${path}.variants[${index}].unit_price_measurement`,
             ),
