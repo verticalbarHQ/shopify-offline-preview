@@ -11,7 +11,7 @@ import { z } from "zod";
 import { benchmarkMatrix, defaultFixture } from "../packages/data/src/fixture.js";
 import { renderTheme } from "../packages/render/src/index.js";
 import { NodeThemeFileSystem } from "../packages/theme/src/node.js";
-import { BrowserProtocol } from "./browser/cdp.js";
+import { BrowserProtocol, hangGuardMs } from "./browser/cdp.js";
 
 await mkdir(".local/results", { recursive: true });
 const root = resolve("dist/playground");
@@ -47,8 +47,12 @@ const origin = `http://127.0.0.1:${address.port}`;
 const name = "sop-playground-matrix";
 const run = promisify(execFile);
 const browser = async (...args: string[]) =>
-  (await run("agent-browser", ["--session", name, ...args], { encoding: "utf8", timeout: 15000 }))
-    .stdout;
+  (
+    await run("agent-browser", ["--session", name, ...args], {
+      encoding: "utf8",
+      timeout: hangGuardMs,
+    })
+  ).stdout;
 let client: BrowserProtocol | undefined;
 const rows = [];
 const requests: { url: string; method: string; body: string; sessionId: string }[] = [];
@@ -133,7 +137,7 @@ try {
     sessionId,
   );
   await c.call("Page.navigate", { url: origin }, sessionId);
-  const wait = `async predicate=>{const until=Date.now()+10000;while(!predicate()){if(Date.now()>until)throw new Error('Playground not ready: '+document.querySelector('#status')?.textContent);await new Promise(r=>setTimeout(r,20));}}`;
+  const wait = `async predicate=>{const until=Date.now()+${hangGuardMs};while(!predicate()){if(Date.now()>until)throw new Error('Playground not ready: '+document.querySelector('#status')?.textContent);await new Promise(r=>setTimeout(r,20));}}`;
   // First visit: the bundled sample theme renders with the default fixture, without errors.
   const sampleFiles = z
     .array(z.string())

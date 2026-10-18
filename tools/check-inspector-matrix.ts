@@ -20,7 +20,9 @@ try {
       "tools/check-inspector-browser.ts",
       ...sessions.map((session) => session.inspectorOrigin),
     ],
-    { timeout: 180000, maxBuffer: 8 * 1024 * 1024 },
+    // A last resort for the whole check: every step inside has its own hang guard, which should
+    // report first with a precise message. It stays well inside the CI job's 20-minute limit.
+    { timeout: 10 * 60_000, maxBuffer: 8 * 1024 * 1024 },
   );
   process.stdout.write(stdout);
   process.stderr.write(stderr);

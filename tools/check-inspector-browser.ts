@@ -8,7 +8,7 @@ import { benchmarkMatrix, defaultFixture } from "../packages/data/src/fixture.js
 import type { RenderNode } from "../packages/render/src/contracts.js";
 import { renderTheme } from "../packages/render/src/index.js";
 import { NodeThemeFileSystem } from "../packages/theme/src/node.js";
-import { BrowserProtocol } from "./browser/cdp.js";
+import { BrowserProtocol, hangGuardMs } from "./browser/cdp.js";
 
 const origins = process.argv.slice(2);
 if (
@@ -21,7 +21,10 @@ if (
   throw new Error("Provide Dawn and Horizon loopback inspector origins");
 const session = "sop-inspector-e2e";
 const browser = (...args: string[]) =>
-  execFileSync("agent-browser", ["--session", session, ...args], { encoding: "utf8" });
+  execFileSync("agent-browser", ["--session", session, ...args], {
+    encoding: "utf8",
+    timeout: hangGuardMs,
+  });
 browser("open", `${origins[0]}/`);
 const client = await BrowserProtocol.connect(browser("get", "cdp-url").trim());
 const targets = z
@@ -68,7 +71,7 @@ function flatten(nodes: RenderNode[]): RenderNode[] {
 }
 /** Evaluates in the preview frame at `previewUrl` once it returns a non-null value. */
 async function inPreview(previewUrl: string, expression: string): Promise<unknown> {
-  for (let attempt = 0; attempt < 200; attempt++) {
+  for (const until = Date.now() + hangGuardMs; Date.now() < until; ) {
     const frames = z
       .object({
         frameTree: z.object({
@@ -97,7 +100,7 @@ async function inPreview(previewUrl: string, expression: string): Promise<unknow
   }
   return null;
 }
-const wait = `async predicate => {const until=Date.now()+10000;while(!predicate()){if(Date.now()>until) throw new Error('Inspector did not become ready');await new Promise(resolve=>setTimeout(resolve,20));}}`;
+const wait = `async predicate => {const until=Date.now()+${hangGuardMs};while(!predicate()){if(Date.now()>until) throw new Error('Inspector did not become ready');await new Promise(resolve=>setTimeout(resolve,20));}}`;
 try {
   for (const [index, item] of manifest.entries()) {
     const origin = origins[index];
@@ -108,7 +111,7 @@ try {
     // A late load event from the previous page can arrive after navigation starts.
     // Match the navigation loader before readiness, even for a same-origin reload.
     // Retry only destroyed navigation contexts.
-    for (let attempt = 0; attempt < 200; attempt++) {
+    for (const until = Date.now() + hangGuardMs; Date.now() < until; ) {
       try {
         const document = z
           .object({ frameTree: z.object({ frame: z.object({ loaderId: z.string() }) }) })

@@ -8,7 +8,7 @@ import { promisify } from "node:util";
 import { z } from "zod";
 import { defaultFixture } from "../packages/data/src/fixture.js";
 import { startDevServer } from "../packages/dev/src/server.js";
-import { BrowserProtocol } from "./browser/cdp.js";
+import { BrowserProtocol, hangGuardMs } from "./browser/cdp.js";
 
 const root = await mkdtemp(join(tmpdir(), "sop-inspector-interactions-"));
 const theme = join(root, "theme");
@@ -50,7 +50,7 @@ const execute = promisify(execFile);
 const browser = async (...args: string[]) => {
   const { stdout } = await execute("agent-browser", ["--session", name, ...args], {
     encoding: "utf8",
-    timeout: 15000,
+    timeout: hangGuardMs,
   });
   return stdout;
 };
@@ -97,7 +97,7 @@ client.on((event) => {
 await client.call("Runtime.enable", {}, attached.sessionId);
 await client.call("Page.enable", {}, attached.sessionId);
 await client.call("Network.enable", {}, attached.sessionId);
-const wait = `async predicate=>{const until=Date.now()+10000;while(!predicate()){if(Date.now()>until)throw new Error('Interaction timed out');await new Promise(resolve=>setTimeout(resolve,25));}}`;
+const wait = `async predicate=>{const until=Date.now()+${hangGuardMs};while(!predicate()){if(Date.now()>until)throw new Error('Interaction timed out');await new Promise(resolve=>setTimeout(resolve,25));}}`;
 async function parent(expression: string) {
   try {
     return await client.evaluate(attached.sessionId, expression);
@@ -113,7 +113,7 @@ async function frameContext() {
     .string()
     .url()
     .parse(await parent("document.querySelector('#preview').src"));
-  for (let attempt = 0; attempt < 200; attempt++) {
+  for (const until = Date.now() + hangGuardMs; Date.now() < until; ) {
     const frames = z
       .object({
         frameTree: z.object({
