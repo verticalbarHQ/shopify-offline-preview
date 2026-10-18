@@ -498,13 +498,15 @@ for the wrong reason:
 - The renderer has no branch on a theme, page, product or other resource name.
 - The comparison hides only Shopify's preview bar for unpublished themes and the preview's own
   diagnostic overlay.
-- The renderer reads no stored Shopify output.
+- The renderer reads no stored Shopify page output. The only Shopify-made content it can draw is
+  artwork supplied in the snapshot (`placeholderSvgs`, `paymentTypeSvgs`), which it outputs as
+  given.
 
 The comparison's snapshot did carry two kinds of input that the sample store lacks:
 
 - store settings that the setup API cannot set, such as the money format and time zone;
-- Shopify's placeholder artwork, which `placeholder_svg_tag` draws from the snapshot. Without that
-  artwork, placeholders are empty boxes of the same size.
+- Shopify's placeholder artwork in `placeholderSvgs`, which `placeholder_svg_tag` outputs unchanged.
+  Without that artwork, placeholders are empty boxes of the same size.
 
 ### 9.8 What is not done
 
