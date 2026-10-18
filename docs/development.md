@@ -88,12 +88,22 @@ pnpm agent:eval --package @verticalbar/shopify-offline-preview@1.0.0 \
 ```
 
 Each task runs in a new folder outside the repository with a copy of the pinned Dawn theme and the
-package installed from npm. The agent command runs there with `sh -c`; `$PROMPT_FILE` holds the
-prompt, and only `PATH`, `HOME`, `TMPDIR`, `LANG` and the variables named with `--env` are passed
-on, so store credentials never reach the agent. After the agent exits, the task's check script
-renders the result with an untouched copy of the CLI and decides pass or fail. `--self-test` skips
-the agent and proves each check fails on the untouched theme and passes on a known solution. The
-tasks and checks are in `tools/agent-eval/tasks.ts`; results go to `.local/agent-eval/`.
+package installed from npm.
+
+- The agent command runs there with `sh -c`, and `$PROMPT_FILE` holds the prompt.
+- The agent gets a `HOME` inside the folder and only `PATH`, `TMPDIR`, `LANG` and the variables
+  named with `--env`.
+- It still runs as your user without an OS sandbox. Run it on a machine or account that holds no
+  store credentials, or in a container.
+- After the agent exits, its process group is stopped, and the task's check script renders the
+  result with an untouched copy of the CLI to decide pass or fail.
+
+Two other modes skip the agent:
+
+- `--self-test` proves that each check fails on the untouched theme and passes on a known solution.
+- `--recheck <results.json>` judges a finished run's folders again with the current checks.
+
+The tasks and checks are in `tools/agent-eval/tasks.ts`; results go to `.local/agent-eval/`.
 
 ## Shopify comparison tools
 

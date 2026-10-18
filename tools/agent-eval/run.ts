@@ -1,12 +1,15 @@
 /**
  * Report-only agent eval (SPEC §9.12). Each task runs in a fresh folder outside the repository that
  * holds a copy of the pinned Dawn theme and the package installed from npm. The agent gets the
- * task as a prompt and only the environment variables named with --env, so no store credentials
- * reach it. A check script then decides the result. Not part of CI.
+ * task as a prompt, a HOME inside that folder, and only PATH, TMPDIR, LANG and the environment
+ * variables named with --env. It still runs as the current user without an OS sandbox, so run it
+ * on a machine or account that holds no store credentials, or in a container. A check script then
+ * decides the result. Not part of CI.
  *
  *   pnpm agent:eval --package <npm spec or .tgz> --self-test
  *   pnpm agent:eval --package <spec> --agent '<shell command>' \
  *     [--env CODEX_HOME] [--tasks id,id] [--timeout-minutes 20] [--theme <dawn>] [--out <dir>]
+ *   pnpm agent:eval --package <spec> --recheck <results.json>   (judge a run's folders again)
  *
  * The agent command runs with `sh -c` in the task folder; $PROMPT_FILE names a file holding the
  * prompt. --theme defaults to the Dawn copy from `pnpm benchmarks:fetch`.
@@ -30,10 +33,13 @@ const { values } = parseArgs({
     "timeout-minutes": { type: "string", default: "20" },
     out: { type: "string" },
     "self-test": { type: "boolean", default: false },
+    recheck: { type: "string" },
   },
 });
-if (!values.package || (!values["self-test"] && !values.agent)) {
-  console.error("Usage: run.ts --package <spec> (--self-test | --agent <command>) [--theme <dir>]");
+if (!values.package || (!values["self-test"] && !values.agent && !values.recheck)) {
+  console.error(
+    "Usage: run.ts --package <spec> (--self-test | --agent <command> | --recheck <results.json>)",
+  );
   process.exit(2);
 }
 const theme =
@@ -89,8 +95,10 @@ Task: `;
 async function runAgent(task: Task, dir: string): Promise<{ seconds: number; exit: string }> {
   const prompt = join(dir, ".eval-prompt.txt");
   await writeFile(prompt, `${preamble}${task.prompt}\n`);
-  const env: Record<string, string> = { PROMPT_FILE: prompt, TERM: "dumb" };
-  for (const name of ["PATH", "HOME", "TMPDIR", "LANG", ...values.env]) {
+  const home = join(dir, ".home");
+  await mkdir(home);
+  const env: Record<string, string> = { PROMPT_FILE: prompt, TERM: "dumb", HOME: home };
+  for (const name of ["PATH", "TMPDIR", "LANG", ...values.env]) {
     const value = process.env[name];
     if (value !== undefined) env[name] = value;
   }
@@ -102,10 +110,13 @@ async function runAgent(task: Task, dir: string): Promise<{ seconds: number; exi
     detached: true,
     stdio: ["ignore", log.fd, log.fd],
   });
-  const stop = (signal: NodeJS.Signals) => {
+  const stop = (signal: NodeJS.Signals | 0) => {
     try {
       if (child.pid) process.kill(-child.pid, signal);
-    } catch {}
+      return true;
+    } catch {
+      return false;
+    }
   };
   const limit = Number(values["timeout-minutes"]) * 60_000;
   let timedOut = false;
@@ -116,8 +127,12 @@ async function runAgent(task: Task, dir: string): Promise<{ seconds: number; exi
   }, limit);
   const [code, signal] = (await once(child, "exit")) as [number | null, string | null];
   clearTimeout(timer);
-  // The agent may leave a dev server or watcher running; stop its whole process group.
+  // The agent may leave a dev server or watcher running. Stop its whole process group, and kill
+  // whatever is left after ten seconds, before the check reads the folder.
   stop("SIGTERM");
+  for (let waited = 0; stop(0) && waited < 10_000; waited += 250)
+    await new Promise((done) => setTimeout(done, 250));
+  stop("SIGKILL");
   await log.close();
   const seconds = Math.round((performance.now() - started) / 1000);
   return { seconds, exit: timedOut ? "timeout" : String(code ?? signal) };
@@ -132,28 +147,40 @@ interface Result {
   workspace: string;
 }
 const results: Result[] = [];
+const previous = values.recheck
+  ? (JSON.parse(await readFile(values.recheck, "utf8")).results as Result[])
+  : undefined;
 for (const task of selected) {
-  const dir = await workspace(task);
-  if (values["self-test"]) {
-    const before = await task.check(dir, context);
-    await task.reference(dir, context);
-    const after = await task.check(dir, context);
-    const reason = !before
-      ? "the check passes before any change"
-      : after
-        ? `the reference solution fails: ${after}`
-        : undefined;
-    results.push({ task: task.id, pass: !reason, ...(reason ? { reason } : {}), workspace: dir });
+  const earlier = previous?.find((item) => item.task === task.id);
+  if (previous && !earlier) continue;
+  if (earlier) {
+    // Judge the folder the agent left with the current checks; the agent does not run again.
+    const reason = await task.check(earlier.workspace, context).catch((error) => String(error));
+    const { reason: _, ...kept } = earlier;
+    results.push({ ...kept, pass: !reason, ...(reason ? { reason } : {}) });
   } else {
-    const run = await runAgent(task, dir);
-    const reason = await task.check(dir, context).catch((error: unknown) => String(error));
-    results.push({
-      task: task.id,
-      pass: !reason,
-      ...run,
-      ...(reason ? { reason } : {}),
-      workspace: dir,
-    });
+    const dir = await workspace(task);
+    if (values["self-test"]) {
+      const before = await task.check(dir, context);
+      await task.reference(dir, context);
+      const after = await task.check(dir, context);
+      const reason = !before
+        ? "the check passes before any change"
+        : after
+          ? `the reference solution fails: ${after}`
+          : undefined;
+      results.push({ task: task.id, pass: !reason, ...(reason ? { reason } : {}), workspace: dir });
+    } else {
+      const run = await runAgent(task, dir);
+      const reason = await task.check(dir, context).catch((error: unknown) => String(error));
+      results.push({
+        task: task.id,
+        pass: !reason,
+        ...run,
+        ...(reason ? { reason } : {}),
+        workspace: dir,
+      });
+    }
   }
   const last = results.at(-1);
   console.log(
@@ -163,7 +190,8 @@ for (const task of selected) {
 const passed = results.filter((result) => result.pass).length;
 const report = {
   date: new Date().toISOString(),
-  mode: values["self-test"] ? "self-test" : "agent",
+  mode: values["self-test"] ? "self-test" : values.recheck ? "recheck" : "agent",
+  ...(values.recheck ? { recheckOf: resolve(values.recheck) } : {}),
   package: values.package,
   theme: context.sourceTheme,
   agent: values.agent ?? null,

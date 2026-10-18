@@ -571,8 +571,18 @@ type.
   - Isolation:
     - each task runs in a new folder outside the repository, with the package installed from its
       tarball;
-    - the agent gets only `PATH`, `HOME`, `TMPDIR`, `LANG` and the variables it needs to run;
+    - the agent gets a `HOME` inside that folder and only `PATH`, `TMPDIR`, `LANG` and the
+      variables it needs to run, so no store credentials are passed to it;
+    - the agent still runs as the maintainer's user without an OS sandbox. For a stronger
+      guarantee, run it on a machine or account that holds no store credentials, or in a
+      container;
+    - after the agent exits, its process group is stopped before the check reads the folder;
     - the checks render with a separate, untouched install.
+  - Checks:
+    - they read only text that the markup does not hide;
+    - where typing a value into the theme could pass, they render again with changed data or
+      changed block settings;
+    - they compare snapshot changes with the bundled sample store.
   - `--self-test` proves that every check fails on the untouched theme and passes on a known
     solution. It passed for all ten tasks.
 
@@ -599,6 +609,11 @@ Both runs on 2026-10-18 used the following setup:
 | `server-only-features` | pass, 28 s | pass, 26 s |
 | `article-iso-date` | pass, 34 s | pass, 29 s |
 | **Success rate** | **9/10** | **10/10** |
+
+In both runs the agent had the maintainer's real `HOME`; the `HOME` inside the task folder came
+later. The logs show the agent's only reads outside its task folder: a Codex skill file under that
+`HOME`, read in 11 of the 20 task runs. No credential file was read. Both runs were judged again
+with the final checks (`--recheck`), with the same results.
 
 The run 1 failure came from the task's wording, not from the CLI. The prompt said "Add a new section",
 and the agent added Dawn's existing Multicolumn section with the heading and three editable column

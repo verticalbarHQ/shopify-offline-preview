@@ -3,8 +3,9 @@ import { createHash } from "node:crypto";
 import { cp, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
-import { decodeHTML } from "entities";
+import { isDeepStrictEqual } from "node:util";
 import { parse as parseJsonc } from "jsonc-parser";
+import { type DefaultTreeAdapterTypes, parseFragment } from "parse5";
 import { checkSchema } from "../../packages/check/src/contracts.js";
 import { type RenderResult, renderSchema } from "../../packages/render/src/contracts.js";
 
@@ -41,13 +42,31 @@ function render(context: Context, theme: string, path: string, extra: string[] =
   return { result: renderSchema.parse(JSON.parse(run.stdout)) } as const;
 }
 
-/** The page text a shopper reads: no head, scripts, styles, tags or attributes. */
+const unseen = new Set(["head", "title", "script", "style", "template", "noscript"]);
+/** Whether markup alone hides the element. Styles from theme stylesheets are not evaluated. */
+function hidden(element: DefaultTreeAdapterTypes.Element): boolean {
+  const attribute = (name: string) => element.attrs.find((item) => item.name === name)?.value;
+  const classes = (attribute("class") ?? "").split(/\s+/);
+  return (
+    unseen.has(element.tagName) ||
+    attribute("hidden") !== undefined ||
+    attribute("aria-hidden") === "true" ||
+    /display\s*:\s*none|visibility\s*:\s*hidden/.test(attribute("style") ?? "") ||
+    classes.includes("hidden") ||
+    classes.includes("visually-hidden")
+  );
+}
+/** The text a shopper sees, skipping elements that the markup hides. */
 function visibleText(html: string): string {
-  const body = html
-    .replace(/<head[\s\S]*?<\/head>/i, " ")
-    .replace(/<(script|style|template)\b[\s\S]*?<\/\1>/gi, " ")
-    .replace(/<[^>]+>/g, " ");
-  return decodeHTML(body).replace(/\s+/g, " ").trim();
+  const parts: string[] = [];
+  const walk = (node: DefaultTreeAdapterTypes.ParentNode) => {
+    for (const child of node.childNodes) {
+      if (child.nodeName === "#text") parts.push((child as DefaultTreeAdapterTypes.TextNode).value);
+      else if ("tagName" in child && !hidden(child)) walk(child);
+    }
+  };
+  walk(parseFragment(html));
+  return parts.join(" ").replace(/\s+/g, " ").trim();
 }
 
 /** The HTML of the section whose wrapper id matches, up to the next section wrapper. */
@@ -58,6 +77,8 @@ function sectionHtml(html: string, id: RegExp): string | undefined {
   return html.slice(start, next < 0 ? undefined : next);
 }
 const mainSection = /id="shopify-section-template--[^"]*__main"/;
+const templateSection = (key: string) =>
+  new RegExp(`id="shopify-section-template--[^"]*__${key.replace(/[^\w-]/g, "\\$&")}"`);
 
 function liquidErrors(result: RenderResult): number {
   return result.diagnostics.filter((item) => item.code === "liquid-error").length;
@@ -166,6 +187,8 @@ function homeSectionsTruth(context: Context): string[] {
   return sections(rendered.result).map((node) => node.type);
 }
 
+const items = ["Free returns", "Secure checkout", "Fast delivery"];
+
 export const tasks: Task[] = [
   {
     id: "product-type-above-title",
@@ -238,18 +261,40 @@ export const tasks: Task[] = [
         return `the section after the main product is the existing ${added.type}`;
       if (added.children.filter((node) => node.kind === "block").length < 3)
         return "the new section does not render three blocks";
-      const text = visibleText(rendered.result.html);
+      const key = added.settingsPath?.split("/").at(-1) ?? "";
+      const text = visibleText(sectionHtml(rendered.result.html, templateSection(key)) ?? "");
       const heading = text.indexOf("Why shop with us");
-      if (heading < 0) return "the heading is not shown";
-      for (const item of ["Free returns", "Secure checkout", "Fast delivery"])
-        if (text.indexOf(item, heading) < 0) return `“${item}” is not shown after the heading`;
-      const liquid = await readFile(join(dir, "theme/sections", `${added.type}.liquid`), "utf8");
-      if (
-        /Free returns|Secure checkout|Fast delivery/.test(
-          liquid.replace(/{%-?\s*schema[\s\S]*$/, ""),
-        )
-      )
-        return "the items are typed into the section markup instead of coming from blocks";
+      if (heading < 0) return "the new section does not show the heading";
+      for (const item of items)
+        if (text.indexOf(item, heading) < 0) return `the new section does not show “${item}”`;
+      // Editing the blocks in the template must change the items the section shows.
+      const copy = await mkdtemp(join(tmpdir(), "sop-agent-eval-theme-"));
+      try {
+        await cp(join(dir, "theme"), copy, { recursive: true });
+        const path = join(copy, "templates/product.json");
+        const template = object(await readJson(path));
+        const blocks = object(object(object(template.sections)[key]).blocks ?? {});
+        let edited = 0;
+        for (const block of Object.values(blocks)) {
+          const settings = object(object(block).settings ?? {});
+          for (const [name, value] of Object.entries(settings)) {
+            const index = items.indexOf(String(value));
+            if (index >= 0) {
+              settings[name] = `Eval item ${index}`;
+              edited += 1;
+            }
+          }
+        }
+        if (edited < 3) return "the items are not settings of the section's blocks";
+        await writeJson(path, template);
+        const changed = render(context, copy, product);
+        if (!changed.result) return changed.error;
+        const shown = visibleText(sectionHtml(changed.result.html, templateSection(key)) ?? "");
+        if (![0, 1, 2].every((index) => shown.includes(`Eval item ${index}`)))
+          return "editing the blocks does not change the items shown";
+      } finally {
+        await rm(copy, { recursive: true, force: true });
+      }
       return undefined;
     },
     async reference(dir) {
@@ -275,7 +320,6 @@ export const tasks: Task[] = [
 `,
       );
       await editProductTemplate(dir, (template) => {
-        const items = ["Free returns", "Secure checkout", "Fast delivery"];
         object(template.sections).trust_badges = {
           type: "trust-badges",
           settings: { heading: "Why shop with us" },
@@ -330,9 +374,15 @@ export const tasks: Task[] = [
       const main = visibleText(sectionHtml(rendered.result.html, mainSection) ?? "");
       for (const text of ["Test Hoodie", "USD 49.00", "Example Studio"])
         if (!main.includes(text)) return `the product page does not show “${text}”`;
-      const sample = render(context, join(dir, "theme"), product, data);
-      if (sample.result?.route.pageType !== "product")
-        return "the sample store's products are gone";
+      const snapshot = object(await readJson(join(dir, "data/snapshot.json")));
+      const original = object(await readJson(join(context.fixture, "snapshot.json")));
+      const handles = new Set(products(snapshot).map((item) => item.handle));
+      if (!products(original).every((item) => handles.has(item.handle)))
+        return "some of the sample store's products are gone";
+      const hoodie = byHandle(snapshot, "test-hoodie");
+      if ((hoodie.variants as unknown[]).length !== 1)
+        return "the product does not have one variant";
+      if (((hoodie.images as unknown[] | undefined) ?? []).length) return "the product has images";
       return undefined;
     },
     async reference(dir, context) {
@@ -376,8 +426,11 @@ export const tasks: Task[] = [
       if (!plain.result) return plain.error;
       if ((sectionHtml(plain.result.html, mainSection) ?? "").includes("price--on-sale"))
         return "the product is on sale without the scenario";
-      if (!render(context, theme, product, [...data, "--scenario", "sold-out"]).result)
-        return "the existing sold-out scenario no longer renders";
+      const snapshot = object(await readJson(join(dir, "data/snapshot.json")));
+      const original = object(await readJson(join(context.fixture, "snapshot.json")));
+      const { sale: _, ...scenarios } = object(snapshot.scenarios);
+      if (!isDeepStrictEqual({ ...snapshot, scenarios }, original))
+        return "the data outside the new scenario was changed";
       return undefined;
     },
     async reference(dir) {
