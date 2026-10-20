@@ -54,6 +54,7 @@ blog and article, in several scenarios of the sample store.
 | Command | What it checks |
 |---|---|
 | `pnpm test` | Unit tests in `tests/`. Run `pnpm build` first; some tests load the browser bundle. |
+| `pnpm package:check` | Builds and installs the npm tarball in a temporary project outside the checkout, then checks the CLI, schemas, dev server assets, ESM imports and TypeScript declarations without `skipLibCheck`. |
 | `pnpm benchmarks:check` | `check` output for both benchmark themes is deterministic, matches its schema, has no parse or missing-file errors, and has no missing Shopify features. |
 | `pnpm benchmarks:render-check` | All 36 benchmark renders are repeatable and byte-identical between Node and the browser build. |
 | `pnpm agent:contract-check` | The CLI contract: copy Dawn, edit a section, and find the edit in `render --json`; `check --strict` exits 5 on an unknown filter; every failure prints schema-valid JSON without a TTY. |
@@ -73,7 +74,7 @@ endpoints.
 
 `.github/workflows/ci.yml` runs on pull requests and on `main`:
 
-- `unit`: `pnpm verify`, `benchmarks:fetch`, `agent:contract-check` and `pages:artifact-check`;
+- `unit`: `pnpm verify`, the installed-package check, `benchmarks:fetch`, `agent:contract-check` and `pages:artifact-check`;
 - `network-off`: the main checks in a container without networking;
 - `browser`: the browser checks in a container without networking;
 - `license-guard`.
@@ -84,6 +85,31 @@ endpoints.
 `.github/workflows/pages.yml` publishes the playground from `main`. Before that,
 `pnpm pages:artifact-check` confirms that the artifact contains no benchmark theme files or
 names. The `unit` job runs the same check on pull requests.
+
+## Publishing to npm
+
+The root package is `@verticalbar/shopify-offline-preview`; the workspace packages are internal.
+Use a clean, reviewed commit with green CI. The public declarations reference `liquidjs`, whose
+types require `@types/node`, so Node types are a production dependency.
+
+```sh
+pnpm install --frozen-lockfile
+pnpm verify
+pnpm package:check
+mkdir -p .local
+npm pack --pack-destination .local
+npm publish .local/verticalbar-shopify-offline-preview-1.0.0.tgz --access public --registry=https://registry.npmjs.org
+```
+
+Use the version in `package.json` for the tarball name. `prepack` rebuilds `dist` from scratch.
+Publishing requires an npm login with write access
+to `@verticalbar`, including any authentication challenge npm requests. Publish the inspected
+tarball so its bytes are the same ones recorded for the release.
+
+After publishing, verify `npm view @verticalbar/shopify-offline-preview version dist.integrity`,
+install the registry package in an empty directory and run `npx shopify-offline-preview schema snapshot`.
+Tag the published source commit `v<version>` only after the registry check succeeds. If a bad
+version is released, deprecate it and publish a corrected patch version; never reuse its number.
 
 ## Agent eval
 

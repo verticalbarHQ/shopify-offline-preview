@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { chmod, mkdir, writeFile } from "node:fs/promises";
+import { chmod, mkdir, rm, writeFile } from "node:fs/promises";
 import { build } from "esbuild";
 
 const shared = {
@@ -10,6 +10,7 @@ const shared = {
   legalComments: "linked",
   mainFields: ["module", "main"],
 };
+await rm("dist", { recursive: true, force: true });
 await mkdir("dist", { recursive: true });
 await build({
   ...shared,

@@ -7,7 +7,7 @@
 | Status | Offline renderer, dev inspector, and static browser playground implemented. Real Shopify oracle parity and feature completion remain pending. |
 | Date | 2026-10-13 |
 | Repository | `verticalbarHQ/shopify-offline-preview` (public) |
-| npm package | `@verticalbar/shopify-offline-preview` (CLI command `shopify-offline-preview`), not published yet |
+| npm package | `@verticalbar/shopify-offline-preview` (CLI command `shopify-offline-preview`) |
 | License | MIT |
 | Language | TypeScript, Node.js ≥ 22 and evergreen browsers |
 

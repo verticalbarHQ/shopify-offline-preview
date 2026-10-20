@@ -63,6 +63,7 @@
     "format": "biome check --write .",
     "build": "node tools/build.mjs",
     "prepack": "node tools/build.mjs",
+    "package:check": "pnpm build && node tools/check-package.mjs",
     "test": "node --import tsx --test tests/*.test.ts",
     "verify": "pnpm generate:check && pnpm typecheck && pnpm lint && pnpm build && pnpm test",
     "benchmarks:fetch": "node tools/fetch-benchmarks.mjs",
@@ -88,6 +89,7 @@
   },
   "dependencies": {
     "@shopify/liquid-html-parser": "2.10.2",
+    "@types/node": "22.20.5",
     "entities": "8.1.0",
     "jsonc-parser": "3.3.1",
     "liquidjs": "10.30.0",
@@ -95,7 +97,6 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",
-    "@types/node": "22.20.5",
     "ajv": "8.17.1",
     "es-module-lexer": "3.0.3",
     "esbuild": "0.28.2",
