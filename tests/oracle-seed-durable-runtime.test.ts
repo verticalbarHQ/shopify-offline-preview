@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { defaultFixture } from "../packages/data/src/fixture.js";
-import { snapshotSchema } from "../packages/data/src/schema.js";
+import { completeSnapshotSchema as snapshotSchema } from "../packages/data/src/schema.js";
 import { backupDigest } from "../tools/oracle/backup-audit.js";
 import { createOracleSeedBindingLedger } from "../tools/oracle/seed-binding-ledger.js";
 import { openOracleSeedDurableRuntime } from "../tools/oracle/seed-durable-runtime.js";

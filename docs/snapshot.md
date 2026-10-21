@@ -81,7 +81,7 @@ bundled sample store in `fixtures/default/`.
 ## Missing data
 
 Most fields are optional. When a theme reads data that the snapshot does not have, the value is
-empty, as it would be on a store without that data. The render then reports `missing-resource`,
+unavailable. This does not assert that the store had no such data. The render reports `missing-resource`,
 naming what was missing. For example:
 
 ```text
@@ -93,6 +93,19 @@ Add the data to make the diagnostic go away. Some fields can be `null`, meaning 
 nothing there. Examples are an image without a focal point, a shop without a social sharing image,
 and an option value without a swatch. `null` is data, not missing data, so it produces no
 diagnostic.
+
+The following fields may be omitted when an export did not capture them: shop name, locale and
+both money formats; variant availability and image association; image width/height; media preview
+images; article publication dates and images; collection images and product membership; menu
+resource handles; and storefront filters. SKU and barcode accept explicit `null` for known absence.
+Omission never means `false`, `null` or an empty array. Derived values that need missing inputs are
+unavailable too, with diagnostics when accessed. Date/translation/money output is omitted when its
+required locale or format is unknown. Lists with unknown publication dates retain source order and
+report the missing ordering metadata. Theme code may itself raise Liquid errors when it divides by
+an unknown image ratio or passes a missing image to `image_url`; those errors remain visible.
+
+Oracle tools that prepare store changes still require complete input via `completeSnapshotSchema`.
+They reject incomplete backups rather than synthesizing values for writes.
 
 ## Conventions
 

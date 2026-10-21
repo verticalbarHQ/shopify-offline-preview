@@ -1,8 +1,14 @@
 import { createHash } from "node:crypto";
 import { benchmarkMatrix } from "../../packages/data/src/fixture.js";
 import { snapshotImages } from "../../packages/data/src/images.js";
-import { applyScenario, validateSnapshotReferences } from "../../packages/data/src/scenarios.js";
-import { type Snapshot, snapshotSchema } from "../../packages/data/src/schema.js";
+import {
+  applyCompleteScenario as applyScenario,
+  validateSnapshotReferences,
+} from "../../packages/data/src/scenarios.js";
+import {
+  type CompleteSnapshot as Snapshot,
+  completeSnapshotSchema as snapshotSchema,
+} from "../../packages/data/src/schema.js";
 import { backupDigest, backupDirectory, backupFile } from "./backup-audit.js";
 import { snapshotFingerprint } from "./matrix.js";
 import { type OracleConfig, oracleConfigSchema } from "./store-guard.js";

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { test } from "node:test";
 import { defaultFixture } from "../packages/data/src/fixture.js";
-import { snapshotSchema } from "../packages/data/src/schema.js";
+import { completeSnapshotSchema as snapshotSchema } from "../packages/data/src/schema.js";
 import {
   createOracleSeedBindingLedger,
   SeedLedgerError,

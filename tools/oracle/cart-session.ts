@@ -2,8 +2,14 @@ import { isDeepStrictEqual } from "node:util";
 import { type Node as JsonNode, type ParseError, parseTree } from "jsonc-parser";
 import { z } from "zod";
 import { liquidPrice } from "../../packages/data/src/objects.js";
-import { applyScenario, validateSnapshotReferences } from "../../packages/data/src/scenarios.js";
-import { type Snapshot, snapshotSchema } from "../../packages/data/src/schema.js";
+import {
+  applyCompleteScenario as applyScenario,
+  validateSnapshotReferences,
+} from "../../packages/data/src/scenarios.js";
+import {
+  type CompleteSnapshot as Snapshot,
+  completeSnapshotSchema as snapshotSchema,
+} from "../../packages/data/src/schema.js";
 import { oracleThemeSchema } from "./admin-read.js";
 import { type CaptureDependencies, type CaptureInput, captureOraclePage } from "./capture.js";
 import { type ContextCaptureDependencies, captureOracleContextPage } from "./capture-context.js";

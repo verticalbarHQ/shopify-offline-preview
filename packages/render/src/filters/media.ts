@@ -1,5 +1,5 @@
 import { type Liquid, toValue } from "liquidjs";
-import { liquidObjectKind, ScalarDrop } from "../../../data/src/objects.js";
+import { liquidObjectKind, readSnapshotProperty, ScalarDrop } from "../../../data/src/objects.js";
 import { namedArgs } from "./images.js";
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -25,8 +25,9 @@ function attributes(values: Record<string, unknown>): string {
     .join("");
 }
 /** `image_size: '400x'` / `'400x300'` selects the poster size, like `image_url`. */
-function poster(media: Record<string, unknown>, size: unknown): string {
-  const preview = media.preview_image;
+function poster(media: Record<string, unknown>, size: unknown): string | undefined {
+  const preview = readSnapshotProperty(media, "preview_image");
+  if (preview === undefined) return undefined;
   const src = record(preview) ? String(preview.src) : "";
   const match = /^(\d*)x(\d*)$/.exec(String(toValue(size) ?? ""));
   const query = new URLSearchParams();
@@ -51,7 +52,7 @@ const embed: Record<string, string> = {
  */
 export function registerMediaFilters(
   engine: Liquid,
-  imageTag: (input: unknown, args: unknown[]) => string,
+  imageTag: (input: unknown, args: unknown[], file: string | null, line: number | null) => string,
   imageUrl: (input: unknown, args: unknown[]) => unknown,
   productTitle: (media: object) => unknown,
 ): void {
@@ -64,7 +65,7 @@ export function registerMediaFilters(
         (source) =>
           `<source src="${escapeHtml(source.url)}" type="${escapeHtml(source.mime_type)}">`,
       )
-      .join("")}<img src="${escapeHtml(image)}"></video>`;
+      .join("")}${image === undefined ? "" : `<img src="${escapeHtml(image)}">`}</video>`;
   }
   function externalUrl(media: Record<string, unknown>, args: unknown[]): ScalarDrop {
     const host = String(media.host);
@@ -112,7 +113,7 @@ export function registerMediaFilters(
   engine.registerFilter("model_viewer_tag", (input: unknown, ...args: unknown[]) =>
     modelTag(mediaOf(input, "model", "model_viewer_tag"), args),
   );
-  engine.registerFilter("media_tag", (input: unknown, ...args: unknown[]) => {
+  engine.registerFilter("media_tag", function (input: unknown, ...args: unknown[]) {
     const kind = liquidObjectKind(input);
     if (!record(input)) throw new Error("media_tag requires media");
     if (kind === "video") return videoTag(input, args);
@@ -130,10 +131,13 @@ export function registerMediaFilters(
         ...(match?.[2] ? [["height", Number(match[2])]] : []),
       ];
       // image_url's largest width; the source width is the default size.
-      const width = record(input) ? Math.min(Number(input.width), 5760) : undefined;
+      const sourceWidth = readSnapshotProperty(input, "width");
+      const width = sourceWidth === undefined ? undefined : Math.min(Number(sourceWidth), 5760);
       return imageTag(
-        imageUrl(input, sized.length ? sized : [["width", width]]),
+        imageUrl(input, sized.length ? sized : width === undefined ? [] : [["width", width]]),
         Object.entries(extra),
+        this.token.file ?? null,
+        this.token.getPosition()[0] ?? null,
       );
     }
     throw new Error("media_tag requires media");

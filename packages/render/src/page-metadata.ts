@@ -48,7 +48,7 @@ export function registerPageMetadata(
   }
   function title(
     seo: Snapshot["shop"]["seo"],
-    fallback: string,
+    fallback: string | undefined,
     prefix: string,
     field: string,
   ): string {
@@ -59,10 +59,18 @@ export function registerPageMetadata(
     else hooks.read(`${prefix}.seo.title`);
     if (seo?.title) return escapeHtml(seo.title);
     hooks.read(`${prefix}.${field}`);
+    if (fallback === undefined) {
+      hooks.missing(`${prefix}.${field} is absent from the snapshot.`);
+      return "";
+    }
     return escapeHtml(fallback);
   }
   function system(key: string, args: Record<string, string | number> = {}): string {
     hooks.read("shop.locale");
+    if (snapshot.shop.locale === undefined) {
+      hooks.missing("shop.locale is absent; system page title cannot be localized.");
+      return "";
+    }
     if (snapshot.shop.locale.split("-")[0] !== "en")
       hooks.unsupported(
         "Localized system page titles are not available for this locale; English is used.",

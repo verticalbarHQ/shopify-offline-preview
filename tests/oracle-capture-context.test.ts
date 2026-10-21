@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { toLiquidHtmlAST } from "@shopify/liquid-html-parser";
 import { defaultFixture } from "../packages/data/src/fixture.js";
-import { applyScenario } from "../packages/data/src/scenarios.js";
+import { applyCompleteScenario as applyScenario } from "../packages/data/src/scenarios.js";
 import { renderTheme } from "../packages/render/src/index.js";
 import { MemoryThemeFileSystem } from "../packages/theme/src/index.js";
 import {

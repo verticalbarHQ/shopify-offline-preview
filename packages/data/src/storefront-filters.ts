@@ -3,7 +3,7 @@ import { availableFields, type LiquidRecord, liquidPrice } from "./objects.js";
 import { filterOperatorConfigurable, type Snapshot } from "./schema.js";
 
 type Product = Snapshot["products"][number];
-type Filter = Snapshot["filters"][number];
+type Filter = NonNullable<Snapshot["filters"]>[number];
 export interface QueryMember {
   source: Product;
   value: LiquidRecord;
@@ -95,7 +95,7 @@ export function storefrontQuery(
       return null;
     }
   }
-  const conditions = snapshot.filters.map((filter) => {
+  const conditions = (snapshot.filters ?? []).map((filter) => {
     if (filter.type === "price_range") {
       const minimum = price(`${filter.id}.gte`),
         maximum = price(`${filter.id}.lte`);
@@ -148,6 +148,12 @@ export function storefrontQuery(
   function sort(list: QueryMember[]): LiquidRecord[] {
     const order = options.sortBy;
     if (order === null || order === options.defaultSortBy) return list.map((m) => m.value);
+    if (order.startsWith("title-") && snapshot.shop.locale === undefined) {
+      options.missing(
+        "shop.locale is absent; title sort cannot be localized, snapshot order is retained.",
+      );
+      return list.map((m) => m.value);
+    }
     const collator = new Intl.Collator(snapshot.shop.locale, { sensitivity: "base" });
     const minimum = (product: Product) =>
       Math.min(...product.variants.map((variant) => liquidPrice(variant.price)));
@@ -178,7 +184,7 @@ export function storefrontQuery(
 
   // Shopify offers no filters when nothing matched before filtering: an empty collection, or
   // search terms that match no product. Filters that narrow a result to nothing stay offered.
-  const filters = (members.length ? snapshot.filters : []).map((filter, index) => {
+  const filters = (members.length ? (snapshot.filters ?? []) : []).map((filter, index) => {
     const condition = conditions[index];
     if (filter.type === "price_range") {
       const minimum = `${filter.id}.gte`,

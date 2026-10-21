@@ -1,6 +1,6 @@
 import { isDeepStrictEqual } from "node:util";
 import { z } from "zod";
-import { snapshotSchema } from "../../packages/data/src/schema.js";
+import { completeSnapshotSchema as snapshotSchema } from "../../packages/data/src/schema.js";
 import type { ExpectedSeedIdentity } from "./seed-identities.js";
 import type { buildOracleSeedPlan, SeedTask } from "./seed-plan.js";
 import { seedBindingKey } from "./seed-requests.js";

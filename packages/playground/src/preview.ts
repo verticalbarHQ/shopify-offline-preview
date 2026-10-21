@@ -29,7 +29,7 @@ export async function playgroundPreview(
       designMode,
       viewId,
       shopDomain: snapshot.shop.domain,
-      locale: snapshot.shop.locale,
+      ...(snapshot.shop.locale === undefined ? {} : { locale: snapshot.shop.locale }),
       currency: snapshot.shop.currency,
       previewOrigin: virtualOrigin,
       virtualResources: resources.urls,

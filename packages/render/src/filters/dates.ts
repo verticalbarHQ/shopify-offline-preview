@@ -89,7 +89,7 @@ export function registerDateFilters(
     hourCycle: "h23",
   });
   const locale = snapshot.shop.locale,
-    language = locale.split("-")[0] ?? locale;
+    language = locale?.split("-")[0] ?? locale;
   const defaults = [...files.keys()].filter((file) => /^locales\/[^/]+\.default\.json$/.test(file));
   const selected = [
     `locales/${locale}.json`,
@@ -123,6 +123,15 @@ export function registerDateFilters(
         source = keyword === "now" || keyword === "today" ? snapshot.meta.now : value;
       const date = instant(source, formatter);
       if (!date) return String(value ?? "");
+      if (locale === undefined) {
+        diagnostic(
+          "missing-resource",
+          "shop.locale is absent; date formatting cannot be resolved.",
+          this.token.file ?? null,
+          this.token.getPosition()[0] ?? null,
+        );
+        return "";
+      }
       const options = namedArgs(args);
       const report = (message: string) =>
         diagnostic(

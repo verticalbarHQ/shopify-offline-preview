@@ -23,7 +23,14 @@ Your files are processed in the browser and are never uploaded.
 
 ### On your machine
 
-Build it from source. You need Node.js 22 or newer and pnpm 10.
+Install the published package with Node.js 22 or newer:
+
+```sh
+npm install --global @verticalbar/shopify-offline-preview
+shopify-offline-preview dev path/to/theme --data path/to/snapshot
+```
+
+For a source checkout, use pnpm 10:
 
 ```sh
 git clone https://github.com/verticalbarHQ/shopify-offline-preview.git
@@ -39,7 +46,8 @@ Open the inspector at <http://127.0.0.1:3000/>. To preview your own theme, repla
 Until you add your own data, pages render with a bundled sample store. It has 40 products, a
 collection, a page, a blog with three articles, menus and a cart.
 
-An npm package, `@verticalbar/shopify-offline-preview`, is planned but not published yet.
+The package also exports `@verticalbar/shopify-offline-preview/browser` for in-browser rendering.
+Always supply your snapshot when showing backed-up store data; omitting it selects the sample store.
 
 ## The inspector
 

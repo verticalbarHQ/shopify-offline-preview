@@ -36,7 +36,11 @@ function escapeHtml(value: unknown): string {
     (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c,
   );
 }
-export function imageFilters(snapshot: Snapshot, read: (path: string) => void = () => {}) {
+export function imageFilters(
+  snapshot: Snapshot,
+  read: (path: string) => void = () => {},
+  missingData: (message: string) => void = () => {},
+) {
   const entries = snapshotImageEntries(snapshot);
   const images = new Map(entries.map(([, image]) => [image.file, image]));
   const paths = new Map(entries.map(([path, image]) => [image.file, path]));
@@ -87,7 +91,14 @@ export function imageFilters(snapshot: Snapshot, read: (path: string) => void = 
         if (!Number.isInteger(size) || size < 1 || size > 5760)
           throw new ImageUrlInputError(`Invalid image ${dimension}`);
         observe(file, dimension);
-        url.searchParams.set(dimension, String(Math.min(size, image[dimension])));
+        if (image[dimension] === undefined)
+          missingData(
+            `Image ${file}.${dimension} is absent from the snapshot; requested size cannot be clamped to source dimensions.`,
+          );
+        url.searchParams.set(
+          dimension,
+          String(image[dimension] === undefined ? size : Math.min(size, image[dimension])),
+        );
       }
     for (const [key, value] of Object.entries(options))
       if (!["width", "height"].includes(key)) {
@@ -167,6 +178,10 @@ export function imageFilters(snapshot: Snapshot, read: (path: string) => void = 
     );
     if (presentation && "filename" in image && !Object.hasOwn(image, "focalPoint"))
       missing("Uploaded image presentation metadata is absent from the snapshot.");
+    if (image.width === undefined)
+      missing(`Image ${image.file}.width is absent from the snapshot.`);
+    if (image.height === undefined)
+      missing(`Image ${image.file}.height is absent from the snapshot.`);
     const sourceWidth = Number(url.searchParams.get("crop_width") ?? image.width);
     const sourceHeight = Number(url.searchParams.get("crop_height") ?? image.height);
     const requestedWidth = url.searchParams.get("width"),
@@ -184,8 +199,8 @@ export function imageFilters(snapshot: Snapshot, read: (path: string) => void = 
     const attributes: Record<string, unknown> = {
       src: value,
       alt: input instanceof ImageUrlDrop && input.metadata ? input.metadata.alt : image.alt,
-      width,
-      height,
+      ...(Number.isFinite(width) ? { width } : {}),
+      ...(Number.isFinite(height) ? { height } : {}),
     };
     if (presentation && image.focalPoint) {
       observe(image.file, "focalPoint.x");

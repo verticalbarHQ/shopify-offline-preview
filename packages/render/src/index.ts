@@ -253,7 +253,7 @@ export async function renderTheme(
     strictFilters: true,
     ownPropertyOnly: true,
     timezoneOffset: snapshot.shop.timezone,
-    locale: snapshot.shop.locale,
+    ...(snapshot.shop.locale === undefined ? {} : { locale: snapshot.shop.locale }),
     renderLimit: 10000,
     memoryLimit: 100_000_000,
   });
@@ -591,7 +591,9 @@ export async function renderTheme(
   }
   let globalSettingsContext: Context;
   const colorGroups = new Map<string, ColorSchemeGroup>();
-  const schemaDefault = schemaDefaultFactory(files, snapshot.shop.locale);
+  const schemaDefault = schemaDefaultFactory(files, snapshot.shop.locale, (message) =>
+    diagnostic("missing-resource", message),
+  );
   function settings(
     definitions: z.infer<typeof settingSchema>[],
     configured: LiquidRecord,
@@ -875,6 +877,13 @@ export async function renderTheme(
   Object.defineProperty(globals, "powered_by_link", {
     enumerable: true,
     get() {
+      if (snapshot.shop.locale === undefined) {
+        diagnostic(
+          "missing-resource",
+          "shop.locale is absent; powered_by_link cannot be localized.",
+        );
+        return "";
+      }
       if (snapshot.shop.locale.split("-")[0] !== "en")
         diagnostic(
           "not-implemented",

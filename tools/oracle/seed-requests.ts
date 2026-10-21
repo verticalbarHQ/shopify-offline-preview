@@ -1,6 +1,6 @@
 import { basename } from "node:path";
 import type { MenuLink } from "../../packages/data/src/schema.js";
-import { snapshotSchema } from "../../packages/data/src/schema.js";
+import { completeSnapshotSchema as snapshotSchema } from "../../packages/data/src/schema.js";
 import { themePath } from "../../packages/theme/src/index.js";
 import { contentSeoMetafields } from "./content-seo.js";
 import type { SeedTask } from "./seed-plan.js";

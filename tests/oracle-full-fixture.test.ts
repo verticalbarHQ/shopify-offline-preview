@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { defaultFixture } from "../packages/data/src/fixture.js";
-import { applyScenario } from "../packages/data/src/scenarios.js";
+import { applyCompleteScenario as applyScenario } from "../packages/data/src/scenarios.js";
 import { backupDigest } from "../tools/oracle/backup-audit.js";
 import { inspectVerifiedOracleCase } from "../tools/oracle/case-capture.js";
 import { snapshotFingerprint } from "../tools/oracle/matrix.js";

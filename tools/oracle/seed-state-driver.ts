@@ -1,4 +1,7 @@
-import { type Snapshot, snapshotSchema } from "../../packages/data/src/schema.js";
+import {
+  type CompleteSnapshot as Snapshot,
+  completeSnapshotSchema as snapshotSchema,
+} from "../../packages/data/src/schema.js";
 import { backupDigest } from "./backup-audit.js";
 import type { CaptureInput } from "./capture.js";
 import type { ContextCaptureDependencies } from "./capture-context.js";

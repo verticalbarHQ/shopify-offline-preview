@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 import { benchmarkMatrix, defaultFixture } from "../packages/data/src/fixture.js";
 import {
-  applyScenario,
+  applyCompleteScenario as applyScenario,
   mergePatch,
   validateSnapshotReferences,
 } from "../packages/data/src/scenarios.js";

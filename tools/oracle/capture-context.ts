@@ -4,7 +4,10 @@ import { type DefaultTreeAdapterTypes, parse } from "parse5";
 import { z } from "zod";
 import { liquidPrice } from "../../packages/data/src/objects.js";
 import { validateSnapshotReferences } from "../../packages/data/src/scenarios.js";
-import { type Snapshot, snapshotSchema } from "../../packages/data/src/schema.js";
+import {
+  type CompleteSnapshot as Snapshot,
+  completeSnapshotSchema as snapshotSchema,
+} from "../../packages/data/src/schema.js";
 import { oracleThemeSchema } from "./admin-read.js";
 import {
   type BenchmarkThemeBinding,

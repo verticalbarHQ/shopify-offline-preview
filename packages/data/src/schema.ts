@@ -113,7 +113,7 @@ const productMedia = z.discriminatedUnion("mediaType", [
       .min(1),
   }),
 ]);
-export type ProductMedia = z.infer<typeof productMedia>;
+export type ProductMedia = z.infer<typeof partialMedia>;
 const variant = z.strictObject({
   id: z.string().min(1),
   optionValues: z.array(z.strictObject({ name: z.string(), value: z.string() })),
@@ -252,7 +252,7 @@ export interface MenuLink {
   links: MenuLink[];
 }
 
-export const snapshotSchema = z.strictObject({
+export const completeSnapshotSchema = z.strictObject({
   meta: z.strictObject({ now: z.iso.datetime({ offset: true }), schemaVersion: z.literal("1.0") }),
   shop: z.strictObject({
     id: z.string().min(1).optional(),
@@ -379,6 +379,93 @@ export const snapshotSchema = z.strictObject({
   ),
   scenarios: z.record(z.string(), z.json()),
 });
+/** Complete inputs remain required by the oracle store seeders; preview accepts partial backups. */
+export type CompleteSnapshot = z.infer<typeof completeSnapshotSchema>;
+const partialImage = image.partial({ width: true, height: true });
+const partialMedia = z.discriminatedUnion("mediaType", [
+  productMedia.options[0],
+  productMedia.options[1].extend({ previewImage: partialImage.optional() }),
+  productMedia.options[2].extend({ previewImage: partialImage.optional() }),
+  productMedia.options[3].extend({ previewImage: partialImage.optional() }),
+]);
+const partialMenuLink: z.ZodType<PartialMenuLink> = z.lazy(() =>
+  z.strictObject({
+    title: z.string(),
+    url: z.string(),
+    type: z.string(),
+    resourceHandle: z.string().nullable().optional(),
+    links: z.array(partialMenuLink),
+  }),
+);
+export interface PartialMenuLink extends Omit<MenuLink, "resourceHandle" | "links"> {
+  resourceHandle?: string | null | undefined;
+  links: PartialMenuLink[];
+}
+export const snapshotSchema = completeSnapshotSchema.extend({
+  shop: completeSnapshotSchema.shape.shop
+    .partial({
+      name: true,
+      locale: true,
+      money_format: true,
+      money_with_currency_format: true,
+    })
+    .extend({ socialSharingImage: partialImage.nullable().optional() }),
+  products: z.array(
+    product.extend({
+      variants: z
+        .array(
+          variant.partial({ available: true, image: true }).extend({
+            sku: z.string().nullable(),
+            barcode: z.string().nullable(),
+          }),
+        )
+        .min(1),
+      images: z.array(product.shape.images.element.partial({ width: true, height: true })),
+      media: z.array(partialMedia).optional(),
+      options: z.array(
+        z
+          .strictObject({
+            ...product.shape.options.element.shape,
+            swatches: z
+              .array(
+                z
+                  .strictObject({ color: z.string().nullable(), image: partialImage.nullable() })
+                  .nullable(),
+              )
+              .optional(),
+          })
+          .refine(
+            (option) =>
+              [option.valueIds, option.swatches].every(
+                (list) => list === undefined || list.length === option.values.length,
+              ),
+            "Option value IDs and swatches must list one entry per value",
+          ),
+      ),
+    }),
+  ),
+  collections: z.array(
+    completeSnapshotSchema.shape.collections.element.partial({ products: true }).extend({
+      image: partialImage.nullable().optional(),
+    }),
+  ),
+  blogs: z.array(
+    completeSnapshotSchema.shape.blogs.element.extend({
+      articles: z.array(
+        article
+          .partial({ publishedAt: true })
+          .extend({ image: partialImage.nullable().optional() }),
+      ),
+    }),
+  ),
+  menus: z.array(z.strictObject({ handle, title: z.string(), links: z.array(partialMenuLink) })),
+  images: z
+    .array(
+      completeSnapshotSchema.shape.images.unwrap().element.partial({ width: true, height: true }),
+    )
+    .optional(),
+  filters: completeSnapshotSchema.shape.filters.optional(),
+});
 export type Snapshot = z.infer<typeof snapshotSchema>;
 
 /**
@@ -397,4 +484,9 @@ export interface SnapshotSource {
 /** Syntax validation only. Resource/variant reference checks are added with derivation in M1/M2. */
 export function parseSnapshot(text: string): Snapshot {
   return snapshotSchema.parse(JSON.parse(text));
+}
+
+/** Complete source data is required for oracle store writes, never filled from defaults. */
+export function parseCompleteSnapshot(text: string): CompleteSnapshot {
+  return completeSnapshotSchema.parse(JSON.parse(text));
 }

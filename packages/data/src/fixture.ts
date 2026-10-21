@@ -1,5 +1,8 @@
 import { validateSnapshotReferences } from "./scenarios.js";
-import { type Snapshot, snapshotSchema } from "./schema.js";
+import {
+  type CompleteSnapshot as Snapshot,
+  completeSnapshotSchema as snapshotSchema,
+} from "./schema.js";
 
 export const fixtureNow = "2026-10-13T00:00:00Z";
 export const fixtureProductHandle = "sop-matrix-needle";
