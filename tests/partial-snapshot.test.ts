@@ -37,7 +37,12 @@ function partial() {
   return parseSnapshot(JSON.stringify(source));
 }
 
-async function render(text: string, snapshot = partial(), path = "/") {
+async function render(
+  text: string,
+  snapshot = partial(),
+  path = "/",
+  extraFiles: Record<string, string> = {},
+) {
   return renderTheme(
     new MemoryThemeFileSystem({
       "layout/theme.liquid": "{{ content_for_layout }}",
@@ -62,6 +67,7 @@ async function render(text: string, snapshot = partial(), path = "/") {
         order: ["main"],
       }),
       "sections/partial.liquid": text,
+      ...extraFiles,
     }),
     path,
     { snapshot },
@@ -302,11 +308,9 @@ test("availability search facets do not invent counts when search includes unkno
     snapshot,
     "/search?q=Matrix&options[unavailable_products]=show",
   );
-  assert.doesNotMatch(result.html, /count=/);
+  assert.doesNotMatch(result.html, /count=\d/);
   assert.ok(
-    result.diagnostics.some(
-      (d) => d.code === "missing-resource" && d.message.includes("available"),
-    ),
+    result.diagnostics.some((d) => d.code === "missing-resource" && d.message.includes("count")),
   );
 });
 
@@ -413,14 +417,12 @@ test("named collection availability facets depend only on its own members", asyn
   );
   Reflect.deleteProperty(member.variants[0] ?? {}, "available");
   const unknown = await render(
-    "{{collection.filters}}",
+    "{{collection.filters.first.values.last.count}}",
     snapshot,
     `/collections/${collection.handle}`,
   );
   assert.ok(
-    unknown.diagnostics.some(
-      (d) => d.code === "missing-resource" && d.message.includes("available"),
-    ),
+    unknown.diagnostics.some((d) => d.code === "missing-resource" && d.message.includes("count")),
   );
 });
 
@@ -730,4 +732,89 @@ test("collection combines unknown stock with decisive filter alternatives and ex
     assert.ok(result.html.includes(`count=${count}|${count}`));
     assert.ok(!result.diagnostics.some((d) => d.code === "missing-resource"));
   }
+});
+
+test("facets preserve known counts and omit only undecidable sibling counts", async () => {
+  const snapshot = partial();
+  const product = snapshot.products[0],
+    collection = snapshot.collections[0];
+  assert.ok(product && collection && product.variants[0]);
+  snapshot.products = [product];
+  product.variants[0].available = true;
+  collection.products = [product.handle];
+  snapshot.filters = [
+    {
+      id: "filter.v.availability",
+      label: "Stock",
+      type: "boolean",
+      values: [
+        { label: "In", value: "1" },
+        { label: "Out", value: "0" },
+      ],
+    },
+    {
+      id: "filter.p.vendor",
+      label: "Vendor",
+      type: "list",
+      values: [{ label: "Vendor", value: product.vendor }],
+    },
+  ];
+  for (const [path, field] of [
+    [`/collections/${collection.handle}`, "collection.filters"],
+    ["/collections/all", "collection.filters"],
+    ["/search?q=Matrix&options[unavailable_products]=show", "search.filters"],
+  ]) {
+    const result = await render(
+      `{% for f in ${field} %}{% for v in f.values %}{{v.label}}={{v.count}};{% endfor %}{% endfor %}`,
+      snapshot,
+      path,
+    );
+    assert.match(result.html, /In=1;Out=;Vendor=1;/);
+    assert.ok(
+      result.diagnostics.some((d) => d.code === "missing-resource" && d.message.includes("count")),
+    );
+  }
+});
+
+test("unknown facet counts identify nested property access and labels do not consume membership", async () => {
+  const snapshot = partial();
+  const product = snapshot.products[0],
+    collection = snapshot.collections[0];
+  assert.ok(product && collection);
+  collection.products = [product.handle];
+  snapshot.filters = [
+    {
+      id: "filter.v.availability",
+      label: "Stock",
+      type: "boolean",
+      values: [{ label: "In", value: "1" }],
+    },
+  ];
+  const path = `/collections/${collection.handle}`;
+  for (const snippet of [false, true]) {
+    const text = "{% if true %}\n\n{{collection.filters.first.values.first.count}}\n{% endif %}";
+    const result = await render(
+      snippet ? "{% render 'facet', collection: collection %}" : text,
+      snapshot,
+      path,
+      snippet ? { "snippets/facet.liquid": text } : {},
+    );
+    const missing = result.diagnostics.filter((d) => d.code === "missing-resource");
+    assert.equal(missing.length, 1);
+    assert.equal(missing[0]?.line, 3);
+    assert.equal(missing[0]?.file, snippet ? "snippets/facet.liquid" : "sections/partial.liquid");
+  }
+  const labels = await render(
+    "{% for f in collection.filters %}{{f.label}};{% endfor %}",
+    snapshot,
+    `${path}?filter.v.availability=1`,
+  );
+  assert.match(labels.html, /Stock;/);
+  assert.ok(!labels.diagnostics.some((d) => d.code === "missing-resource"));
+  const members = await render(
+    "{{collection.products_count}}",
+    snapshot,
+    `${path}?filter.v.availability=1`,
+  );
+  assert.ok(members.diagnostics.some((d) => d.code === "missing-resource"));
 });

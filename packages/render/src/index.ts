@@ -131,6 +131,7 @@ export async function renderTheme(
   const tree: RenderNode[] = [];
   const stack: RenderNode[] = [];
   let location: { file: string | null; line: number | null } = { file: null, line: null };
+  let readLocation: typeof location | undefined;
   let serial = 0;
   const files = new Map<string, string>();
   const allPaths = new Set(await theme.listFiles());
@@ -214,7 +215,13 @@ export async function renderTheme(
       diagnostic("not-implemented", message);
     },
     missing(message) {
-      diagnostic("missing-resource", message);
+      const previous = location;
+      location = readLocation ?? location;
+      try {
+        diagnostic("missing-resource", message);
+      } finally {
+        location = previous;
+      }
     },
     unsupported(type, property) {
       diagnostic(
@@ -257,6 +264,30 @@ export async function renderTheme(
     renderLimit: 10000,
     memoryLimit: 100_000_000,
   });
+  // Liquid's renderer visits nested tags and snippets too. Scope snapshot-property
+  // diagnostics to each actual template invocation, without changing other diagnostics.
+  const scopedTemplates = new WeakSet<Template>();
+  const renderTemplates = engine.renderer.renderTemplates;
+  engine.renderer.renderTemplates = function* (templates, context, emitter) {
+    for (const template of templates) {
+      if (scopedTemplates.has(template)) continue;
+      scopedTemplates.add(template);
+      const render = template.render;
+      template.render = function* (context, emitter): Generator<unknown, unknown, unknown> {
+        const previous = readLocation;
+        readLocation = {
+          file: this.token.file ?? previous?.file ?? location.file,
+          line: this.token.getPosition()[0] ?? previous?.line ?? location.line,
+        };
+        try {
+          return yield render.call(this, context, emitter);
+        } finally {
+          readLocation = previous;
+        }
+      };
+    }
+    return yield* renderTemplates.call(this, templates, context, emitter);
+  };
   engine.registerTag("schema", SchemaTag);
   engine.registerTag(
     "assign",
@@ -383,9 +414,12 @@ export async function renderTheme(
         file: this.token.file ?? previous.file,
         line: this.token.getPosition()[0] ?? previous.line,
       };
+      const previousRead = readLocation;
+      readLocation = location;
       try {
         return native.call(this, value, ...args);
       } finally {
+        readLocation = previousRead;
         location = previous;
       }
     });

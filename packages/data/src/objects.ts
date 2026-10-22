@@ -1033,17 +1033,6 @@ export function liquidObjects(
               absent("collection", "filters");
               return undefined;
             }
-            if (
-              snapshot.filters.some((filter) => filter.id === "filter.v.availability") &&
-              source.products?.some((handle) =>
-                productSources
-                  .get(handle)
-                  ?.variants.some((variant) => variant.available === undefined),
-              )
-            ) {
-              absent("collection", "filters (variant.available)");
-              return undefined;
-            }
             return query()?.filters;
           },
         },
@@ -1139,15 +1128,6 @@ export function liquidObjects(
           get filters() {
             if (snapshot.filters === undefined) {
               absent("collection", "filters");
-              return undefined;
-            }
-            if (
-              snapshot.filters.some((filter) => filter.id === "filter.v.availability") &&
-              snapshot.products.some((product) =>
-                product.variants.some((variant) => variant.available === undefined),
-              )
-            ) {
-              absent("collection", "filters (variant.available)");
               return undefined;
             }
             return query()?.filters;
@@ -1751,15 +1731,6 @@ export function liquidObjects(
           );
         const matches = matching();
         if (matches === undefined) return undefined;
-        if (
-          snapshot.filters.some((filter) => filter.id === "filter.v.availability") &&
-          matches.some((value) =>
-            resultSources.get(value)?.variants.some((variant) => variant.available === undefined),
-          )
-        ) {
-          absent("search", "filters (variant.available)");
-          return undefined;
-        }
         return storefrontQuery(
           snapshot,
           route.path,

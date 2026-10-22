@@ -165,8 +165,6 @@ export function storefrontQuery(
     : options.apply
       ? sort(filtered)
       : filtered.map((member) => member.value);
-  if (products === undefined)
-    options.missing("Collection membership depends on absent variant.available.");
 
   function sort(list: QueryMember[]): LiquidRecord[] {
     const order = options.sortBy;
@@ -311,5 +309,12 @@ export function storefrontQuery(
       { param_name: "id", operator: null, active_values: "values", inactive_values: "values" },
     );
   });
-  return { products, filters };
+  return {
+    get products() {
+      if (products === undefined)
+        options.missing("Collection membership depends on absent variant.available.");
+      return products;
+    },
+    filters,
+  };
 }
