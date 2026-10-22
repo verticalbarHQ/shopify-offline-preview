@@ -544,6 +544,7 @@ test("search availability checks apply after query and resource-type matching", 
       (d) => d.code === "missing-resource" && d.message.includes("available"),
     ),
   );
+  for (const variant of product.variants) variant.available = false;
   Reflect.deleteProperty(product.variants[0] ?? {}, "available");
   const unknown = await render(
     "{{search.results_count}}",
@@ -585,4 +586,39 @@ test("search keeps unknown matched stock distinct across hide, last and show mod
       (d) => d.code === "missing-resource" && d.message.includes("available"),
     ),
   );
+});
+
+test("known available variants establish product and search availability despite unknown siblings", async () => {
+  for (const knownIndex of [0, 1]) {
+    const snapshot = partial();
+    const product = snapshot.products[0];
+    assert.ok(product && product.variants.length >= 2);
+    const known = product.variants[knownIndex];
+    assert.ok(known);
+    known.available = true;
+    const productResult = await render(
+      "available={{product.available}}",
+      snapshot,
+      `/products/${product.handle}`,
+    );
+    assert.match(productResult.html, /available=true/);
+    assert.ok(
+      !productResult.diagnostics.some(
+        (d) => d.code === "missing-resource" && d.message.includes("available"),
+      ),
+    );
+    for (const mode of ["hide", "last", "show"]) {
+      const result = await render(
+        "count={{search.results_count}}|available={{search.results.first.available}}",
+        snapshot,
+        `/search?q=Matrix&type=product&options[unavailable_products]=${mode}`,
+      );
+      assert.match(result.html, /count=1\|available=true/);
+      assert.ok(
+        !result.diagnostics.some(
+          (d) => d.code === "missing-resource" && d.message.includes("available"),
+        ),
+      );
+    }
+  }
 });

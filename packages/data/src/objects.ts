@@ -10,6 +10,14 @@ import { storefrontQuery } from "./storefront-filters.js";
 
 export { ScalarDrop };
 export type LiquidRecord = Record<string, unknown>;
+/** One known available variant establishes availability even when siblings are unknown. */
+function productAvailability(
+  variants: Snapshot["products"][number]["variants"],
+): boolean | undefined {
+  if (variants.some((variant) => variant.available === true)) return true;
+  return variants.some((variant) => variant.available === undefined) ? undefined : false;
+}
+
 const objectKinds = new WeakMap<object, string>();
 const mediaTitles = new WeakMap<object, string>();
 /** The title of the product that owns video, external video or model media. */
@@ -873,9 +881,7 @@ export function liquidObjects(
       template_suffix: source.templateSuffix,
       url: `/products/${source.handle}`,
       ...availableFields({
-        available: availabilityKnown
-          ? source.variants.some((variant) => variant.available)
-          : undefined,
+        available: productAvailability(source.variants),
       }),
       price: Math.min(...prices),
       price_min: Math.min(...prices),
@@ -1631,9 +1637,7 @@ export function liquidObjects(
           ...source.tags,
           ...source.variants.map((v) => v.sku),
         ].join(" "),
-        available: source.variants.every((variant) => variant.available !== undefined)
-          ? source.variants.some((variant) => variant.available)
-          : undefined,
+        available: productAvailability(source.variants),
         price: Math.min(...source.variants.map((v) => liquidPrice(v.price))),
       });
   }
