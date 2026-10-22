@@ -1323,3 +1323,55 @@ test("known non-English date passthrough retains complete-input diagnostics", as
     }
   }
 });
+
+test("automatic collection explicit ordering needs locale only for unresolved title ties", async () => {
+  for (const order of [
+    "price-ascending",
+    "price-descending",
+    "created-ascending",
+    "created-descending",
+  ]) {
+    for (const tied of [false, true]) {
+      const snapshot = parseSnapshot(JSON.stringify(defaultFixture()));
+      Reflect.deleteProperty(snapshot.shop, "locale");
+      snapshot.products.forEach((product, index) => {
+        for (const variant of product.variants) variant.price = `${tied ? 1 : index + 1}.00`;
+        product.createdAt = new Date(Date.UTC(2026, 0, tied ? 1 : index + 1)).toISOString();
+      });
+      const result = await render(
+        "{{collection.products.size}}",
+        snapshot,
+        `/collections/all?sort_by=${order}`,
+      );
+      assert.equal(
+        result.diagnostics.some(
+          (d) =>
+            d.code === "missing-resource" && d.message.includes("collections.all product order"),
+        ),
+        tied,
+        JSON.stringify(result.diagnostics),
+      );
+    }
+  }
+});
+
+test("unviewed automatic collection retains its localized base order requirement", async () => {
+  const snapshot = parseSnapshot(JSON.stringify(defaultFixture()));
+  Reflect.deleteProperty(snapshot.shop, "locale");
+  snapshot.products.forEach((product, index) => {
+    for (const variant of product.variants) variant.price = `${index + 1}.00`;
+    product.createdAt = new Date(Date.UTC(2026, 0, index + 1)).toISOString();
+  });
+  for (const path of [
+    "/?sort_by=price-ascending",
+    "/collections/sop-catalog?sort_by=created-descending",
+  ]) {
+    const result = await render("{{collections.all.products.first.handle}}", snapshot, path);
+    assert.ok(
+      result.diagnostics.some(
+        (d) => d.code === "missing-resource" && d.message.includes("collections.all product order"),
+      ),
+      JSON.stringify(result.diagnostics),
+    );
+  }
+});

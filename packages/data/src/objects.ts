@@ -1076,6 +1076,27 @@ export function liquidObjects(
         .map((product) => product.handle),
       "title-ascending",
     );
+    function needsLocalizedBaseOrder(result: LiquidRecord[]): boolean {
+      if (result.length < 2) return false;
+      const order = viewed("all") ? route.sortBy : null;
+      const byPrice = order === "price-ascending" || order === "price-descending";
+      const byCreated = order === "created-ascending" || order === "created-descending";
+      if (!byPrice && !byCreated) return true;
+      const titlesByKey = new Map<number, string>();
+      for (const member of result) {
+        const source = productSources.get(String(member.handle));
+        if (!source) throw new Error("Automatic collection member is absent from the snapshot");
+        if (byCreated && source.createdAt === undefined) return true;
+        const key = byPrice
+          ? Math.min(...source.variants.map((variant) => liquidPrice(variant.price)))
+          : Date.parse(String(source.createdAt));
+        const title = titlesByKey.get(key);
+        // Stable sort ties inherit the automatic catalog's localized title order.
+        if (title !== undefined && title !== source.title) return true;
+        titlesByKey.set(key, source.title);
+      }
+      return false;
+    }
     collections.set(
       "all",
       tracked(
@@ -1096,7 +1117,11 @@ export function liquidObjects(
           description: "",
           get products() {
             const result = query()?.products;
-            if (snapshot.shop.locale === undefined && result !== undefined && result.length > 1)
+            if (
+              snapshot.shop.locale === undefined &&
+              result !== undefined &&
+              needsLocalizedBaseOrder(result)
+            )
               absent("shop", "locale (collections.all product order; snapshot order retained)");
             return result;
           },
