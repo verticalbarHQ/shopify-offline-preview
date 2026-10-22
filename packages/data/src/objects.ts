@@ -4,7 +4,7 @@ import { handleize } from "./handle.js";
 import { ImageDirectory, localImageUrl } from "./images.js";
 import { focalPoint, ScalarDrop } from "./scalar-drop.js";
 import type { PartialMenuLink as MenuLink, ProductMedia, Snapshot } from "./schema.js";
-import { type SearchCandidate, searchResults } from "./search.js";
+import { type SearchCandidate, type SearchPurpose, searchResults } from "./search.js";
 import { shopTime } from "./shop-time.js";
 import { storefrontQuery } from "./storefront-filters.js";
 
@@ -1113,6 +1113,11 @@ export function liquidObjects(
           url: "/collections/all",
           image: null,
           get featured_image() {
+            if (members.every((member) => member.featured_image === null)) return null;
+            if (snapshot.shop.locale === undefined && members.length > 1) {
+              absent("shop", "locale (collections.all.featured_image)");
+              return undefined;
+            }
             return members[0]?.featured_image ?? null;
           },
           template_suffix: null,
@@ -1661,9 +1666,10 @@ export function liquidObjects(
     if (value) productSourceOf.set(value, source);
   }
   const resultSources = new WeakMap<object, Snapshot["products"][number]>();
-  let results: LiquidRecord[] | undefined;
-  function matching(): LiquidRecord[] | undefined {
-    if (results) return results;
+  const resultCache = new Map<SearchPurpose, LiquidRecord[]>();
+  function matching(purpose: SearchPurpose = "results"): LiquidRecord[] | undefined {
+    const cached = resultCache.get(purpose);
+    if (cached) return cached;
     const matches = searchResults(
       candidates,
       route.path,
@@ -1671,10 +1677,11 @@ export function liquidObjects(
         hooks.unsupportedOperation
           ? hooks.unsupportedOperation(message)
           : hooks.unsupported("search", message),
-      () => absent("search", "results (variant.available)"),
+      () => absent("search", `${purpose} (variant.available)`),
+      purpose,
     );
     if (matches === undefined) return undefined;
-    results = matches.map((candidate) => {
+    const results = matches.map((candidate) => {
       const result = new Proxy(candidate.value, {
         ownKeys(target) {
           const keys = Reflect.ownKeys(target);
@@ -1694,6 +1701,7 @@ export function liquidObjects(
       if (source) resultSources.set(result, source);
       return result;
     });
+    resultCache.set(purpose, results);
     return results;
   }
   const search = tracked(
@@ -1706,7 +1714,7 @@ export function liquidObjects(
         return matching();
       },
       get results_count() {
-        return matching()?.length;
+        return matching("count")?.length;
       },
       default_sort_by: "relevance",
       sort_by: route.sortBy ?? "relevance",
@@ -1729,7 +1737,7 @@ export function liquidObjects(
           hooks.unsupportedOperation?.(
             "Storefront filters are not applied to search results offline.",
           );
-        const matches = matching();
+        const matches = matching("facets");
         if (matches === undefined) return undefined;
         return storefrontQuery(
           snapshot,

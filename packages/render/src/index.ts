@@ -651,7 +651,7 @@ export async function renderTheme(
   let globalSettingsContext: Context;
   const colorGroups = new Map<string, ColorSchemeGroup>();
   const schemaDefault = schemaDefaultFactory(files, snapshot.shop.locale, (message) =>
-    diagnostic("missing-resource", message),
+    objectHooks.missing?.(message),
   );
   function settings(
     definitions: z.infer<typeof settingSchema>[],
@@ -663,6 +663,19 @@ export async function renderTheme(
     for (const definition of definitions) {
       if (!definition.id) continue;
       const key = definition.id;
+      if (
+        snapshot.shop.locale === undefined &&
+        !Object.hasOwn(configured, key) &&
+        typeof definition.default === "string" &&
+        definition.default.startsWith("t:")
+      ) {
+        Object.defineProperty(result, key, {
+          enumerable: true,
+          configurable: true,
+          get: () => schemaDefault(definition.default),
+        });
+        continue;
+      }
       const raw = Object.hasOwn(configured, key)
         ? configured[key]
         : schemaDefault(definition.default);

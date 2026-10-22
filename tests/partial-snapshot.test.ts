@@ -244,7 +244,7 @@ test("unknown filtering and availability never produce an asserted empty result 
   const search = await render(
     "{{search.results_count}}|{{search.results}}",
     snapshot,
-    "/search?q=Matrix",
+    "/search?q=Matrix&options[unavailable_products]=hide",
   );
   assert.ok(
     search.diagnostics.some(
@@ -549,9 +549,9 @@ test("search availability checks apply after query and resource-type matching", 
   for (const variant of product.variants) variant.available = false;
   Reflect.deleteProperty(product.variants[0] ?? {}, "available");
   const unknown = await render(
-    "{{search.results_count}}",
+    "{{search.results.size}}",
     snapshot,
-    "/search?q=Matrix&type=product",
+    "/search?q=Matrix&type=product&options[unavailable_products]=hide",
   );
   assert.ok(
     unknown.diagnostics.some(
@@ -562,9 +562,9 @@ test("search availability checks apply after query and resource-type matching", 
 
 test("search keeps unknown matched stock distinct across hide, last and show modes", async () => {
   const snapshot = partial();
-  for (const mode of ["hide", "last"]) {
+  for (const mode of ["hide"]) {
     const result = await render(
-      "count={{search.results_count}}",
+      "count={{search.results.size}}",
       snapshot,
       `/search?q=Matrix&type=product&options[unavailable_products]=${mode}`,
     );
@@ -850,4 +850,250 @@ test("facet labels and product counts do not consume localized sort inputs", asy
   assert.equal(missing.length, 1);
   assert.ok(missing[0]?.message.includes("locale"));
   assert.equal(missing[0]?.line, 3);
+});
+
+test("search counts and known facets survive unknown availability used only for ordering", async () => {
+  const snapshot = partial();
+  const product = snapshot.products[0];
+  assert.ok(product);
+  snapshot.filters = [
+    {
+      id: "filter.p.vendor",
+      label: "Vendor",
+      type: "list",
+      values: [{ label: product.vendor, value: product.vendor }],
+    },
+  ];
+  const path = "/search?q=Matrix&type=product";
+  const result = await render(
+    "{{search.results_count}}|{% for f in search.filters %}{{f.label}}:{{f.values.first.count}}{% endfor %}",
+    snapshot,
+    path,
+  );
+  assert.match(result.html, /1\|Vendor:1/);
+  assert.ok(
+    !result.diagnostics.some(
+      (d) => d.code === "missing-resource" && d.message.includes("available"),
+    ),
+  );
+  const second = snapshot.products[1];
+  assert.ok(second);
+  second.title = "Second Matrix result";
+  const ordered = await render(
+    "{% if true %}\n\n{{search.results.first.title}}\n{% endif %}",
+    snapshot,
+    path,
+  );
+  assert.ok(
+    ordered.diagnostics.some(
+      (d) => d.code === "missing-resource" && d.message.includes("available") && d.line === 3,
+    ),
+  );
+});
+
+test("unused translated schema defaults do not consume absent locale", async () => {
+  const schema =
+    '{% schema %}{"settings":[{"type":"text","id":"heading","default":"t:heading"}]}{% endschema %}';
+  const files = { "locales/en.default.schema.json": '{"heading":"Invented heading"}' };
+  const unused = await render(`Known text${schema}`, partial(), "/", files);
+  assert.ok(!unused.diagnostics.some((d) => d.code === "missing-resource"));
+  const used = await render(
+    `{% if true %}\n\n{{section.settings.heading}}\n{% endif %}${schema}`,
+    partial(),
+    "/",
+    files,
+  );
+  assert.doesNotMatch(used.html, /Invented heading|t:heading/);
+  assert.ok(
+    used.diagnostics.some(
+      (d) => d.code === "missing-resource" && d.message.includes("locale") && d.line === 3,
+    ),
+  );
+});
+
+test("page_image preserves omitted resource images instead of choosing a shop fallback", async () => {
+  const snapshot = partial();
+  const collection = snapshot.collections[0],
+    image = snapshot.products[0]?.images[0];
+  assert.ok(collection && image);
+  snapshot.shop.socialSharingImage = { file: image.file, alt: image.alt };
+  const unknown = await render(
+    "{% if true %}\n\n{{page_image.file}}\n{% endif %}",
+    snapshot,
+    `/collections/${collection.handle}`,
+  );
+  assert.ok(!unknown.html.includes(image.file));
+  assert.ok(
+    unknown.diagnostics.some(
+      (d) => d.code === "missing-resource" && d.message.includes("image") && d.line === 3,
+    ),
+  );
+  collection.image = null;
+  const known = await render("{{page_image.file}}", snapshot, `/collections/${collection.handle}`);
+  assert.ok(known.html.includes(image.file));
+  assert.ok(!known.diagnostics.some((d) => d.code === "missing-resource"));
+});
+
+test("automatic collection featured image does not invent locale-dependent first product", async () => {
+  const snapshot = partial();
+  assert.ok(snapshot.products.length > 1);
+  const result = await render(
+    "{% if true %}\n\n{{collections.all.featured_image.file}}\n{% endif %}",
+    snapshot,
+  );
+  assert.ok(
+    result.diagnostics.some(
+      (d) => d.code === "missing-resource" && d.message.includes("locale") && d.line === 3,
+    ),
+  );
+  for (const product of snapshot.products)
+    for (const image of product.images) assert.ok(!result.html.includes(image.file));
+});
+
+test("search last ordering retains exactly the order shared by every stock completion", async () => {
+  const { searchResults } = await import("../packages/data/src/search.js");
+  for (const a of [true, false, undefined])
+    for (const b of [true, false, undefined])
+      for (const c of [true, false, undefined]) {
+        const values = [a, b, c];
+        const candidates = values.map((available, value) => ({
+          type: "product" as const,
+          value,
+          text: "needle",
+          available,
+          price: value,
+        }));
+        const completions: number[][] = [];
+        const unknowns = values.filter((v) => v === undefined).length;
+        for (let mask = 0; mask < 2 ** unknowns; mask++) {
+          let bit = 0;
+          const complete = candidates.map((candidate) => ({
+            ...candidate,
+            available: candidate.available ?? Boolean(mask & (1 << bit++)),
+          }));
+          completions.push(
+            searchResults(
+              complete,
+              "/search?q=needle&sort_by=price-ascending",
+              () => {},
+              () => {},
+            )?.map((v) => v.value) ?? [],
+          );
+        }
+        const expected = completions.every(
+          (value) => JSON.stringify(value) === JSON.stringify(completions[0]),
+        )
+          ? completions[0]
+          : undefined;
+        const actual = searchResults(
+          candidates,
+          "/search?q=needle&sort_by=price-ascending",
+          () => {},
+          () => {},
+        );
+        assert.deepEqual(
+          actual?.map((v) => v.value),
+          expected,
+          JSON.stringify(values),
+        );
+      }
+  const snapshot = partial();
+  const singleton = await render(
+    "{{search.results_count}}|{{search.results.first.title}}",
+    snapshot,
+    "/search?q=Matrix&type=product",
+  );
+  assert.match(singleton.html, /1\|SOP Matrix Needle/);
+  assert.ok(!singleton.diagnostics.some((d) => d.code === "missing-resource"));
+});
+
+test("search page title never invents a count when hide membership is unknown", async () => {
+  const snapshot = partial();
+  snapshot.shop.locale = "en";
+  const result = await render(
+    "{{page_title}}",
+    snapshot,
+    "/search?q=Matrix&type=product&options[unavailable_products]=hide",
+  );
+  assert.doesNotMatch(result.html, /NaN|results found/);
+  assert.ok(
+    result.diagnostics.some(
+      (d) => d.code === "missing-resource" && d.message.includes("available"),
+    ),
+  );
+});
+
+test("automatic collection featured image remains known null when every product has no image", async () => {
+  const snapshot = partial();
+  for (const product of snapshot.products) {
+    product.images = [];
+    product.media = [];
+    for (const variant of product.variants) variant.image = null;
+  }
+  const result = await render(
+    "{% if collections.all.featured_image == nil %}known-none{% endif %}",
+    snapshot,
+  );
+  assert.match(result.html, /known-none/);
+  assert.ok(!result.diagnostics.some((d) => d.code === "missing-resource"));
+});
+
+test("search cap ignores irrelevant stock uncertainty and distinguishes membership from order", async () => {
+  const { searchResults } = await import("../packages/data/src/search.js");
+  for (const mode of ["last", "hide"])
+    for (const prefix of [998, 1000]) {
+      const stock: (boolean | undefined)[] = [
+        ...Array.from({ length: prefix }, () => true),
+        undefined,
+        undefined,
+        false,
+        false,
+      ];
+      const candidates = stock.map((available, value) => ({
+        type: "product" as const,
+        value,
+        text: "needle",
+        available,
+        price: value,
+      }));
+      const path = `/search?q=needle&sort_by=price-ascending&options[unavailable_products]=${mode}`;
+      const completions = Array.from({ length: 4 }, (_, mask) => {
+        let bit = 0;
+        return (
+          searchResults(
+            candidates.map((v) => ({
+              ...v,
+              available: v.available ?? Boolean(mask & (1 << bit++)),
+            })),
+            path,
+            () => {},
+            () => {},
+          )?.map((v) => v.value) ?? []
+        );
+      });
+      for (const purpose of ["results", "count", "facets"] as const) {
+        const canonical = (values: number[]) =>
+          purpose === "count"
+            ? values.length
+            : purpose === "facets"
+              ? [...values].sort((a, b) => a - b)
+              : values;
+        const values = completions.map(canonical);
+        const expected = values.every((v) => JSON.stringify(v) === JSON.stringify(values[0]))
+          ? values[0]
+          : undefined;
+        const actual = searchResults(
+          candidates,
+          path,
+          () => {},
+          () => {},
+          purpose,
+        );
+        assert.deepEqual(
+          actual === undefined ? undefined : canonical(actual.map((v) => v.value)),
+          expected,
+          `${mode}/${prefix}/${purpose}`,
+        );
+      }
+    }
 });
