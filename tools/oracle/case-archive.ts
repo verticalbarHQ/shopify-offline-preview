@@ -3,7 +3,10 @@ import { lstat, mkdir, mkdtemp, open, readdir, realpath } from "node:fs/promises
 import { basename, dirname, join, resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { z } from "zod";
-import { parseSnapshot, type Snapshot } from "../../packages/data/src/schema.js";
+import {
+  parseCompleteSnapshot as parseSnapshot,
+  type CompleteSnapshot as Snapshot,
+} from "../../packages/data/src/schema.js";
 import { type GoldenArtifact, goldenArtifactSchema, makeGoldenArtifact } from "./artifacts.js";
 import { inspectVerifiedOracleCase, type VerifiedOracleCase } from "./case-capture.js";
 import { snapshotFingerprint } from "./matrix.js";

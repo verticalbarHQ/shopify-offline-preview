@@ -1,4 +1,7 @@
-import { type Snapshot, snapshotSchema } from "../../packages/data/src/schema.js";
+import {
+  type CompleteSnapshot as Snapshot,
+  completeSnapshotSchema as snapshotSchema,
+} from "../../packages/data/src/schema.js";
 import { createOracleCartSessions } from "./cart-session.js";
 import { createOracleNativeImageRecorder, type NativeImageDependencies } from "./image-native.js";
 import { createOracleSeedBindingLedger } from "./seed-binding-ledger.js";

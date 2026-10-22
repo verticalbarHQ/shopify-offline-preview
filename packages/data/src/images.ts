@@ -21,7 +21,7 @@ export function snapshotImageEntries(snapshot: Snapshot): [string, SourceImage][
         image,
       ]),
       ...(product.media ?? []).flatMap((media, mediaIndex): [string, SourceImage][] =>
-        media.mediaType === "image"
+        media.mediaType === "image" || media.previewImage === undefined
           ? []
           : [[`products[${index}].media[${mediaIndex}].previewImage`, media.previewImage]],
       ),
@@ -123,7 +123,9 @@ export class NamedImageDrop extends Drop {
     return this.#field("height");
   }
   get aspect_ratio() {
-    return Number(this.width) / Number(this.height);
+    const width = this.width,
+      height = this.height;
+    return typeof width === "number" && typeof height === "number" ? width / height : undefined;
   }
   get id() {
     if (this.#preview) return null;

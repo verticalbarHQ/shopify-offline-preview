@@ -131,6 +131,7 @@ export async function renderTheme(
   const tree: RenderNode[] = [];
   const stack: RenderNode[] = [];
   let location: { file: string | null; line: number | null } = { file: null, line: null };
+  let readLocation: typeof location | undefined;
   let serial = 0;
   const files = new Map<string, string>();
   const allPaths = new Set(await theme.listFiles());
@@ -214,7 +215,13 @@ export async function renderTheme(
       diagnostic("not-implemented", message);
     },
     missing(message) {
-      diagnostic("missing-resource", message);
+      const previous = location;
+      location = readLocation ?? location;
+      try {
+        diagnostic("missing-resource", message);
+      } finally {
+        location = previous;
+      }
     },
     unsupported(type, property) {
       diagnostic(
@@ -253,10 +260,34 @@ export async function renderTheme(
     strictFilters: true,
     ownPropertyOnly: true,
     timezoneOffset: snapshot.shop.timezone,
-    locale: snapshot.shop.locale,
+    ...(snapshot.shop.locale === undefined ? {} : { locale: snapshot.shop.locale }),
     renderLimit: 10000,
     memoryLimit: 100_000_000,
   });
+  // Liquid's renderer visits nested tags and snippets too. Scope snapshot-property
+  // diagnostics to each actual template invocation, without changing other diagnostics.
+  const scopedTemplates = new WeakSet<Template>();
+  const renderTemplates = engine.renderer.renderTemplates;
+  engine.renderer.renderTemplates = function* (templates, context, emitter) {
+    for (const template of templates) {
+      if (scopedTemplates.has(template)) continue;
+      scopedTemplates.add(template);
+      const render = template.render;
+      template.render = function* (context, emitter): Generator<unknown, unknown, unknown> {
+        const previous = readLocation;
+        readLocation = {
+          file: this.token.file ?? previous?.file ?? location.file,
+          line: this.token.getPosition()[0] ?? previous?.line ?? location.line,
+        };
+        try {
+          return yield render.call(this, context, emitter);
+        } finally {
+          readLocation = previous;
+        }
+      };
+    }
+    return yield* renderTemplates.call(this, templates, context, emitter);
+  };
   engine.registerTag("schema", SchemaTag);
   engine.registerTag(
     "assign",
@@ -365,6 +396,34 @@ export async function renderTheme(
     }
     return output;
   });
+  // These synchronous native serializers can consume derived getters, whose diagnostics use
+  // the current render location. Keep that scope at the filter callsite, including nested tags.
+  for (const name of [
+    "json",
+    "structured_data",
+    "standard_event_data",
+    "video_tag",
+    "model_viewer_tag",
+    "media_tag",
+  ]) {
+    const native = engine.filters[name];
+    if (typeof native !== "function") throw new Error(`Native filter ${name} is unavailable`);
+    engine.registerFilter(name, function (value: unknown, ...args: unknown[]) {
+      const previous = location;
+      location = {
+        file: this.token.file ?? previous.file,
+        line: this.token.getPosition()[0] ?? previous.line,
+      };
+      const previousRead = readLocation;
+      readLocation = location;
+      try {
+        return native.call(this, value, ...args);
+      } finally {
+        readLocation = previousRead;
+        location = previous;
+      }
+    });
+  }
   const nativeDate = engine.filters.date;
   if (typeof nativeDate === "function")
     engine.registerFilter("date", function (value: unknown, ...args: unknown[]) {
@@ -591,7 +650,9 @@ export async function renderTheme(
   }
   let globalSettingsContext: Context;
   const colorGroups = new Map<string, ColorSchemeGroup>();
-  const schemaDefault = schemaDefaultFactory(files, snapshot.shop.locale);
+  const schemaDefault = schemaDefaultFactory(files, snapshot.shop.locale, (message) =>
+    objectHooks.missing?.(message),
+  );
   function settings(
     definitions: z.infer<typeof settingSchema>[],
     configured: LiquidRecord,
@@ -602,6 +663,19 @@ export async function renderTheme(
     for (const definition of definitions) {
       if (!definition.id) continue;
       const key = definition.id;
+      if (
+        snapshot.shop.locale === undefined &&
+        !Object.hasOwn(configured, key) &&
+        typeof definition.default === "string" &&
+        definition.default.startsWith("t:")
+      ) {
+        Object.defineProperty(result, key, {
+          enumerable: true,
+          configurable: true,
+          get: () => schemaDefault(definition.default),
+        });
+        continue;
+      }
       const raw = Object.hasOwn(configured, key)
         ? configured[key]
         : schemaDefault(definition.default);
@@ -875,6 +949,13 @@ export async function renderTheme(
   Object.defineProperty(globals, "powered_by_link", {
     enumerable: true,
     get() {
+      if (snapshot.shop.locale === undefined) {
+        diagnostic(
+          "missing-resource",
+          "shop.locale is absent; powered_by_link cannot be localized.",
+        );
+        return "";
+      }
       if (snapshot.shop.locale.split("-")[0] !== "en")
         diagnostic(
           "not-implemented",

@@ -74,7 +74,11 @@ export interface BrowserResources {
 export async function prepareResources(
   files: BrowserFiles,
   images: BrowserFiles,
-  declared: readonly { file: string; width: number; height: number }[] = [],
+  declared: readonly {
+    file: string;
+    width?: number | undefined;
+    height?: number | undefined;
+  }[] = [],
 ): Promise<BrowserResources> {
   const urls: Record<string, string> = Object.create(null);
   const imports: Record<string, string> = Object.create(null);

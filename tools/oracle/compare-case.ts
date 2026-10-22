@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import type { Snapshot } from "../../packages/data/src/schema.js";
+import type { CompleteSnapshot as Snapshot } from "../../packages/data/src/schema.js";
 import { renderTheme } from "../../packages/render/src/index.js";
 import type { ThemeFileSystem } from "../../packages/theme/src/index.js";
 import { type GoldenArtifact, goldenArtifactSchema } from "./artifacts.js";

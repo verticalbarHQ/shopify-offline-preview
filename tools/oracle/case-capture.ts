@@ -1,7 +1,10 @@
 import { createHash } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
-import { applyScenario } from "../../packages/data/src/scenarios.js";
-import { type Snapshot, snapshotSchema } from "../../packages/data/src/schema.js";
+import { applyCompleteScenario as applyScenario } from "../../packages/data/src/scenarios.js";
+import {
+  type CompleteSnapshot as Snapshot,
+  completeSnapshotSchema as snapshotSchema,
+} from "../../packages/data/src/schema.js";
 import type { BenchmarkThemeBinding } from "./benchmark-theme.js";
 import type { CapturedPage, CaptureInput } from "./capture.js";
 import {

@@ -139,9 +139,7 @@
               },
               "required": [
                 "file",
-                "alt",
-                "width",
-                "height"
+                "alt"
               ],
               "additionalProperties": false
             },
@@ -205,12 +203,8 @@
         }
       },
       "required": [
-        "name",
         "domain",
-        "locale",
         "currency",
-        "money_format",
-        "money_with_currency_format",
         "timezone"
       ],
       "additionalProperties": false
@@ -426,8 +420,6 @@
         "required": [
           "file",
           "alt",
-          "width",
-          "height",
           "filename"
         ],
         "additionalProperties": false
@@ -628,9 +620,7 @@
                                 },
                                 "required": [
                                   "file",
-                                  "alt",
-                                  "width",
-                                  "height"
+                                  "alt"
                                 ],
                                 "additionalProperties": false
                               },
@@ -708,10 +698,16 @@
                   "type": "boolean"
                 },
                 "sku": {
-                  "type": "string"
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 },
                 "barcode": {
-                  "type": "string"
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 },
                 "image": {
                   "type": [
@@ -890,10 +886,8 @@
                 "optionValues",
                 "price",
                 "compareAtPrice",
-                "available",
                 "sku",
-                "barcode",
-                "image"
+                "barcode"
               ],
               "additionalProperties": false
             }
@@ -981,9 +975,7 @@
               },
               "required": [
                 "file",
-                "alt",
-                "width",
-                "height"
+                "alt"
               ],
               "additionalProperties": false
             }
@@ -1093,9 +1085,7 @@
                       },
                       "required": [
                         "file",
-                        "alt",
-                        "width",
-                        "height"
+                        "alt"
                       ],
                       "additionalProperties": false
                     },
@@ -1148,7 +1138,6 @@
                   "required": [
                     "mediaType",
                     "alt",
-                    "previewImage",
                     "sources"
                   ],
                   "additionalProperties": false
@@ -1235,9 +1224,7 @@
                       },
                       "required": [
                         "file",
-                        "alt",
-                        "width",
-                        "height"
+                        "alt"
                       ],
                       "additionalProperties": false
                     },
@@ -1257,7 +1244,6 @@
                   "required": [
                     "mediaType",
                     "alt",
-                    "previewImage",
                     "host",
                     "externalId"
                   ],
@@ -1345,9 +1331,7 @@
                       },
                       "required": [
                         "file",
-                        "alt",
-                        "width",
-                        "height"
+                        "alt"
                       ],
                       "additionalProperties": false
                     },
@@ -1383,7 +1367,6 @@
                   "required": [
                     "mediaType",
                     "alt",
-                    "previewImage",
                     "sources"
                   ],
                   "additionalProperties": false
@@ -1567,9 +1550,7 @@
                 },
                 "required": [
                   "file",
-                  "alt",
-                  "width",
-                  "height"
+                  "alt"
                 ],
                 "additionalProperties": false
               },
@@ -1599,8 +1580,6 @@
           "handle",
           "title",
           "descriptionHtml",
-          "image",
-          "products",
           "sortOrder",
           "templateSuffix"
         ],
@@ -1846,9 +1825,7 @@
                       },
                       "required": [
                         "file",
-                        "alt",
-                        "width",
-                        "height"
+                        "alt"
                       ],
                       "additionalProperties": false
                     },
@@ -1891,8 +1868,6 @@
                 "bodyHtml",
                 "excerptHtml",
                 "author",
-                "publishedAt",
-                "image",
                 "tags",
                 "templateSuffix",
                 "metafields"
@@ -2227,7 +2202,6 @@
     "menus",
     "metaobjects",
     "cart",
-    "filters",
     "scenarios"
   ],
   "additionalProperties": false,
@@ -2385,7 +2359,6 @@
         "title",
         "url",
         "type",
-        "resourceHandle",
         "links"
       ],
       "additionalProperties": false

@@ -1,5 +1,10 @@
 import { focalPointPercent, snapshotImages } from "./images.js";
-import { type Snapshot, snapshotSchema } from "./schema.js";
+import {
+  type CompleteSnapshot,
+  completeSnapshotSchema,
+  type Snapshot,
+  snapshotSchema,
+} from "./schema.js";
 
 function record(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -72,22 +77,25 @@ export function validateSnapshotReferences(snapshot: Snapshot): void {
     (snapshot.images ?? []).map((image) => image.filename),
     "uploaded image filename",
   );
-  const imageMetadata = new Map<string, Set<string>>();
+  const imageMetadata = new Map<string, Map<string, Set<unknown>>>();
   for (const source of snapshotImages(snapshot)) {
-    const values = imageMetadata.get(source.file) ?? new Set<string>();
-    values.add(
-      JSON.stringify([
-        source.alt,
-        source.width,
-        source.height,
-        source.focalPoint ? focalPointPercent(source.focalPoint.x) : null,
-        source.focalPoint ? focalPointPercent(source.focalPoint.y) : null,
-      ]),
-    );
-    imageMetadata.set(source.file, values);
+    const fields = imageMetadata.get(source.file) ?? new Map<string, Set<unknown>>();
+    for (const [key, value] of Object.entries({
+      alt: source.alt,
+      width: source.width,
+      height: source.height,
+      focalX: source.focalPoint ? focalPointPercent(source.focalPoint.x) : null,
+      focalY: source.focalPoint ? focalPointPercent(source.focalPoint.y) : null,
+    })) {
+      if (value === undefined) continue;
+      const values = fields.get(key) ?? new Set<unknown>();
+      values.add(value);
+      fields.set(key, values);
+    }
+    imageMetadata.set(source.file, fields);
   }
   for (const source of snapshot.images ?? [])
-    if ((imageMetadata.get(source.file)?.size ?? 0) > 1)
+    if ([...(imageMetadata.get(source.file)?.values() ?? [])].some((values) => values.size > 1))
       throw new Error("Conflicting image metadata for the same local file");
   const products = new Map(snapshot.products.map((p) => [p.handle, p]));
   for (const product of snapshot.products) {
@@ -115,7 +123,7 @@ export function validateSnapshotReferences(snapshot: Snapshot): void {
         variant.quantityRule.max < variant.quantityRule.min
       )
         throw new Error("Variant quantity rule maximum is below its minimum");
-      if (variant.image !== null && !files.has(variant.image))
+      if (variant.image !== undefined && variant.image !== null && !files.has(variant.image))
         throw new Error(`Missing variant image on ${product.handle}`);
       if (variant.optionValues.length !== product.options.length)
         throw new Error(`Option count mismatch on ${product.handle}`);
@@ -127,7 +135,7 @@ export function validateSnapshotReferences(snapshot: Snapshot): void {
     }
   }
   for (const collection of snapshot.collections)
-    for (const handle of collection.products)
+    for (const handle of collection.products ?? [])
       if (!products.has(handle)) throw new Error(`Missing collection member: ${handle}`);
   for (const blog of snapshot.blogs)
     unique(
@@ -143,4 +151,12 @@ export function validateSnapshotReferences(snapshot: Snapshot): void {
     snapshot.cart.lines.flatMap((line) => (line.key === undefined ? [] : [line.key])),
     "cart line key",
   );
+}
+
+/** Oracle scenarios must still resolve to complete data before any store write is prepared. */
+export function applyCompleteScenario(
+  snapshot: CompleteSnapshot,
+  name = "default",
+): CompleteSnapshot {
+  return completeSnapshotSchema.parse(applyScenario(snapshot, name));
 }

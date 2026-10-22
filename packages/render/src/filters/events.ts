@@ -1,5 +1,5 @@
 import type { Liquid } from "liquidjs";
-import { liquidObjectKind } from "../../../data/src/objects.js";
+import { liquidObjectKind, readSnapshotProperty } from "../../../data/src/objects.js";
 import { namedArgs } from "./images.js";
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -34,7 +34,11 @@ export function registerEventFilters(
         // An all-products collection has no persistent Shopify collection ID.
         const id = Object.hasOwn(value, "id") ? value.id : null;
         return serialize({
-          collection: { id, handle: value.handle, productsCount: value.products_count },
+          collection: {
+            id,
+            handle: value.handle,
+            productsCount: readSnapshotProperty(value, "products_count"),
+          },
         });
       }
       const context = namedArgs(args).context ?? null;
@@ -67,7 +71,7 @@ export function registerEventFilters(
         ? {
             id: selected.id,
             title: selected.title,
-            availableForSale: selected.available,
+            availableForSale: readSnapshotProperty(selected, "available"),
             price: { amount: decimal(selected.price), currencyCode: currency },
             selectedOptions,
           }

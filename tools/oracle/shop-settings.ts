@@ -1,5 +1,8 @@
 import { z } from "zod";
-import { type Snapshot, snapshotSchema } from "../../packages/data/src/schema.js";
+import {
+  type CompleteSnapshot as Snapshot,
+  completeSnapshotSchema as snapshotSchema,
+} from "../../packages/data/src/schema.js";
 import { type OracleConfig, oracleConfigSchema } from "./store-guard.js";
 
 export class ShopSettingsError extends Error {

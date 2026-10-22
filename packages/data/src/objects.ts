@@ -3,13 +3,21 @@ import { LiquidFloat } from "./float.js";
 import { handleize } from "./handle.js";
 import { ImageDirectory, localImageUrl } from "./images.js";
 import { focalPoint, ScalarDrop } from "./scalar-drop.js";
-import type { MenuLink, ProductMedia, Snapshot } from "./schema.js";
-import { type SearchCandidate, searchResults } from "./search.js";
+import type { PartialMenuLink as MenuLink, ProductMedia, Snapshot } from "./schema.js";
+import { type SearchCandidate, type SearchPurpose, searchResults } from "./search.js";
 import { shopTime } from "./shop-time.js";
 import { storefrontQuery } from "./storefront-filters.js";
 
 export { ScalarDrop };
 export type LiquidRecord = Record<string, unknown>;
+/** One known available variant establishes availability even when siblings are unknown. */
+function productAvailability(
+  variants: Snapshot["products"][number]["variants"],
+): boolean | undefined {
+  if (variants.some((variant) => variant.available === true)) return true;
+  return variants.some((variant) => variant.available === undefined) ? undefined : false;
+}
+
 const objectKinds = new WeakMap<object, string>();
 const mediaTitles = new WeakMap<object, string>();
 /** The title of the product that owns video, external video or model media. */
@@ -116,6 +124,11 @@ function absentFields(target: object): string[] {
     const keys: unknown = symbol.description === absentMarker ? Reflect.get(target, symbol) : [];
     return Array.isArray(keys) ? keys.map(String) : [];
   });
+}
+/** Native filters explicitly consume fields just as Liquid property access does. */
+export function readSnapshotProperty(value: Record<string, unknown>, key: string): unknown {
+  if (absentFields(value).includes(key)) Reflect.getOwnPropertyDescriptor(value, key);
+  return value[key];
 }
 let typeRecorder: ((type: string, keys: readonly string[]) => void) | undefined;
 /** Runs `run` while reporting the type and own properties of every newly tracked object. */
@@ -263,11 +276,16 @@ function imageFields(
   return {
     file: value.file,
     alt: value.alt,
-    width: value.width,
-    height: value.height,
+    ...availableFields({
+      width: value.width,
+      height: value.height,
+      aspect_ratio:
+        value.width === undefined || value.height === undefined
+          ? undefined
+          : value.width / value.height,
+    }),
     src,
     url: src,
-    aspect_ratio: value.width / value.height,
     position: index === null ? null : index + 1,
     product_id: null,
     variants: null,
@@ -350,18 +368,21 @@ export function liquidObjects(
     path: string,
     index: number,
   ): object {
-    const preview = tracked(
-      { ...image(entry.previewImage, `${path}.previewImage`), id: null },
-      "image",
-      `${path}.previewImage`,
-      { id: null },
-    );
+    const preview =
+      entry.previewImage === undefined
+        ? undefined
+        : tracked(
+            { ...image(entry.previewImage, `${path}.previewImage`), id: null },
+            "image",
+            `${path}.previewImage`,
+            { id: null },
+          );
     const common = {
       ...availableFields({ id: sourceId(entry.id) }),
       alt: entry.alt,
       media_type: entry.mediaType,
       position: index + 1,
-      preview_image: preview,
+      ...availableFields({ preview_image: preview }),
     };
     const keys = { media_type: "mediaType", position: null, preview_image: "previewImage" };
     if (entry.mediaType === "external_video")
@@ -370,7 +391,12 @@ export function liquidObjects(
           ...common,
           host: entry.host,
           external_id: entry.externalId,
-          aspect_ratio: entry.previewImage.width / entry.previewImage.height,
+          ...availableFields({
+            aspect_ratio:
+              entry.previewImage?.width === undefined || entry.previewImage.height === undefined
+                ? undefined
+                : entry.previewImage.width / entry.previewImage.height,
+          }),
         },
         "external_video",
         path,
@@ -507,6 +533,10 @@ export function liquidObjects(
         "sort_option",
         `${path}.sortOptions`,
       );
+    if (snapshot.shop.locale === undefined) {
+      absent("shop", "locale (sort_options)");
+      return undefined;
+    }
     if (snapshot.shop.locale.split("-")[0] !== "en")
       hooks.missing?.(
         "Localized collection sort labels are absent from the snapshot; English is used.",
@@ -608,14 +638,25 @@ export function liquidObjects(
           price: liquidPrice(variant.price),
           compare_at_price:
             variant.compareAtPrice === null ? null : liquidPrice(variant.compareAtPrice),
-          available: variant.available,
+          ...availableFields({ available: variant.available }),
           sku: variant.sku,
           barcode: variant.barcode,
           selected,
           url: `/products/${source.handle}?variant=${encodeURIComponent(variant.id)}`,
-          image: images.find((i) => i.file === variant.image) ?? null,
-          featured_image: images.find((i) => i.file === variant.image) ?? null,
-          featured_media: mediaImages.find((i) => i.file === variant.image) ?? null,
+          ...availableFields({
+            image:
+              variant.image === undefined
+                ? undefined
+                : (images.find((i) => i.file === variant.image) ?? null),
+            featured_image:
+              variant.image === undefined
+                ? undefined
+                : (images.find((i) => i.file === variant.image) ?? null),
+            featured_media:
+              variant.image === undefined
+                ? undefined
+                : (mediaImages.find((i) => i.file === variant.image) ?? null),
+          }),
           ...availableFields({
             quantity_rule: trackedJson(
               variant.quantityRule,
@@ -686,15 +727,36 @@ export function liquidObjects(
         },
         variants: {
           enumerable: false,
-          get: () => variants.filter((_variant, index) => source.variants[index]?.image === file),
+          get: () => {
+            if (source.variants.some((variant) => variant.image === undefined)) {
+              absent("image", "variants");
+              return undefined;
+            }
+            return variants.filter((_variant, index) => source.variants[index]?.image === file);
+          },
         },
         "attached_to_variant?": {
           enumerable: true,
-          get: () => source.variants.some((variant) => variant.image === file),
+          get: () => {
+            if (source.variants.some((variant) => variant.image === file)) return true;
+            if (source.variants.some((variant) => variant.image === undefined)) {
+              absent("image", "attached_to_variant?");
+              return undefined;
+            }
+            return source.variants.some((variant) => variant.image === file);
+          },
         },
       });
     }
-    const firstAvailable = variants.find((variant) => variant.available) ?? null;
+    // A later unknown cannot precede an already established first available variant.
+    const firstIndex = source.variants.findIndex((variant) => variant.available !== false);
+    const firstAvailable =
+      firstIndex < 0
+        ? null
+        : source.variants[firstIndex]?.available === true
+          ? variants[firstIndex]
+          : undefined;
+    const selectionKnown = selected !== undefined || firstAvailable !== undefined;
     const current = selected ?? firstAvailable ?? variants[0];
     const optionRows = source.variants.map((variant) =>
       source.options.map(
@@ -722,14 +784,22 @@ export function liquidObjects(
               const swatchPath = `${path}.options[${index}].swatches[${valueIndex}]`;
               const fields: LiquidRecord = {
                 name: value,
-                selected: isSelected,
-                available: source.variants.some(
-                  (variant, row) =>
-                    variant.available &&
-                    optionRows[row]?.[index] === value &&
-                    currentRow.slice(0, index).every((v, i) => optionRows[row]?.[i] === v),
-                ),
-                variant: match ?? null,
+                ...availableFields({
+                  available:
+                    index === 0 || selectionKnown
+                      ? productAvailability(
+                          source.variants.filter(
+                            (_variant, row) =>
+                              optionRows[row]?.[index] === value &&
+                              currentRow
+                                .slice(0, index)
+                                .every((v, i) => optionRows[row]?.[i] === v),
+                          ),
+                        )
+                      : undefined,
+                  selected: selectionKnown ? isSelected : undefined,
+                  variant: selectionKnown ? (match ?? null) : undefined,
+                }),
                 // Snapshots have no combined listings, so no value points at another product.
                 product_url: null,
                 ...availableFields({
@@ -780,7 +850,9 @@ export function liquidObjects(
             "product_option_value",
             `${path}.options[${index}].values`,
           ),
-          selected_value: currentRow[index] ?? null,
+          ...availableFields({
+            selected_value: selectionKnown ? (currentRow[index] ?? null) : undefined,
+          }),
         },
         "product_option",
         `${path}.options[${index}]`,
@@ -818,7 +890,9 @@ export function liquidObjects(
       tags: [...source.tags].sort(),
       template_suffix: source.templateSuffix,
       url: `/products/${source.handle}`,
-      available: source.variants.some((variant) => variant.available),
+      ...availableFields({
+        available: productAvailability(source.variants),
+      }),
       price: Math.min(...prices),
       price_min: Math.min(...prices),
       price_max: Math.max(...prices),
@@ -828,9 +902,13 @@ export function liquidObjects(
       compare_at_price_max: comparePrices.length ? Math.max(...comparePrices) : null,
       compare_at_price_varies: new Set(comparePrices).size > 1,
       variants,
-      first_available_variant: firstAvailable,
+      ...availableFields({ first_available_variant: firstAvailable }),
       selected_variant: selected ?? null,
-      selected_or_first_available_variant: selected ?? firstAvailable ?? variants[0] ?? null,
+      ...availableFields({
+        selected_or_first_available_variant:
+          selected ??
+          (firstAvailable !== undefined ? (firstAvailable ?? variants[0] ?? null) : undefined),
+      }),
       has_only_default_variant:
         source.options.length === 1 &&
         source.options[0]?.name === "Title" &&
@@ -854,8 +932,18 @@ export function liquidObjects(
   /** Filter objects and the filtered, sorted members, derived once on first use. */
   function collectionQuery(handle: string, handles: string[], defaultSortBy: string) {
     let result: ReturnType<typeof storefrontQuery> | undefined;
-    return () =>
-      (result ??= storefrontQuery(
+    return () => {
+      const parameters = new URL(route.path, "https://offline.invalid").searchParams;
+      if (
+        viewed(handle) &&
+        handles.length > 0 &&
+        [...parameters.keys()].some((key) => key.startsWith("filter.")) &&
+        snapshot.filters === undefined
+      ) {
+        absent("collection", "products (filters or variant.available)");
+        return undefined;
+      }
+      result ??= storefrontQuery(
         snapshot,
         route.path,
         handles.flatMap((member) => {
@@ -872,14 +960,16 @@ export function liquidObjects(
           missing: (message) =>
             hooks.missing ? hooks.missing(message) : hooks.unsupportedOperation?.(message),
         },
-      ));
+      );
+      return result;
+    };
   }
   for (const [collectionIndex, source] of snapshot.collections.entries()) {
-    const members = source.products.flatMap((handle) => {
+    const members = source.products?.flatMap((handle) => {
       const product = products.get(handle);
       return product ? [product] : [];
     });
-    const query = collectionQuery(source.handle, source.products, source.sortOrder);
+    const query = collectionQuery(source.handle, source.products ?? [], source.sortOrder);
     const collectionImage = source.image
       ? tracked(
           {
@@ -889,7 +979,11 @@ export function liquidObjects(
           "image",
           `collections[${collectionIndex}].image`,
         )
-      : null;
+      : source.image;
+    const unknown = (property: string) => {
+      absent("collection", `${property} (collections[${collectionIndex}])`);
+      return undefined;
+    };
     collections.set(
       source.handle,
       tracked(
@@ -900,25 +994,29 @@ export function liquidObjects(
           description: source.descriptionHtml,
           url: `/collections/${source.handle}`,
           get products() {
-            return query().products;
+            return members === undefined ? unknown("products") : query()?.products;
           },
           get products_count() {
-            return query().products.length;
+            return members === undefined ? unknown("products_count") : query()?.productsCount;
           },
-          all_products_count: members.length,
+          ...availableFields({ all_products_count: members?.length }),
           get all_tags() {
-            return memberValues(members, "tags");
+            return members === undefined ? unknown("all_tags") : memberValues(members, "tags");
           },
           get all_types() {
-            return memberValues(members, "type");
+            return members === undefined ? unknown("all_types") : memberValues(members, "type");
           },
           get all_vendors() {
-            return memberValues(members, "vendor");
+            return members === undefined ? unknown("all_vendors") : memberValues(members, "vendor");
           },
-          image: collectionImage,
+          ...availableFields({ image: collectionImage }),
           // The collection image, else the first product's featured image.
           get featured_image() {
-            return collectionImage ?? members[0]?.featured_image ?? null;
+            if (collectionImage === undefined) return unknown("image");
+            if (collectionImage) return collectionImage;
+            return members === undefined
+              ? unknown("products")
+              : (members[0]?.featured_image ?? null);
           },
           template_suffix: source.templateSuffix,
           default_sort_by: source.sortOrder,
@@ -931,7 +1029,13 @@ export function liquidObjects(
           current_type: null,
           sort_by: route.sortBy,
           get filters() {
-            return query().filters;
+            if (members === undefined) return unknown("products (filters)");
+            if (members.length === 0) return [];
+            if (snapshot.filters === undefined) {
+              absent("collection", "filters");
+              return undefined;
+            }
+            return query()?.filters;
           },
         },
         "collection",
@@ -944,26 +1048,55 @@ export function liquidObjects(
     if (product)
       Object.defineProperty(product, "collections", {
         enumerable: true,
-        get: () =>
-          [...collections.values()].filter((collection) =>
+        get: () => {
+          if (snapshot.collections.some((collection) => collection.products === undefined)) {
+            absent("product", "collections");
+            return undefined;
+          }
+          return [...collections.values()].filter((collection) =>
             snapshot.collections
               .find((c) => c.handle === collection.handle)
-              ?.products.includes(source.handle),
-          ),
+              ?.products?.includes(source.handle),
+          );
+        },
       });
   }
   if (!collections.has("all")) {
-    const collator = new Intl.Collator(snapshot.shop.locale, { sensitivity: "base" });
-    const members = [...products.values()].sort((a, b) =>
-      collator.compare(String(a.title), String(b.title)),
+    const collator =
+      snapshot.shop.locale === undefined
+        ? undefined
+        : new Intl.Collator(snapshot.shop.locale, { sensitivity: "base" });
+    const members = [...products.values()].sort(
+      (a, b) => collator?.compare(String(a.title), String(b.title)) ?? 0,
     );
     const query = collectionQuery(
       "all",
       [...snapshot.products]
-        .sort((a, b) => collator.compare(a.title, b.title))
+        .sort((a, b) => collator?.compare(a.title, b.title) ?? 0)
         .map((product) => product.handle),
       "title-ascending",
     );
+    function needsLocalizedBaseOrder(result: LiquidRecord[]): boolean {
+      if (result.length < 2) return false;
+      const order = viewed("all") ? route.sortBy : null;
+      const byPrice = order === "price-ascending" || order === "price-descending";
+      const byCreated = order === "created-ascending" || order === "created-descending";
+      if (!byPrice && !byCreated) return true;
+      const titlesByKey = new Map<number, string>();
+      for (const member of result) {
+        const source = productSources.get(String(member.handle));
+        if (!source) throw new Error("Automatic collection member is absent from the snapshot");
+        if (byCreated && source.createdAt === undefined) return true;
+        const key = byPrice
+          ? Math.min(...source.variants.map((variant) => liquidPrice(variant.price)))
+          : Date.parse(String(source.createdAt));
+        const title = titlesByKey.get(key);
+        // Stable sort ties inherit the automatic catalog's localized title order.
+        if (title !== undefined && title !== source.title) return true;
+        titlesByKey.set(key, source.title);
+      }
+      return false;
+    }
     collections.set(
       "all",
       tracked(
@@ -971,6 +1104,10 @@ export function liquidObjects(
           id: null,
           handle: "all",
           get title() {
+            if (snapshot.shop.locale === undefined) {
+              absent("shop", "locale (collections.all.title)");
+              return undefined;
+            }
             if (snapshot.shop.locale.split("-")[0] !== "en")
               hooks.unsupportedOperation?.(
                 "Localized automatic collection titles are unavailable; English is used.",
@@ -979,10 +1116,17 @@ export function liquidObjects(
           },
           description: "",
           get products() {
-            return query().products;
+            const result = query()?.products;
+            if (
+              snapshot.shop.locale === undefined &&
+              result !== undefined &&
+              needsLocalizedBaseOrder(result)
+            )
+              absent("shop", "locale (collections.all product order; snapshot order retained)");
+            return result;
           },
           get products_count() {
-            return query().products.length;
+            return query()?.productsCount;
           },
           all_products_count: members.length,
           get all_tags() {
@@ -997,6 +1141,11 @@ export function liquidObjects(
           url: "/collections/all",
           image: null,
           get featured_image() {
+            if (members.every((member) => member.featured_image === null)) return null;
+            if (snapshot.shop.locale === undefined && members.length > 1) {
+              absent("shop", "locale (collections.all.featured_image)");
+              return undefined;
+            }
             return members[0]?.featured_image ?? null;
           },
           template_suffix: null,
@@ -1010,7 +1159,12 @@ export function liquidObjects(
           current_type: null,
           sort_by: route.sortBy,
           get filters() {
-            return query().filters;
+            if (members.length === 0) return [];
+            if (snapshot.filters === undefined) {
+              absent("collection", "filters");
+              return undefined;
+            }
+            return query()?.filters;
           },
         },
         "collection",
@@ -1056,19 +1210,20 @@ export function liquidObjects(
   );
   const articles = new Map<string, Map<string, LiquidRecord>>();
   /** Shopify lists a blog's articles newest first; equal publish times put the later-created (higher id) first. */
-  function newestFirst<T extends { publishedAt: string; id?: string | undefined }>(
+  function newestFirst<T extends { publishedAt?: string | undefined; id?: string | undefined }>(
     items: readonly T[],
   ) {
     const numeric = (value: string | undefined) =>
       value && /^\d+$/.test(value) ? BigInt(value) : null;
-    return items
-      .map((article, index) => ({ article, index }))
-      .sort((a, b) => {
-        const time = Date.parse(b.article.publishedAt) - Date.parse(a.article.publishedAt);
-        if (time) return time;
-        const [x, y] = [numeric(a.article.id), numeric(b.article.id)];
-        return x !== null && y !== null && x !== y ? (y > x ? 1 : -1) : 0;
-      });
+    const indexed = items.map((article, index) => ({ article, index }));
+    if (items.some((article) => article.publishedAt === undefined)) return indexed;
+    return indexed.sort((a, b) => {
+      if (a.article.publishedAt === undefined || b.article.publishedAt === undefined) return 0;
+      const time = Date.parse(b.article.publishedAt) - Date.parse(a.article.publishedAt);
+      if (time) return time;
+      const [x, y] = [numeric(a.article.id), numeric(b.article.id)];
+      return x !== null && y !== null && x !== y ? (y > x ? 1 : -1) : 0;
+    });
   }
   const blogs = new Map(
     snapshot.blogs.map((source, blogIndex) => [
@@ -1096,17 +1251,19 @@ export function liquidObjects(
                 content: article.bodyHtml,
                 excerpt: article.excerptHtml,
                 author: article.author,
-                published_at: time(article.publishedAt),
-                image: article.image
-                  ? tracked(
-                      {
-                        ...image(article.image, `blogs[${blogIndex}].articles[${index}].image`),
-                        ...availableFields({ id: sourceId(article.image.id) }),
-                      },
-                      "image",
-                      `blogs[${blogIndex}].articles[${index}].image`,
-                    )
-                  : null,
+                ...availableFields({
+                  published_at: time(article.publishedAt),
+                  image: article.image
+                    ? tracked(
+                        {
+                          ...image(article.image, `blogs[${blogIndex}].articles[${index}].image`),
+                          ...availableFields({ id: sourceId(article.image.id) }),
+                        },
+                        "image",
+                        `blogs[${blogIndex}].articles[${index}].image`,
+                      )
+                    : article.image,
+                }),
                 url: `/blogs/${source.handle}/${article.handle}`,
                 tags: article.tags,
                 template_suffix: article.templateSuffix,
@@ -1138,6 +1295,23 @@ export function liquidObjects(
       ),
     ]),
   );
+  for (const source of snapshot.blogs) {
+    const blog = blogs.get(source.handle);
+    if (
+      blog &&
+      source.articles.length > 1 &&
+      source.articles.some((article) => article.publishedAt === undefined)
+    ) {
+      const list = blog.articles;
+      Object.defineProperty(blog, "articles", {
+        enumerable: true,
+        get() {
+          absent("blog", "articles order (publishedAt); snapshot order retained");
+          return list;
+        },
+      });
+    }
+  }
   const requestPath = localPath(route.path) ?? "/";
   function localPath(url: string): string | null {
     try {
@@ -1179,8 +1353,13 @@ export function liquidObjects(
     const find = lookup[link.type];
     if (!find) return null;
     const value = find();
-    if (value === undefined || value === null)
+    if (value === undefined || value === null) {
+      if (link.resourceHandle === undefined) {
+        absent("link", "resourceHandle");
+        return undefined;
+      }
       hooks.missing?.(`Menu link ${link.title} references a resource absent from the snapshot.`);
+    }
     return value ?? null;
   }
   interface LinkState {
@@ -1350,11 +1529,16 @@ export function liquidObjects(
         variant_title: variantTitle,
         vendor: source.vendor,
         sku: variantSource.sku,
-        image: lineImage
-          ? ((Array.isArray(product.images)
-              ? product.images[source.images.indexOf(lineImage)]
-              : null) ?? null)
-          : product.featured_image,
+        ...availableFields({
+          image:
+            variantSource.image === undefined
+              ? undefined
+              : lineImage
+                ? ((Array.isArray(product.images)
+                    ? product.images[source.images.indexOf(lineImage)]
+                    : null) ?? null)
+                : product.featured_image,
+        }),
         url: `/products/${source.handle}?variant=${encodeURIComponent(line.variantId)}`,
         options_with_values: tracked(
           variantSource.optionValues.map((value, valueIndex) =>
@@ -1477,7 +1661,7 @@ export function liquidObjects(
           ...source.tags,
           ...source.variants.map((v) => v.sku),
         ].join(" "),
-        available: source.variants.some((v) => v.available),
+        available: productAvailability(source.variants),
         price: Math.min(...source.variants.map((v) => liquidPrice(v.price))),
       });
   }
@@ -1516,14 +1700,22 @@ export function liquidObjects(
     if (value) productSourceOf.set(value, source);
   }
   const resultSources = new WeakMap<object, Snapshot["products"][number]>();
-  let results: LiquidRecord[] | undefined;
-  function matching(): LiquidRecord[] {
-    if (results) return results;
-    results = searchResults(candidates, route.path, (message) =>
-      hooks.unsupportedOperation
-        ? hooks.unsupportedOperation(message)
-        : hooks.unsupported("search", message),
-    ).map((candidate) => {
+  const resultCache = new Map<SearchPurpose, LiquidRecord[]>();
+  function matching(purpose: SearchPurpose = "results"): LiquidRecord[] | undefined {
+    const cached = resultCache.get(purpose);
+    if (cached) return cached;
+    const matches = searchResults(
+      candidates,
+      route.path,
+      (message) =>
+        hooks.unsupportedOperation
+          ? hooks.unsupportedOperation(message)
+          : hooks.unsupported("search", message),
+      () => absent("search", `${purpose} (variant.available)`),
+      purpose,
+    );
+    if (matches === undefined) return undefined;
+    const results = matches.map((candidate) => {
       const result = new Proxy(candidate.value, {
         ownKeys(target) {
           const keys = Reflect.ownKeys(target);
@@ -1543,6 +1735,7 @@ export function liquidObjects(
       if (source) resultSources.set(result, source);
       return result;
     });
+    resultCache.set(purpose, results);
     return results;
   }
   const search = tracked(
@@ -1555,7 +1748,7 @@ export function liquidObjects(
         return matching();
       },
       get results_count() {
-        return matching().length;
+        return matching("count")?.length;
       },
       default_sort_by: "relevance",
       sort_by: route.sortBy ?? "relevance",
@@ -1565,6 +1758,12 @@ export function liquidObjects(
         { name: "Price, high to low", value: "price-descending" },
       ].map((option) => tracked(option, "sort_option")),
       get filters() {
+        if (snapshot.filters === undefined) {
+          const matches = matching("facets");
+          if (matches?.every((value) => !resultSources.has(value))) return [];
+          absent("search", "filters");
+          return undefined;
+        }
         const query = new URL(route.path, "https://offline.invalid").searchParams;
         if (
           snapshot.filters.some((filter) =>
@@ -1574,10 +1773,12 @@ export function liquidObjects(
           hooks.unsupportedOperation?.(
             "Storefront filters are not applied to search results offline.",
           );
+        const matches = matching("facets");
+        if (matches === undefined) return undefined;
         return storefrontQuery(
           snapshot,
           route.path,
-          matching().flatMap((value) => {
+          matches.flatMap((value) => {
             const source = resultSources.get(value);
             return source ? [{ source, value }] : [];
           }),
@@ -1665,8 +1866,11 @@ export function liquidObjects(
     languages.find((language) => language.iso_code === snapshot.shop.locale) ??
     tracked(
       {
-        iso_code: snapshot.shop.locale,
-        direction: direction(snapshot.shop.locale),
+        ...availableFields({
+          iso_code: snapshot.shop.locale,
+          direction:
+            snapshot.shop.locale === undefined ? undefined : direction(snapshot.shop.locale),
+        }),
         ...availableFields({
           name: undefined,
           endonym_name: undefined,
@@ -1694,6 +1898,10 @@ export function liquidObjects(
         ...availableFields({
           id: snapshot.shop.id === undefined ? undefined : id(snapshot.shop.id),
           permanent_domain: snapshot.shop.permanentDomain,
+          name: snapshot.shop.name,
+          locale: snapshot.shop.locale,
+          money_format: snapshot.shop.money_format,
+          money_with_currency_format: snapshot.shop.money_with_currency_format,
           // Optional shop metadata; an omission is missing data.
           description: snapshot.shop.description,
           customer_accounts_enabled: snapshot.shop.customer_accounts_enabled,

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { defaultFixture } from "../../packages/data/src/fixture.js";
-import type { Snapshot } from "../../packages/data/src/schema.js";
+import type { CompleteSnapshot as Snapshot } from "../../packages/data/src/schema.js";
 import { backupDigest } from "../../tools/oracle/backup-audit.js";
 import { createOracleSeedBindingLedger } from "../../tools/oracle/seed-binding-ledger.js";
 import { createOracleSeedExecutor } from "../../tools/oracle/seed-execution.js";

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { Snapshot } from "../../packages/data/src/schema.js";
+import type { CompleteSnapshot as Snapshot } from "../../packages/data/src/schema.js";
 import type { createOracleSeedBindingLedger } from "./seed-binding-ledger.js";
 import { type SeedCompletionDependencies, waitOracleSeedPublication } from "./seed-completion.js";
 import type { SeedExecutionDependencies } from "./seed-execution.js";

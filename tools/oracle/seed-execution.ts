@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { Snapshot } from "../../packages/data/src/schema.js";
+import type { CompleteSnapshot as Snapshot } from "../../packages/data/src/schema.js";
 import { buildOracleSeedPlan, type SeedTask } from "./seed-plan.js";
 import {
   compileSeedStepTemplates,

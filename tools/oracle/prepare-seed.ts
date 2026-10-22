@@ -1,5 +1,5 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { snapshotSchema } from "../../packages/data/src/schema.js";
+import { completeSnapshotSchema as snapshotSchema } from "../../packages/data/src/schema.js";
 import { buildOracleSeedPlan, readOracleSeedImages } from "./seed-plan.js";
 import { oracleConfigSchema } from "./store-guard.js";
 

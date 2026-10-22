@@ -1,7 +1,10 @@
 import { z } from "zod";
-import { applyScenario, validateSnapshotReferences } from "../../packages/data/src/scenarios.js";
-import type { Snapshot } from "../../packages/data/src/schema.js";
-import { snapshotSchema } from "../../packages/data/src/schema.js";
+import {
+  applyCompleteScenario as applyScenario,
+  validateSnapshotReferences,
+} from "../../packages/data/src/scenarios.js";
+import type { CompleteSnapshot as Snapshot } from "../../packages/data/src/schema.js";
+import { completeSnapshotSchema as snapshotSchema } from "../../packages/data/src/schema.js";
 import { snapshotFingerprint } from "./matrix.js";
 import {
   type createOracleSeedBindingLedger,

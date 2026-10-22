@@ -17,7 +17,7 @@ import { playgroundPreview } from "./preview.js";
 
 let theme: MemoryThemeFileSystem | undefined;
 let themeFiles: BrowserFiles = Object.create(null);
-let snapshot = defaultFixture();
+let snapshot: Snapshot = defaultFixture();
 /** Image files of the opened snapshot; null while the bundled fixture is in use. */
 let images: BrowserFiles | null = null;
 let themeHandle: DirectoryHandle | undefined;

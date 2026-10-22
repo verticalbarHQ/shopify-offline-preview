@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { defaultFixture } from "../packages/data/src/fixture.js";
-import { snapshotSchema } from "../packages/data/src/schema.js";
+import { completeSnapshotSchema as snapshotSchema } from "../packages/data/src/schema.js";
 import { inspectPreparedSeedCheckpoint } from "../tools/oracle/seed-binding-ledger.js";
 import { inspectVerifiedSeedExecution } from "../tools/oracle/seed-execution.js";
 import { openOracleSeedJournal, seedJournalFingerprint } from "../tools/oracle/seed-journal.js";

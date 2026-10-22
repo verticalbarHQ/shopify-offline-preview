@@ -1,4 +1,4 @@
-import type { LiquidRecord } from "../../data/src/objects.js";
+import { type LiquidRecord, readSnapshotProperty } from "../../data/src/objects.js";
 import type { Snapshot } from "../../data/src/schema.js";
 import translations from "../../spec/src/generated/translations.json" with { type: "json" };
 import type { ResolvedRoute } from "./routes.js";
@@ -48,7 +48,7 @@ export function registerPageMetadata(
   }
   function title(
     seo: Snapshot["shop"]["seo"],
-    fallback: string,
+    fallback: string | undefined,
     prefix: string,
     field: string,
   ): string {
@@ -59,10 +59,18 @@ export function registerPageMetadata(
     else hooks.read(`${prefix}.seo.title`);
     if (seo?.title) return escapeHtml(seo.title);
     hooks.read(`${prefix}.${field}`);
+    if (fallback === undefined) {
+      hooks.missing(`${prefix}.${field} is absent from the snapshot.`);
+      return "";
+    }
     return escapeHtml(fallback);
   }
   function system(key: string, args: Record<string, string | number> = {}): string {
     hooks.read("shop.locale");
+    if (snapshot.shop.locale === undefined) {
+      hooks.missing("shop.locale is absent; system page title cannot be localized.");
+      return "";
+    }
     if (snapshot.shop.locale.split("-")[0] !== "en")
       hooks.unsupported(
         "Localized system page titles are not available for this locale; English is used.",
@@ -84,10 +92,12 @@ export function registerPageMetadata(
       if (route.pageType === "search") {
         if (!route.query.q.trim()) return system("search");
         const search = globals.search;
-        const count =
+        const rawCount =
           search && typeof search === "object" && "results_count" in search
-            ? Number(search.results_count)
+            ? search.results_count
             : 0;
+        if (rawCount === undefined) return "";
+        const count = Number(rawCount);
         return system(`search_results.${count === 1 ? "one" : "other"}`, {
           count,
           terms: route.query.q,
@@ -120,8 +130,12 @@ export function registerPageMetadata(
               : null;
       const image =
         resource !== null && typeof resource === "object"
-          ? Reflect.get(resource, route.pageType === "product" ? "featured_image" : "image")
+          ? readSnapshotProperty(
+              resource as LiquidRecord,
+              route.pageType === "product" ? "featured_image" : "image",
+            )
           : null;
+      if (image === undefined) return undefined;
       if (image) return image;
       const sharing = snapshot.shop.socialSharingImage;
       if (sharing) return hooks.image(sharing, "shop.socialSharingImage");

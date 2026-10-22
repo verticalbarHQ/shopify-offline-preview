@@ -1,7 +1,7 @@
 import { findNodeAtLocation, parseTree } from "jsonc-parser";
 import { type Liquid, toValue } from "liquidjs";
 import { ImageDirectory, MissingImage } from "../../../data/src/images.js";
-import { liquidObjectKind, ScalarDrop } from "../../../data/src/objects.js";
+import { liquidObjectKind, readSnapshotProperty, ScalarDrop } from "../../../data/src/objects.js";
 import { ShopTime } from "../../../data/src/shop-time.js";
 import { LiquidFloat } from "../numbers.js";
 import { TableRowLoop } from "../tablerow-tag.js";
@@ -81,7 +81,9 @@ function record(value: unknown): value is Record<string, unknown> {
 function project(value: Record<string, unknown>, fields: string[]) {
   const keys = new Set(Object.keys(value));
   return Object.fromEntries(
-    fields.filter((field) => keys.has(field)).map((field) => [field, value[field]]),
+    fields
+      .map((field) => [field, readSnapshotProperty(value, field)])
+      .filter(([field, value]) => keys.has(String(field)) || value !== undefined),
   );
 }
 export function registerJsonFilter(engine: Liquid) {
@@ -138,18 +140,20 @@ export function registerJsonFilter(engine: Liquid) {
             "src",
             "width",
           ]);
-          media.preview_image = record(value.preview_image)
-            ? project(value.preview_image, ["aspect_ratio", "height", "width", "src"])
-            : null;
+          const preview = readSnapshotProperty(value, "preview_image");
+          media.preview_image = record(preview)
+            ? project(preview, ["aspect_ratio", "height", "width", "src"])
+            : preview;
           paths.set(media, path);
           return media;
         }
         if (kind === "video" || kind === "external_video" || kind === "model") {
           // Same preview image shape as image media in a product's media array.
           const media: Record<string, unknown> = { ...value };
-          media.preview_image = record(value.preview_image)
-            ? project(value.preview_image, ["aspect_ratio", "height", "width", "src"])
-            : null;
+          const preview = readSnapshotProperty(value, "preview_image");
+          media.preview_image = record(preview)
+            ? project(preview, ["aspect_ratio", "height", "width", "src"])
+            : preview;
           paths.set(media, path);
           return media;
         }

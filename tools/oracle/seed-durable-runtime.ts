@@ -1,4 +1,4 @@
-import type { Snapshot } from "../../packages/data/src/schema.js";
+import type { CompleteSnapshot as Snapshot } from "../../packages/data/src/schema.js";
 import { backupDigest } from "./backup-audit.js";
 import type { NativeImageDependencies } from "./image-native.js";
 import { inspectPreparedSeedCheckpoint } from "./seed-binding-ledger.js";

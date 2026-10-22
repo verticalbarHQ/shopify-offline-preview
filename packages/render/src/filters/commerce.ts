@@ -34,20 +34,32 @@ export function registerCommerceFilters(
   snapshot: Snapshot,
   diagnostic: Diagnostic,
 ): void {
-  engine.registerFilter("unit_price_with_measurement", (input: unknown, measurement: unknown) => {
-    const value: unknown = toValue(input);
-    const price =
-      typeof value === "string"
-        ? value
-        : formatMoney(Number(value ?? 0), snapshot.shop.money_format);
-    const unit: unknown = toValue(measurement);
-    // Shopify prints nothing for a variant without a unit price measurement.
-    if (unit === null || unit === undefined) return "";
-    if (!record(unit) || typeof unit.reference_unit !== "string")
-      throw new Error("unit_price_with_measurement requires a unit price measurement");
-    const reference = Number(unit.reference_value);
-    return `${price}/${reference === 1 ? "" : reference}${unit.reference_unit}`;
-  });
+  engine.registerFilter(
+    "unit_price_with_measurement",
+    function (input: unknown, measurement: unknown) {
+      const unit: unknown = toValue(measurement);
+      // Shopify prints nothing for a variant without a unit price measurement.
+      if (unit === null || unit === undefined) return "";
+      const value: unknown = toValue(input);
+      if (typeof value !== "string" && snapshot.shop.money_format === undefined) {
+        diagnostic(
+          "missing-resource",
+          "shop.money_format is absent from the snapshot.",
+          this.token.file ?? null,
+          this.token.getPosition()[0] ?? null,
+        );
+        return "";
+      }
+      const price =
+        typeof value === "string"
+          ? value
+          : formatMoney(Number(value ?? 0), snapshot.shop.money_format ?? "");
+      if (!record(unit) || typeof unit.reference_unit !== "string")
+        throw new Error("unit_price_with_measurement requires a unit price measurement");
+      const reference = Number(unit.reference_value);
+      return `${price}/${reference === 1 ? "" : reference}${unit.reference_unit}`;
+    },
+  );
   engine.registerFilter("default_pagination", (input: unknown, ...args: unknown[]) => {
     if (liquidObjectKind(input) !== "paginate" || !record(input))
       throw new Error("default_pagination requires a paginate object");
@@ -93,8 +105,13 @@ export function registerCommerceFilters(
       return `<a class="metafield-url" href="${escapeHtml(value)}">${escapeHtml(value)}</a>`;
     if (type === "json")
       return `<script type="application/json" class="metafield-json">${jsonString(value)}</script>`;
-    if (type === "money" && record(value) && typeof value.amount === "string")
+    if (type === "money" && record(value) && typeof value.amount === "string") {
+      if (snapshot.shop.money_with_currency_format === undefined) {
+        report("missing-resource", "shop.money_with_currency_format is absent from the snapshot.");
+        return "";
+      }
       return `<span class="metafield-money">${formatMoney(liquidPrice(value.amount), snapshot.shop.money_with_currency_format)}</span>`;
+    }
     if (type === "list.single_line_text_field" && Array.isArray(value)) {
       const list = toValue(namedArgs(args).list_format) === "ordered" ? "ol" : "ul";
       return `<${list} class="metafield-single_line_text_field-array">${value

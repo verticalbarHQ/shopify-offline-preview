@@ -174,10 +174,19 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
     ["money_without_currency", false, true, false],
     ["money_without_trailing_zeros", false, false, true],
   ] as const)
-    engine.registerFilter(name, (value: unknown) => {
+    engine.registerFilter(name, function (value: unknown) {
       const format = withCurrency
         ? hooks.snapshot.shop.money_with_currency_format
         : hooks.snapshot.shop.money_format;
+      if (format === undefined) {
+        hooks.diagnostic(
+          "missing-resource",
+          `shop.${withCurrency ? "money_with_currency_format" : "money_format"} is absent from the snapshot.`,
+          this.token.file ?? null,
+          this.token.getPosition()[0] ?? null,
+        );
+        return "";
+      }
       return formatMoney(value, format, withoutCurrency, withoutZeros);
     });
   engine.registerFilter("asset_url", function (value: unknown) {
@@ -240,19 +249,26 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
   engine.registerFilter("md5", (value: unknown) => md5(String(toValue(value) ?? "")));
   const images = imageFilters(hooks.snapshot, hooks.readData);
   engine.registerFilter("image_url", function (value: unknown, ...args: unknown[]) {
-    return images.imageUrl(value, args, (message) =>
-      hooks.diagnostic(
-        "not-implemented",
-        message,
-        this.token.file ?? null,
-        this.token.getPosition()[0] ?? null,
-      ),
-    );
+    const report = (code: string) => (message: string) =>
+      hooks.diagnostic(code, message, this.token.file ?? null, this.token.getPosition()[0] ?? null);
+    return images.imageUrl(value, args, report("not-implemented"), report("missing-resource"));
   });
   registerMediaFilters(
     engine,
-    (input, args) => images.imageTag(input, args),
-    (input, args) => images.imageUrl(input, args, () => {}),
+    (input, args, file, line) =>
+      images.imageTag(
+        input,
+        args,
+        (message) => hooks.diagnostic("not-implemented", message, file, line),
+        (message) => hooks.diagnostic("missing-resource", message, file, line),
+      ),
+    (input, args, file, line) =>
+      images.imageUrl(
+        input,
+        args,
+        (message) => hooks.diagnostic("not-implemented", message, file, line),
+        (message) => hooks.diagnostic("missing-resource", message, file, line),
+      ),
     (media) => mediaProductTitle(media),
   );
   engine.registerFilter("image_tag", function (value: unknown, ...args: unknown[]) {

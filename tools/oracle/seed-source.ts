@@ -1,5 +1,8 @@
 import { z } from "zod";
-import { type Snapshot, snapshotSchema } from "../../packages/data/src/schema.js";
+import {
+  type CompleteSnapshot as Snapshot,
+  completeSnapshotSchema as snapshotSchema,
+} from "../../packages/data/src/schema.js";
 import { contentSeoFields, contentSeoSelection, normalizeContentSeo } from "./content-seo.js";
 import type { SeedExecutionContext } from "./seed-execution.js";
 import { buildOracleSeedPlan, type SeedTask } from "./seed-plan.js";

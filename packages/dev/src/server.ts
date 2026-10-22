@@ -328,7 +328,7 @@ export async function startDevServer(options: DevOptions): Promise<DevSession> {
       servedPreview(result, inspectorOrigin, {
         designMode: input.designMode,
         shopDomain: data.shop.domain,
-        locale: data.shop.locale,
+        ...(data.shop.locale === undefined ? {} : { locale: data.shop.locale }),
         currency: data.shop.currency,
         viewId,
       }),

@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { benchmarkMatrix } from "../../packages/data/src/fixture.js";
-import type { Snapshot } from "../../packages/data/src/schema.js";
+import type { CompleteSnapshot as Snapshot } from "../../packages/data/src/schema.js";
 import { assertGoldenFreshness, type GoldenArtifact, goldenArtifactSchema } from "./artifacts.js";
 import type { ComparisonNode } from "./summary.js";
 

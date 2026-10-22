@@ -3,7 +3,7 @@ import { readdir, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 import { benchmarkMatrix, defaultFixture } from "../packages/data/src/fixture.js";
-import { parseSnapshot } from "../packages/data/src/schema.js";
+import { parseCompleteSnapshot as parseSnapshot } from "../packages/data/src/schema.js";
 import { NodeThemeFileSystem } from "../packages/theme/src/node.js";
 import { readComparisonThemeFiles } from "./oracle/benchmark-theme.js";
 import { readCaseSnapshots } from "./oracle/case-archive.js";

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { Snapshot } from "../../packages/data/src/schema.js";
+import type { CompleteSnapshot as Snapshot } from "../../packages/data/src/schema.js";
 import { renderTheme } from "../../packages/render/src/index.js";
 import { MemoryThemeFileSystem } from "../../packages/theme/src/index.js";
 import {

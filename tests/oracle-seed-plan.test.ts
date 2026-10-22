@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { benchmarkMatrix, defaultFixture } from "../packages/data/src/fixture.js";
-import { snapshotSchema } from "../packages/data/src/schema.js";
+import { completeSnapshotSchema as snapshotSchema } from "../packages/data/src/schema.js";
 import { buildOracleSeedPlan, readOracleSeedImages } from "../tools/oracle/seed-plan.js";
 
 const config = { domain: "owned-demo.myshopify.com", apiVersion: "2026-10" as const };

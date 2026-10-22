@@ -1,7 +1,10 @@
 import { isDeepStrictEqual } from "node:util";
 import { type DefaultTreeAdapterTypes, parse } from "parse5";
 import { z } from "zod";
-import { type Snapshot, snapshotSchema } from "../../packages/data/src/schema.js";
+import {
+  type CompleteSnapshot as Snapshot,
+  completeSnapshotSchema as snapshotSchema,
+} from "../../packages/data/src/schema.js";
 import { oracleThemeSchema } from "./admin-read.js";
 import { type CaptureDependencies, captureOracleHtmlPair } from "./capture.js";
 import { type CorpusFiles, corpusFilesFingerprint } from "./corpus-environment.js";

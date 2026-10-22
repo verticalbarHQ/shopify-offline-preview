@@ -39,7 +39,10 @@ export function registerStructuredDataFilter(
     const offer = (variant: Record<string, unknown>) => ({
       "@id": `${variant.url}#offer`,
       "@type": "Offer",
-      availability: `http://schema.org/${variant.available ? "InStock" : "OutOfStock"}`,
+      availability:
+        required(variant, "available") === undefined
+          ? undefined
+          : `http://schema.org/${variant.available ? "InStock" : "OutOfStock"}`,
       price: price(variant.price),
       priceCurrency: shop.currency,
       url: absolute(variant.url),
@@ -47,7 +50,11 @@ export function registerStructuredDataFilter(
     const variantData = (variant: Record<string, unknown>, product: Record<string, unknown>) => ({
       "@id": `${variant.url}#variant`,
       "@type": "Product",
-      image: image(variant.featured_image ?? product.featured_image),
+      image: image(
+        required(variant, "featured_image") === null
+          ? product.featured_image
+          : variant.featured_image,
+      ),
       name: variant.name,
       ...(variant.sku ? { sku: variant.sku } : {}),
       offers: offer(variant),
@@ -65,11 +72,11 @@ export function registerStructuredDataFilter(
         articleBody: text(value.content),
         headline: value.title,
         description: text(value.excerpt),
-        image: image(value.image),
+        image: image(required(value, "image")),
         datePublished: required(value, "created_at"),
-        dateModified: value.published_at,
+        dateModified: required(value, "published_at"),
         author: { "@type": "Person", name: value.author },
-        publisher: { "@type": "Organization", name: shop.name },
+        publisher: { "@type": "Organization", name: required(shop, "name") },
       });
     const category = required(value, "category");
     const common = {

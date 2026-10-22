@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { type DefaultTreeAdapterTypes, parse } from "parse5";
 import { z } from "zod";
-import { snapshotSchema } from "../../packages/data/src/schema.js";
+import { completeSnapshotSchema as snapshotSchema } from "../../packages/data/src/schema.js";
 import { type OracleTheme, oracleThemeSchema } from "./admin-read.js";
 import { type CorpusFiles, corpusFilesFingerprint } from "./corpus-environment.js";
 import type { NativeShopSettingsContext, OracleAdminShopSettings } from "./shop-settings.js";
