@@ -227,6 +227,9 @@ Exit codes:
    - A missing image is replaced by an SVG placeholder of the requested size.
    - Benchmark fixtures use the same image files that were uploaded to the oracle store.
 9. **Fonts.**
+   - System settings expose their published metadata without downloads; OS availability varies.
+   - Historical Helvetica settings retain Monotype metadata and report absent CDN resources,
+     without migrating the stored setting to its current replacement.
    - `font_face` and `font_url` cannot reproduce Shopify font-CDN URLs, which contain hashes.
    - When online, families that also exist on Google Fonts load from there. Otherwise the theme's
      fallback stack applies.
