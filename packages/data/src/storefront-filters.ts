@@ -32,14 +32,25 @@ function metafieldValues(input: unknown): string[] {
   return (Array.isArray(value) ? value : [value]).map((entry) => String(entry));
 }
 /** Product membership for the documented filter parameters that snapshot data can decide. */
-function predicate(filter: Filter): ((product: Product, value: string) => boolean) | null {
+type Truth = boolean | undefined;
+const anyKnown = (values: Truth[]): Truth =>
+  values.includes(true) ? true : values.includes(undefined) ? undefined : false;
+const allKnown = (values: Truth[]): Truth =>
+  values.includes(false) ? false : values.includes(undefined) ? undefined : true;
+function predicate(filter: Filter): ((product: Product, value: string) => Truth) | null {
   const id = filter.id;
   if (id === "filter.p.vendor") return (product, value) => product.vendor === value;
   if (id === "filter.p.product_type") return (product, value) => product.productType === value;
   if (id === "filter.p.tag") return (product, value) => product.tags.includes(value);
   if (id === "filter.v.availability")
     return (product, value) =>
-      product.variants.some((variant) => variant.available === (value === "1" || value === "true"));
+      anyKnown(
+        product.variants.map((variant) =>
+          variant.available === undefined
+            ? undefined
+            : variant.available === (value === "1" || value === "true"),
+        ),
+      );
   const option = /^filter\.v\.option\.(.+)$/.exec(id)?.[1];
   if (option !== undefined)
     return (product, value) => {
@@ -77,7 +88,7 @@ export function storefrontQuery(
     unsupported(message: string): void;
     missing(message: string): void;
   },
-): { products: LiquidRecord[]; filters: LiquidRecord[] } {
+): { products: LiquidRecord[] | undefined; filters: LiquidRecord[] } {
   const query = new URL(path, "https://offline.invalid");
   const link = (url: URL) => url.pathname + url.search;
   const without = (mutate: (url: URL) => void) => {
@@ -130,20 +141,32 @@ export function storefrontQuery(
       active: selected.length > 0 && matches !== null,
       test: (product: Product) =>
         matches === null ||
-        (all
-          ? selected.every((value) => matches(product, value))
-          : selected.some((value) => matches(product, value))),
+        (filter.id === "filter.v.availability" &&
+        new Set(selected.map((value) => value === "1" || value === "true")).size === 2
+          ? product.variants.length > 0
+          : (all ? allKnown : anyKnown)(selected.map((value) => matches(product, value)))),
       matches,
       operator,
       all,
     };
   });
   const passes = (product: Product, skip: number) =>
-    conditions.every(
-      (condition, index) => index === skip || !condition.active || condition.test(product),
+    allKnown(
+      conditions.map(
+        (condition, index) => index === skip || !condition.active || condition.test(product),
+      ),
     );
-  const filtered = options.apply ? members.filter((member) => passes(member.source, -1)) : members;
-  const products = options.apply ? sort(filtered) : filtered.map((member) => member.value);
+  const membership = options.apply
+    ? members.map((member) => passes(member.source, -1))
+    : members.map(() => true);
+  const filtered = members.filter((_member, index) => membership[index] === true);
+  const products = membership.includes(undefined)
+    ? undefined
+    : options.apply
+      ? sort(filtered)
+      : filtered.map((member) => member.value);
+  if (products === undefined)
+    options.missing("Collection membership depends on absent variant.available.");
 
   function sort(list: QueryMember[]): LiquidRecord[] {
     const order = options.sortBy;
@@ -230,12 +253,20 @@ export function storefrontQuery(
             : {
                 // Faceted count: the other active filters apply. This filter's own selection
                 // narrows the count only when its values combine with AND.
-                count: members.filter(
-                  (member) =>
-                    passes(member.source, index) &&
-                    (!condition?.all || condition.test(member.source)) &&
-                    matches(member.source, entry.value),
-                ).length,
+                ...availableFields({
+                  count: (() => {
+                    const included = members.map((member) =>
+                      allKnown([
+                        passes(member.source, index),
+                        !condition?.all || condition.test(member.source),
+                        matches(member.source, entry.value),
+                      ]),
+                    );
+                    return included.includes(undefined)
+                      ? undefined
+                      : included.filter((value) => value === true).length;
+                  })(),
+                }),
               }),
           url_to_add: without((url) => {
             if (!active) url.searchParams.append(filter.id, entry.value);

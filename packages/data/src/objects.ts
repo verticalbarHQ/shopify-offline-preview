@@ -738,6 +738,7 @@ export function liquidObjects(
         "attached_to_variant?": {
           enumerable: true,
           get: () => {
+            if (source.variants.some((variant) => variant.image === file)) return true;
             if (source.variants.some((variant) => variant.image === undefined)) {
               absent("image", "attached_to_variant?");
               return undefined;
@@ -747,10 +748,15 @@ export function liquidObjects(
         },
       });
     }
-    const availabilityKnown = source.variants.every((variant) => variant.available !== undefined);
-    const firstAvailable = availabilityKnown
-      ? (variants.find((_variant, index) => source.variants[index]?.available) ?? null)
-      : undefined;
+    // A later unknown cannot precede an already established first available variant.
+    const firstIndex = source.variants.findIndex((variant) => variant.available !== false);
+    const firstAvailable =
+      firstIndex < 0
+        ? null
+        : source.variants[firstIndex]?.available === true
+          ? variants[firstIndex]
+          : undefined;
+    const selectionKnown = selected !== undefined || firstAvailable !== undefined;
     const current = selected ?? firstAvailable ?? variants[0];
     const optionRows = source.variants.map((variant) =>
       source.options.map(
@@ -779,16 +785,20 @@ export function liquidObjects(
               const fields: LiquidRecord = {
                 name: value,
                 ...availableFields({
-                  available: availabilityKnown
-                    ? source.variants.some(
-                        (variant, row) =>
-                          variant.available &&
-                          optionRows[row]?.[index] === value &&
-                          currentRow.slice(0, index).every((v, i) => optionRows[row]?.[i] === v),
-                      )
-                    : undefined,
-                  selected: availabilityKnown || selected ? isSelected : undefined,
-                  variant: availabilityKnown || selected ? (match ?? null) : undefined,
+                  available:
+                    index === 0 || selectionKnown
+                      ? productAvailability(
+                          source.variants.filter(
+                            (_variant, row) =>
+                              optionRows[row]?.[index] === value &&
+                              currentRow
+                                .slice(0, index)
+                                .every((v, i) => optionRows[row]?.[i] === v),
+                          ),
+                        )
+                      : undefined,
+                  selected: selectionKnown ? isSelected : undefined,
+                  variant: selectionKnown ? (match ?? null) : undefined,
                 }),
                 // Snapshots have no combined listings, so no value points at another product.
                 product_url: null,
@@ -841,7 +851,7 @@ export function liquidObjects(
             `${path}.options[${index}].values`,
           ),
           ...availableFields({
-            selected_value: availabilityKnown || selected ? (currentRow[index] ?? null) : undefined,
+            selected_value: selectionKnown ? (currentRow[index] ?? null) : undefined,
           }),
         },
         "product_option",
@@ -896,7 +906,8 @@ export function liquidObjects(
       selected_variant: selected ?? null,
       ...availableFields({
         selected_or_first_available_variant:
-          selected ?? (availabilityKnown ? (firstAvailable ?? variants[0] ?? null) : undefined),
+          selected ??
+          (firstAvailable !== undefined ? (firstAvailable ?? variants[0] ?? null) : undefined),
       }),
       has_only_default_variant:
         source.options.length === 1 &&
@@ -926,13 +937,7 @@ export function liquidObjects(
       if (
         viewed(handle) &&
         [...parameters.keys()].some((key) => key.startsWith("filter.")) &&
-        (snapshot.filters === undefined ||
-          (parameters.has("filter.v.availability") &&
-            handles.some((member) =>
-              productSources
-                .get(member)
-                ?.variants.some((variant) => variant.available === undefined),
-            )))
+        snapshot.filters === undefined
       ) {
         absent("collection", "products (filters or variant.available)");
         return undefined;
@@ -991,7 +996,7 @@ export function liquidObjects(
             return members === undefined ? unknown("products") : query()?.products;
           },
           get products_count() {
-            return members === undefined ? unknown("products_count") : query()?.products.length;
+            return members === undefined ? unknown("products_count") : query()?.products?.length;
           },
           ...availableFields({ all_products_count: members?.length }),
           get all_tags() {
@@ -1104,7 +1109,7 @@ export function liquidObjects(
             return query()?.products;
           },
           get products_count() {
-            return query()?.products.length;
+            return query()?.products?.length;
           },
           all_products_count: members.length,
           get all_tags() {

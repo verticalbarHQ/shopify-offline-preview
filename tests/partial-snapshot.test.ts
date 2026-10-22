@@ -622,3 +622,112 @@ test("known available variants establish product and search availability despite
     }
   }
 });
+
+test("known first available variant survives later unknown availability", async () => {
+  const snapshot = partial();
+  const product = snapshot.products[0];
+  assert.ok(product && product.variants[0]);
+  product.variants[0].available = true;
+  const result = await render(
+    "{{product.first_available_variant.id}}|{{product.selected_or_first_available_variant.id}}",
+    snapshot,
+    `/products/${product.handle}`,
+  );
+  const id = product.variants[0].id.split("/").at(-1);
+  assert.ok(result.html.includes(`${id}|${id}`));
+  assert.ok(!result.diagnostics.some((d) => d.code === "missing-resource"));
+});
+
+test("option availability uses relevant variants and a known selected context", async () => {
+  const snapshot = partial();
+  const product = snapshot.products[0];
+  assert.ok(product && product.variants[0]);
+  product.variants[0].available = true;
+  const result = await render(
+    "{% for option in product.options_with_values %}{% for value in option.values %}{% if value.selected %}{{value.available}}|{% endif %}{% endfor %}{% endfor %}",
+    snapshot,
+    `/products/${product.handle}`,
+  );
+  assert.ok(result.html.includes("true|".repeat(product.options.length)));
+  assert.ok(!result.diagnostics.some((d) => d.code === "missing-resource"));
+});
+
+test("known image attachment remains true with an unknown sibling association", async () => {
+  const snapshot = partial();
+  const product = snapshot.products[0];
+  assert.ok(product && product.variants[0] && product.images[0]);
+  product.variants[0].image = product.images[0].file;
+  const result = await render(
+    "{{product.images.first.attached_to_variant?}}",
+    snapshot,
+    `/products/${product.handle}`,
+  );
+  assert.match(result.html, />true<\/div>/);
+  assert.ok(!result.diagnostics.some((d) => d.code === "missing-resource"));
+});
+
+test("collection availability membership accepts a known match despite unknown siblings", async () => {
+  for (const available of [true, false]) {
+    const snapshot = partial();
+    const product = snapshot.products[0],
+      collection = snapshot.collections[0];
+    assert.ok(product && product.variants[0] && collection);
+    product.variants[0].available = available;
+    collection.products = [product.handle];
+    snapshot.filters = [
+      {
+        id: "filter.v.availability",
+        label: "Availability",
+        type: "boolean",
+        values: [
+          { label: "In stock", value: "1" },
+          { label: "Out of stock", value: "0" },
+        ],
+      },
+    ];
+    const result = await render(
+      "{{collection.products.size}}|{{collection.products.first.handle}}",
+      snapshot,
+      `/collections/${collection.handle}?filter.v.availability=${available ? 1 : 0}`,
+    );
+    assert.ok(result.html.includes(`1|${product.handle}`));
+    assert.ok(!result.diagnostics.some((d) => d.code === "missing-resource"));
+  }
+});
+
+test("collection combines unknown stock with decisive filter alternatives and exclusions", async () => {
+  const snapshot = partial();
+  const product = snapshot.products[0],
+    collection = snapshot.collections[0];
+  assert.ok(product && collection);
+  collection.products = [product.handle];
+  snapshot.filters = [
+    {
+      id: "filter.v.availability",
+      label: "Availability",
+      type: "boolean",
+      values: [
+        { label: "In stock", value: "1" },
+        { label: "Out of stock", value: "0" },
+      ],
+    },
+    {
+      id: "filter.p.vendor",
+      label: "Vendor",
+      type: "list",
+      values: [{ label: "NoMatch", value: "NoMatch" }],
+    },
+  ];
+  for (const [query, count] of [
+    ["filter.v.availability=1&filter.v.availability=0", 1],
+    ["filter.v.availability=1&filter.p.vendor=NoMatch", 0],
+  ] as const) {
+    const result = await render(
+      "count={{collection.products.size}}|{{collection.products_count}}",
+      snapshot,
+      `/collections/${collection.handle}?${query}`,
+    );
+    assert.ok(result.html.includes(`count=${count}|${count}`));
+    assert.ok(!result.diagnostics.some((d) => d.code === "missing-resource"));
+  }
+});
