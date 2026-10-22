@@ -88,7 +88,11 @@ export function storefrontQuery(
     unsupported(message: string): void;
     missing(message: string): void;
   },
-): { products: LiquidRecord[] | undefined; filters: LiquidRecord[] } {
+): {
+  products: LiquidRecord[] | undefined;
+  productsCount: number | undefined;
+  filters: LiquidRecord[];
+} {
   const query = new URL(path, "https://offline.invalid");
   const link = (url: URL) => url.pathname + url.search;
   const without = (mutate: (url: URL) => void) => {
@@ -160,11 +164,8 @@ export function storefrontQuery(
     ? members.map((member) => passes(member.source, -1))
     : members.map(() => true);
   const filtered = members.filter((_member, index) => membership[index] === true);
-  const products = membership.includes(undefined)
-    ? undefined
-    : options.apply
-      ? sort(filtered)
-      : filtered.map((member) => member.value);
+  const unknownMembership = membership.includes(undefined);
+  let products: LiquidRecord[] | undefined;
 
   function sort(list: QueryMember[]): LiquidRecord[] {
     const order = options.sortBy;
@@ -311,9 +312,19 @@ export function storefrontQuery(
   });
   return {
     get products() {
-      if (products === undefined)
+      if (unknownMembership) {
         options.missing("Collection membership depends on absent variant.available.");
+        return undefined;
+      }
+      products ??= options.apply ? sort(filtered) : filtered.map((member) => member.value);
       return products;
+    },
+    get productsCount() {
+      if (unknownMembership) {
+        options.missing("Collection membership depends on absent variant.available.");
+        return undefined;
+      }
+      return filtered.length;
     },
     filters,
   };

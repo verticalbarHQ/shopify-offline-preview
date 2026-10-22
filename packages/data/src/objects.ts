@@ -996,7 +996,7 @@ export function liquidObjects(
             return members === undefined ? unknown("products") : query()?.products;
           },
           get products_count() {
-            return members === undefined ? unknown("products_count") : query()?.products?.length;
+            return members === undefined ? unknown("products_count") : query()?.productsCount;
           },
           ...availableFields({ all_products_count: members?.length }),
           get all_tags() {
@@ -1098,7 +1098,7 @@ export function liquidObjects(
             return query()?.products;
           },
           get products_count() {
-            return query()?.products?.length;
+            return query()?.productsCount;
           },
           all_products_count: members.length,
           get all_tags() {

@@ -818,3 +818,36 @@ test("unknown facet counts identify nested property access and labels do not con
   );
   assert.ok(members.diagnostics.some((d) => d.code === "missing-resource"));
 });
+
+test("facet labels and product counts do not consume localized sort inputs", async () => {
+  const snapshot = partial();
+  const product = snapshot.products[0],
+    collection = snapshot.collections[0];
+  assert.ok(product && collection);
+  collection.products = [product.handle];
+  snapshot.filters = [
+    {
+      id: "filter.p.vendor",
+      label: "Vendor",
+      type: "list",
+      values: [{ label: product.vendor, value: product.vendor }],
+    },
+  ];
+  const path = `/collections/${collection.handle}?sort_by=title-descending`;
+  const labels = await render(
+    "{% for f in collection.filters %}{{f.label}};{% endfor %}|{{collection.products_count}}",
+    snapshot,
+    path,
+  );
+  assert.match(labels.html, /Vendor;\|1/);
+  assert.ok(!labels.diagnostics.some((d) => d.code === "missing-resource"));
+  const products = await render(
+    "{% assign f = collection.filters %}\n\n{{collection.products.first.title}}",
+    snapshot,
+    path,
+  );
+  const missing = products.diagnostics.filter((d) => d.code === "missing-resource");
+  assert.equal(missing.length, 1);
+  assert.ok(missing[0]?.message.includes("locale"));
+  assert.equal(missing[0]?.line, 3);
+});
