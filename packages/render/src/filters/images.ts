@@ -38,10 +38,20 @@ function escapeHtml(value: unknown): string {
 }
 export function imageFilters(snapshot: Snapshot, read: (path: string) => void = () => {}) {
   const entries = snapshotImageEntries(snapshot);
-  const images = new Map(entries.map(([, image]) => [image.file, image]));
+  const images = new Map<string, (typeof entries)[number][1]>();
+  const dimensionPaths = new Map<string, string>();
+  for (const [path, image] of entries) {
+    const previous = images.get(image.file);
+    const merged = { ...image };
+    for (const key of ["width", "height"] as const) {
+      if (image[key] !== undefined) dimensionPaths.set(`${image.file}.${key}`, path);
+      else if (previous?.[key] !== undefined) merged[key] = previous[key];
+    }
+    images.set(image.file, merged);
+  }
   const paths = new Map(entries.map(([path, image]) => [image.file, path]));
   function observe(file: string, key: string) {
-    const path = paths.get(file);
+    const path = dimensionPaths.get(`${file}.${key}`) ?? paths.get(file);
     if (path !== undefined) read(`${path}.${key}`);
   }
   function imageUrl(

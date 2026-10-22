@@ -171,9 +171,10 @@ export function storefrontQuery(
     const order = options.sortBy;
     if (order === null || order === options.defaultSortBy) return list.map((m) => m.value);
     if (order.startsWith("title-") && snapshot.shop.locale === undefined) {
-      options.missing(
-        "shop.locale is absent; title sort cannot be localized, snapshot order is retained.",
-      );
+      if (list.length > 1)
+        options.missing(
+          "shop.locale is absent; title sort cannot be localized, snapshot order is retained.",
+        );
       return list.map((m) => m.value);
     }
     const collator = new Intl.Collator(snapshot.shop.locale, { sensitivity: "base" });

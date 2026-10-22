@@ -162,6 +162,14 @@ test("derived availability, image associations and option state stay unknown", a
 
 test("article dates, images, menu resources and external video previews may be omitted", async () => {
   const snapshot = partial();
+  const menu = snapshot.menus.find((value) => value.handle === "main-menu");
+  assert.ok(menu);
+  menu.links.push({
+    title: "Uncaptured",
+    type: "product_link",
+    url: "/products/uncaptured",
+    links: [],
+  });
   const product = snapshot.products[0];
   assert.ok(product);
   product.media = [
@@ -178,7 +186,7 @@ test("article dates, images, menu resources and external video previews may be o
 {{p.media.last.preview_image}}{{p.media.last.aspect_ratio}}
 {% for b in blogs %}{% for a in b.articles %}{{a.published_at}}{{a.image}}{% endfor %}{% endfor %}
 {{blogs.news.articles.first.published_at}}{{blogs.news.articles.first.image}}
-{% for link in linklists.main-menu.links %}{{link.object}}{% endfor %}`,
+{% for link in linklists.main-menu.links %}{{link.object.title}}{% endfor %}`,
     snapshot,
   );
   assert.ok(
@@ -824,7 +832,8 @@ test("facet labels and product counts do not consume localized sort inputs", asy
   const product = snapshot.products[0],
     collection = snapshot.collections[0];
   assert.ok(product && collection);
-  collection.products = [product.handle];
+  collection.products = snapshot.products.slice(0, 2).map((value) => value.handle);
+  assert.equal(collection.products.length, 2);
   snapshot.filters = [
     {
       id: "filter.p.vendor",
@@ -839,7 +848,7 @@ test("facet labels and product counts do not consume localized sort inputs", asy
     snapshot,
     path,
   );
-  assert.match(labels.html, /Vendor;\|1/);
+  assert.match(labels.html, /Vendor;\|2/);
   assert.ok(!labels.diagnostics.some((d) => d.code === "missing-resource"));
   const products = await render(
     "{% assign f = collection.filters %}\n\n{{collection.products.first.title}}",
@@ -1096,4 +1105,144 @@ test("search cap ignores irrelevant stock uncertainty and distinguishes membersh
         );
       }
     }
+});
+
+test("known empty collections and product-free searches need no filter metadata", async () => {
+  const snapshot = partial(),
+    collection = snapshot.collections[0];
+  assert.ok(collection);
+  collection.products = [];
+  for (const path of [
+    `/collections/${collection.handle}`,
+    `/collections/${collection.handle}?filter.v.availability=1`,
+  ]) {
+    const result = await render(
+      "{{collection.filters.size}}|{{collection.products_count}}",
+      snapshot,
+      path,
+    );
+    assert.match(result.html, /0\|0/);
+    assert.ok(!result.diagnostics.some((d) => d.code === "missing-resource"));
+  }
+  for (const path of ["/search?q=absentuniqueneedle", "/search?q=Matrix&type=page", "/search?q="]) {
+    const result = await render("{{search.filters.size}}", snapshot, path);
+    assert.match(result.html, />0<\/div>/);
+    assert.ok(!result.diagnostics.some((d) => d.code === "missing-resource"));
+  }
+  snapshot.products = [];
+  for (const c of snapshot.collections) c.products = [];
+  const all = await render(
+    "{{collections.all.filters.size}}|{{collections.all.products_count}}|{{collections.all.products.size}}",
+    snapshot,
+    "/collections/all?filter.v.availability=1",
+  );
+  assert.match(all.html, /0\|0\|0/);
+  assert.ok(!all.diagnostics.some((d) => d.code === "missing-resource"));
+});
+
+test("menu objects use known type and URL before requiring an omitted handle", async () => {
+  const snapshot = partial(),
+    menu = snapshot.menus[0],
+    product = snapshot.products[0];
+  assert.ok(menu && product);
+  menu.links = [{ title: "External", type: "http_link", url: "https://example.com", links: [] }];
+  const external = await render(
+    `{% if linklists['${menu.handle}'].links.first.object == nil %}known-none{% endif %}`,
+    snapshot,
+  );
+  assert.match(external.html, /known-none/);
+  assert.ok(!external.diagnostics.some((d) => d.code === "missing-resource"));
+  const link = menu.links[0];
+  assert.ok(link);
+  link.type = "product_link";
+  link.url = `/products/${product.handle}`;
+  const known = await render(`{{linklists['${menu.handle}'].links.first.object.title}}`, snapshot);
+  assert.ok(known.html.includes(product.title));
+  assert.ok(!known.diagnostics.some((d) => d.code === "missing-resource"));
+  link.url = "/products/uncaptured";
+  const unknown = await render(
+    `{% if true %}\n\n{{linklists['${menu.handle}'].links.first.object}}\n{% endif %}`,
+    snapshot,
+  );
+  assert.ok(
+    unknown.diagnostics.some(
+      (d) => d.code === "missing-resource" && d.message.includes("resourceHandle") && d.line === 3,
+    ),
+  );
+});
+
+test("empty and singleton title ordering needs no locale", async () => {
+  const snapshot = partial(),
+    collection = snapshot.collections[0],
+    product = snapshot.products[0];
+  assert.ok(collection && product);
+  for (const handles of [[], [product.handle]]) {
+    collection.products = handles;
+    const result = await render(
+      "{{collection.products.size}}",
+      snapshot,
+      `/collections/${collection.handle}?sort_by=title-descending`,
+    );
+    assert.ok(result.html.includes(`>${handles.length}</div>`));
+    assert.ok(!result.diagnostics.some((d) => d.code === "missing-resource"));
+  }
+});
+
+test("automatic collection order uses the filtered result size", async () => {
+  const snapshot = partial(),
+    product = snapshot.products[0];
+  assert.ok(product);
+  product.vendor = "UniqueVendor";
+  snapshot.filters = [
+    {
+      id: "filter.p.vendor",
+      label: "Vendor",
+      type: "list",
+      values: [{ label: "UniqueVendor", value: "UniqueVendor" }],
+    },
+  ];
+  for (const [vendor, count] of [
+    ["UniqueVendor", 1],
+    ["NoMatch", 0],
+  ] as const) {
+    const result = await render(
+      "{{collection.products_count}}|{{collection.products.size}}",
+      snapshot,
+      `/collections/all?sort_by=title-descending&filter.p.vendor=${vendor}`,
+    );
+    assert.ok(result.html.includes(`>${count}|${count}</div>`));
+    assert.ok(!result.diagnostics.some((d) => d.code === "missing-resource"));
+  }
+});
+
+test("shared image filters retain captured dimensions across partial references", async () => {
+  for (const knownFirst of [true, false]) {
+    const snapshot = parseSnapshot(JSON.stringify(defaultFixture()));
+    const image = snapshot.products[0]?.images[0];
+    assert.ok(image);
+    const width = image.width;
+    const height = image.height;
+    assert.ok(width && height);
+    snapshot.images = [{ ...image, filename: "shared.png" }];
+    const uploaded = snapshot.images[0];
+    assert.ok(uploaded);
+    Reflect.deleteProperty(uploaded, "mediaId");
+    Reflect.deleteProperty(knownFirst ? uploaded : image, "width");
+    Reflect.deleteProperty(knownFirst ? image : uploaded, "height");
+    validateSnapshotReferences(snapshot);
+    const before = JSON.stringify(snapshot);
+    const result = await render(
+      `{{all_products['${snapshot.products[0]?.handle}'].images.first | image_url: width: 5760 | image_tag}}`,
+      snapshot,
+    );
+    assert.ok(result.html.includes(`width=${width}`), result.html);
+    assert.ok(result.html.includes(`width="${width}" height="${height}"`), result.html);
+    assert.ok(
+      !result.diagnostics.some(
+        (d) => d.code === "missing-resource" && /\.(width|height)/.test(d.message),
+      ),
+      JSON.stringify(result.diagnostics),
+    );
+    assert.equal(JSON.stringify(snapshot), before);
+  }
 });

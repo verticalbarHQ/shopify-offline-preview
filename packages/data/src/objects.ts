@@ -936,6 +936,7 @@ export function liquidObjects(
       const parameters = new URL(route.path, "https://offline.invalid").searchParams;
       if (
         viewed(handle) &&
+        handles.length > 0 &&
         [...parameters.keys()].some((key) => key.startsWith("filter.")) &&
         snapshot.filters === undefined
       ) {
@@ -1029,6 +1030,7 @@ export function liquidObjects(
           sort_by: route.sortBy,
           get filters() {
             if (members === undefined) return unknown("products (filters)");
+            if (members.length === 0) return [];
             if (snapshot.filters === undefined) {
               absent("collection", "filters");
               return undefined;
@@ -1093,9 +1095,10 @@ export function liquidObjects(
           },
           description: "",
           get products() {
-            if (snapshot.shop.locale === undefined)
+            const result = query()?.products;
+            if (snapshot.shop.locale === undefined && result !== undefined && result.length > 1)
               absent("shop", "locale (collections.all product order; snapshot order retained)");
-            return query()?.products;
+            return result;
           },
           get products_count() {
             return query()?.productsCount;
@@ -1131,6 +1134,7 @@ export function liquidObjects(
           current_type: null,
           sort_by: route.sortBy,
           get filters() {
+            if (members.length === 0) return [];
             if (snapshot.filters === undefined) {
               absent("collection", "filters");
               return undefined;
@@ -1291,10 +1295,6 @@ export function liquidObjects(
   }
   /** Resources a menu link points at, found by its source URL. Other link types have no object. */
   function linkObject(link: MenuLink): unknown {
-    if (link.resourceHandle === undefined) {
-      absent("link", "resourceHandle");
-      return undefined;
-    }
     const path = localPath(link.url);
     let parts: string[] = [];
     try {
@@ -1324,8 +1324,13 @@ export function liquidObjects(
     const find = lookup[link.type];
     if (!find) return null;
     const value = find();
-    if (value === undefined || value === null)
+    if (value === undefined || value === null) {
+      if (link.resourceHandle === undefined) {
+        absent("link", "resourceHandle");
+        return undefined;
+      }
       hooks.missing?.(`Menu link ${link.title} references a resource absent from the snapshot.`);
+    }
     return value ?? null;
   }
   interface LinkState {
@@ -1725,6 +1730,8 @@ export function liquidObjects(
       ].map((option) => tracked(option, "sort_option")),
       get filters() {
         if (snapshot.filters === undefined) {
+          const matches = matching("facets");
+          if (matches?.every((value) => !resultSources.has(value))) return [];
           absent("search", "filters");
           return undefined;
         }
