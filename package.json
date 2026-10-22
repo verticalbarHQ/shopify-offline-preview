@@ -1,6 +1,6 @@
 {
   "name": "@verticalbar/shopify-offline-preview",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Unofficial offline preview for Shopify Online Store 2.0 themes: a dev server with an inspector, a CLI with JSON output and a browser playground.",
   "keywords": [
     "shopify",

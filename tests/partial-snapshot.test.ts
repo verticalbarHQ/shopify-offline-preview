@@ -513,3 +513,76 @@ test("nested native serializers attribute derived collection omissions to their 
     for (const diagnostic of missing) assert.equal(diagnostic.line, 3, diagnostic.message);
   }
 });
+
+test("search availability checks apply after query and resource-type matching", async () => {
+  const snapshot = partial();
+  const page = snapshot.pages[0];
+  const product = snapshot.products[0];
+  assert.ok(page && product);
+  page.title = "UniquePageNeedle";
+  page.bodyHtml = "Known page";
+  const pageResult = await render(
+    "{{search.results_count}}|{{search.results.first.title}}",
+    snapshot,
+    "/search?q=UniquePageNeedle&type=page",
+  );
+  assert.match(pageResult.html, /1\|UniquePageNeedle/);
+  assert.ok(
+    !pageResult.diagnostics.some(
+      (d) => d.code === "missing-resource" && d.message.includes("available"),
+    ),
+  );
+  for (const variant of product.variants) variant.available = true;
+  const productResult = await render(
+    "{{search.results_count}}|{{search.results.first.title}}",
+    snapshot,
+    "/search?q=Matrix&type=product",
+  );
+  assert.match(productResult.html, /1\|SOP Matrix Needle/);
+  assert.ok(
+    !productResult.diagnostics.some(
+      (d) => d.code === "missing-resource" && d.message.includes("available"),
+    ),
+  );
+  Reflect.deleteProperty(product.variants[0] ?? {}, "available");
+  const unknown = await render(
+    "{{search.results_count}}",
+    snapshot,
+    "/search?q=Matrix&type=product",
+  );
+  assert.ok(
+    unknown.diagnostics.some(
+      (d) => d.code === "missing-resource" && d.message.includes("available"),
+    ),
+  );
+});
+
+test("search keeps unknown matched stock distinct across hide, last and show modes", async () => {
+  const snapshot = partial();
+  for (const mode of ["hide", "last"]) {
+    const result = await render(
+      "count={{search.results_count}}",
+      snapshot,
+      `/search?q=Matrix&type=product&options[unavailable_products]=${mode}`,
+    );
+    assert.doesNotMatch(result.html, /count=0|count=1/);
+    assert.ok(
+      result.diagnostics.some(
+        (d) => d.code === "missing-resource" && d.message.includes("available"),
+      ),
+    );
+  }
+  const shown = await render(
+    "count={{search.results_count}}",
+    snapshot,
+    "/search?q=Matrix&type=product&options[unavailable_products]=show",
+  );
+  assert.match(shown.html, /count=1/);
+  const empty = await render("count={{search.results_count}}", snapshot, "/search?q=");
+  assert.match(empty.html, /count=0/);
+  assert.ok(
+    !empty.diagnostics.some(
+      (d) => d.code === "missing-resource" && d.message.includes("available"),
+    ),
+  );
+});

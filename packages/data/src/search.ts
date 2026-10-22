@@ -2,7 +2,7 @@ export interface SearchCandidate<T> {
   type: "product" | "page" | "article";
   value: T;
   text: string;
-  available: boolean;
+  available: boolean | undefined;
   price: number | null;
 }
 /** Unambiguous fixture queries use documented word/prefix matching; ranking gaps stay explicit. */
@@ -10,7 +10,8 @@ export function searchResults<T>(
   candidates: SearchCandidate<T>[],
   path: string,
   unsupported: (message: string) => void,
-): SearchCandidate<T>[] {
+  missingAvailability: () => void,
+): SearchCandidate<T>[] | undefined {
   const url = new URL(path, "https://offline.invalid");
   const query = (url.searchParams.get("q") ?? "").trim();
   if (!query) return [];
@@ -33,8 +34,7 @@ export function searchResults<T>(
     return [];
   }
   let matches = candidates.filter((candidate) => {
-    if (!types.has(candidate.type) || (unavailable === "hide" && !candidate.available))
-      return false;
+    if (!types.has(candidate.type)) return false;
     const words = normalize(candidate.text.replace(/<[^>]*>/g, " "));
     return terms.every((term, index) =>
       words.some((word) =>
@@ -42,6 +42,11 @@ export function searchResults<T>(
       ),
     );
   });
+  if (unavailable !== "show" && matches.some((candidate) => candidate.available === undefined)) {
+    missingAvailability();
+    return undefined;
+  }
+  if (unavailable === "hide") matches = matches.filter((candidate) => candidate.available);
   const sort = url.searchParams.get("sort_by") ?? "relevance";
   if (sort === "price-ascending" || sort === "price-descending") {
     const direction = sort === "price-ascending" ? 1 : -1;

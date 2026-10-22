@@ -1631,7 +1631,9 @@ export function liquidObjects(
           ...source.tags,
           ...source.variants.map((v) => v.sku),
         ].join(" "),
-        available: source.variants.some((v) => v.available),
+        available: source.variants.every((variant) => variant.available !== undefined)
+          ? source.variants.some((variant) => variant.available)
+          : undefined,
         price: Math.min(...source.variants.map((v) => liquidPrice(v.price))),
       });
   }
@@ -1672,24 +1674,18 @@ export function liquidObjects(
   const resultSources = new WeakMap<object, Snapshot["products"][number]>();
   let results: LiquidRecord[] | undefined;
   function matching(): LiquidRecord[] | undefined {
-    const unavailable =
-      new URL(route.path, "https://offline.invalid").searchParams.get(
-        "options[unavailable_products]",
-      ) ?? "last";
-    if (
-      route.q &&
-      unavailable !== "show" &&
-      snapshot.products.some((p) => p.variants.some((v) => v.available === undefined))
-    ) {
-      absent("search", "results (variant.available)");
-      return undefined;
-    }
     if (results) return results;
-    results = searchResults(candidates, route.path, (message) =>
-      hooks.unsupportedOperation
-        ? hooks.unsupportedOperation(message)
-        : hooks.unsupported("search", message),
-    ).map((candidate) => {
+    const matches = searchResults(
+      candidates,
+      route.path,
+      (message) =>
+        hooks.unsupportedOperation
+          ? hooks.unsupportedOperation(message)
+          : hooks.unsupported("search", message),
+      () => absent("search", "results (variant.available)"),
+    );
+    if (matches === undefined) return undefined;
+    results = matches.map((candidate) => {
       const result = new Proxy(candidate.value, {
         ownKeys(target) {
           const keys = Reflect.ownKeys(target);
