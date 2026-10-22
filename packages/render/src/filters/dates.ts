@@ -123,15 +123,6 @@ export function registerDateFilters(
         source = keyword === "now" || keyword === "today" ? snapshot.meta.now : value;
       const date = instant(source, formatter);
       if (!date) return String(value ?? "");
-      if (locale === undefined) {
-        diagnostic(
-          "missing-resource",
-          "shop.locale is absent; date formatting cannot be resolved.",
-          this.token.file ?? null,
-          this.token.getPosition()[0] ?? null,
-        );
-        return "";
-      }
       const options = namedArgs(args);
       const report = (message: string) =>
         diagnostic(
@@ -142,24 +133,41 @@ export function registerDateFilters(
         );
       const positionalArgs = args.filter((arg) => !Array.isArray(arg));
       const positional = toValue(positionalArgs[0]);
-      const display =
+      const passthrough =
+        options.format === undefined &&
+        positionalArgs.length > 0 &&
+        (positional === null || positional === undefined || positional === "");
+      const display = () =>
         options.format !== undefined
           ? format(options.format, report)
           : typeof positional === "string"
             ? positional
             : format("default", report);
-      const passthrough =
-        options.format === undefined &&
-        positionalArgs.length > 0 &&
-        (positional === null || positional === undefined || positional === "");
+      // Supplied locale keeps the original default-format diagnostic on passthroughs.
+      if (passthrough && locale !== undefined) display();
       const text = passthrough
         ? String(value ?? "")
-        : formatDate(date, snapshot.shop.timezone, locale, display, this.context.memoryLimit);
-      if (name === "date") return text;
+        : locale === undefined
+          ? undefined
+          : formatDate(date, snapshot.shop.timezone, locale, display(), this.context.memoryLimit);
       const datetime =
-        options.datetime === undefined
-          ? date.toISOString().replace(/\.\d{3}Z$/, "Z")
-          : formatDate(date, "UTC", locale, String(options.datetime), this.context.memoryLimit);
+        name === "date"
+          ? ""
+          : options.datetime === undefined
+            ? date.toISOString().replace(/\.\d{3}Z$/, "Z")
+            : locale === undefined
+              ? undefined
+              : formatDate(date, "UTC", locale, String(options.datetime), this.context.memoryLimit);
+      if (text === undefined || datetime === undefined) {
+        diagnostic(
+          "missing-resource",
+          "shop.locale is absent; date formatting cannot be resolved.",
+          this.token.file ?? null,
+          this.token.getPosition()[0] ?? null,
+        );
+        return "";
+      }
+      if (name === "date") return text;
       const attributes = Object.entries(options).flatMap(([key, value]) => {
         if (key === "datetime" || key === "format") return [];
         if (!/^[A-Za-z_:][A-Za-z0-9_.:-]*$/.test(key))

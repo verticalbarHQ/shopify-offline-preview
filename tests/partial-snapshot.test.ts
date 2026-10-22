@@ -1246,3 +1246,80 @@ test("shared image filters retain captured dimensions across partial references"
     assert.equal(JSON.stringify(snapshot), before);
   }
 });
+
+test("unit price without a measurement does not consume money formatting", async () => {
+  const result = await render(
+    "[{{123 | unit_price_with_measurement: nil}}][{{123 | unit_price_with_measurement: absent}}]",
+  );
+  assert.match(result.html, /\[\]\[\]/);
+  assert.ok(
+    !result.diagnostics.some(
+      (d) => d.code === "missing-resource" && d.message.includes("money_format"),
+    ),
+    JSON.stringify(result.diagnostics),
+  );
+});
+
+test("date passthroughs do not consume locale", async () => {
+  for (const format of ["nil", "''", "absent"]) {
+    const result = await render(`{{'2026-10-22' | date: ${format}}}`);
+    assert.match(result.html, /2026-10-22/);
+    assert.ok(
+      !result.diagnostics.some(
+        (d) => d.code === "missing-resource" && d.message.includes("locale"),
+      ),
+      JSON.stringify(result.diagnostics),
+    );
+  }
+});
+
+test("time tag passthrough uses known ISO datetime but diagnoses requested formatting", async () => {
+  const result = await render("{{'2026-10-22' | time_tag: nil}}");
+  assert.match(result.html, /<time datetime="[^"]+">2026-10-22<\/time>/);
+  assert.ok(
+    !result.diagnostics.some((d) => d.code === "missing-resource" && d.message.includes("locale")),
+    JSON.stringify(result.diagnostics),
+  );
+  const formatted = await render("{{'2026-10-22' | time_tag: nil, datetime: '%B'}}");
+  assert.ok(
+    formatted.diagnostics.some(
+      (d) => d.code === "missing-resource" && d.message.includes("locale"),
+    ),
+  );
+});
+
+test("a singleton blog article needs no publication order", async () => {
+  const snapshot = partial();
+  const blog = snapshot.blogs[0];
+  const article = blog?.articles[0];
+  assert.ok(blog);
+  assert.ok(article);
+  blog.articles = [article];
+  const result = await render(`{{blogs['${blog.handle}'].articles.first.title}}`, snapshot);
+  assert.ok(result.html.includes(article.title), result.html);
+  assert.ok(
+    !result.diagnostics.some(
+      (d) => d.code === "missing-resource" && d.message.includes("articles order"),
+    ),
+    JSON.stringify(result.diagnostics),
+  );
+});
+
+test("known non-English date passthrough retains complete-input diagnostics", async () => {
+  const snapshot = parseSnapshot(JSON.stringify(defaultFixture()));
+  snapshot.shop.locale = "fr-CA";
+  for (const filter of ["date", "time_tag"]) {
+    for (const format of ["nil", "absent"]) {
+      for (const value of ["'2026-10-22'", "'now'"]) {
+        const result = await render(`{{${value} | ${filter}: ${format}}}`, snapshot);
+        assert.ok(
+          result.diagnostics.some(
+            (d) =>
+              d.code === "not-implemented" && d.message.includes("Localized system date formats"),
+          ),
+          JSON.stringify(result.diagnostics),
+        );
+      }
+    }
+  }
+});

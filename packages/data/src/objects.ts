@@ -1272,7 +1272,11 @@ export function liquidObjects(
   );
   for (const source of snapshot.blogs) {
     const blog = blogs.get(source.handle);
-    if (blog && source.articles.some((article) => article.publishedAt === undefined)) {
+    if (
+      blog &&
+      source.articles.length > 1 &&
+      source.articles.some((article) => article.publishedAt === undefined)
+    ) {
       const list = blog.articles;
       Object.defineProperty(blog, "articles", {
         enumerable: true,
