@@ -49,6 +49,28 @@ collection, a page, a blog with three articles, menus and a cart.
 The package also exports `@verticalbar/shopify-offline-preview/browser` for in-browser rendering.
 Always supply your snapshot when showing backed-up store data; omitting it selects the sample store.
 
+## Fonts in captured themes
+
+System font settings use Shopify's published family, fallback, weight and style metadata.
+They do not produce a font URL or `@font-face`; the browser uses fonts installed on its OS.
+Supported system families are `mono`, `serif`, `sans-serif`, `sans_serif`, `arial`,
+`courier_new`, `garamond`, `lucida_grande`, `monaco`, `palatino`, `system_ui`,
+`times_new_roman` and `trebuchet_ms`, with their documented variants.
+
+Historical `helvetica_*` settings retain their original Monotype metadata, including
+oblique variants. They are not converted to the replacement `sans_serif` setting.
+Because the original CDN files are not captured by this library, `font_face` and
+`font_url` return no resource and report `missing-resource`; the CSS family and original
+fallback stack still apply. A locally installed Helvetica face is not proof of original
+CDN-byte fidelity. Unknown settings and variants remain unsupported.
+
+Custom font files already stored in theme `assets/` can be referenced by the theme's
+own `@font-face` and `asset_url`. The host must serve those captured bytes. This library
+does not collect new Shopify/CDN font files or modify historical inputs. The existing
+Google substitutions for Inter, Assistant, Work Sans and Anonymous Pro are unchanged;
+hosts requiring captured resources only must block those external URLs, as for all
+other external theme resources.
+
 ## The inspector
 
 The page is on the left. The panel on the right has these parts:
