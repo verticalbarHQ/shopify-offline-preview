@@ -53,7 +53,7 @@ const embed: Record<string, string> = {
 export function registerMediaFilters(
   engine: Liquid,
   imageTag: (input: unknown, args: unknown[], file: string | null, line: number | null) => string,
-  imageUrl: (input: unknown, args: unknown[]) => unknown,
+  imageUrl: (input: unknown, args: unknown[], file: string | null, line: number | null) => unknown,
   productTitle: (media: object) => unknown,
 ): void {
   function videoTag(media: Record<string, unknown>, args: unknown[]): string {
@@ -131,10 +131,15 @@ export function registerMediaFilters(
         ...(match?.[2] ? [["height", Number(match[2])]] : []),
       ];
       // image_url's largest width; the source width is the default size.
-      const sourceWidth = readSnapshotProperty(input, "width");
+      const sourceWidth = input.width;
       const width = sourceWidth === undefined ? undefined : Math.min(Number(sourceWidth), 5760);
       return imageTag(
-        imageUrl(input, sized.length ? sized : width === undefined ? [] : [["width", width]]),
+        imageUrl(
+          input,
+          sized.length ? sized : width === undefined ? [] : [["width", width]],
+          this.token.file ?? null,
+          this.token.getPosition()[0] ?? null,
+        ),
         Object.entries(extra),
         this.token.file ?? null,
         this.token.getPosition()[0] ?? null,

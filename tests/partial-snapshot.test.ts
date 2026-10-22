@@ -379,3 +379,137 @@ test("article structured data and selected variant events diagnose omitted sourc
     event.diagnostics.some((d) => d.code === "missing-resource" && d.message.includes("available")),
   );
 });
+
+test("named collection availability facets depend only on its own members", async () => {
+  const snapshot = parseSnapshot(JSON.stringify(defaultFixture()));
+  const member = snapshot.products[0],
+    unrelated = snapshot.products[1],
+    collection = snapshot.collections[0];
+  assert.ok(member && unrelated && collection);
+  collection.products = [member.handle];
+  for (const variant of member.variants) variant.available = true;
+  for (const variant of unrelated.variants) Reflect.deleteProperty(variant, "available");
+  snapshot.filters = [
+    {
+      id: "filter.v.availability",
+      label: "Availability",
+      type: "boolean",
+      values: [
+        { label: "In stock", value: "1" },
+        { label: "Out of stock", value: "0" },
+      ],
+    },
+  ];
+  const result = await render(
+    "{% for f in collection.filters %}{% for v in f.values %}{{v.label}}={{v.count}};{% endfor %}{% endfor %}",
+    snapshot,
+    `/collections/${collection.handle}`,
+  );
+  assert.match(result.html, /In stock=1/);
+  assert.ok(
+    !result.diagnostics.some(
+      (d) => d.code === "missing-resource" && d.message.includes("available"),
+    ),
+  );
+  Reflect.deleteProperty(member.variants[0] ?? {}, "available");
+  const unknown = await render(
+    "{{collection.filters}}",
+    snapshot,
+    `/collections/${collection.handle}`,
+  );
+  assert.ok(
+    unknown.diagnostics.some(
+      (d) => d.code === "missing-resource" && d.message.includes("available"),
+    ),
+  );
+});
+
+test("nested image URL diagnostics identify the filter invocation line", async () => {
+  const result = await render(
+    "{% if true %}\n\n{{all_products['sop-matrix-needle'].images.first | image_url: width: 300}}\n{% endif %}",
+  );
+  const missing = result.diagnostics.find(
+    (d) => d.code === "missing-resource" && d.message.includes("cannot be clamped"),
+  );
+  assert.ok(missing);
+  assert.equal(missing.file, "sections/partial.liquid");
+  assert.equal(missing.line, 3);
+});
+
+test("search facets ignore unavailable metadata outside the matching products", async () => {
+  const snapshot = parseSnapshot(JSON.stringify(defaultFixture()));
+  const unrelated = snapshot.products[1];
+  assert.ok(unrelated);
+  for (const variant of unrelated.variants) Reflect.deleteProperty(variant, "available");
+  snapshot.filters = [
+    {
+      id: "filter.v.availability",
+      label: "Availability",
+      type: "boolean",
+      values: [
+        { label: "In stock", value: "1" },
+        { label: "Out of stock", value: "0" },
+      ],
+    },
+  ];
+  const result = await render(
+    "{% for f in search.filters %}{% for v in f.values %}{{v.label}}={{v.count}};{% endfor %}{% endfor %}",
+    snapshot,
+    "/search?q=Matrix&options[unavailable_products]=show",
+  );
+  assert.match(result.html, /In stock=1/);
+  assert.ok(
+    !result.diagnostics.some(
+      (d) => d.code === "missing-resource" && d.message.includes("available"),
+    ),
+  );
+});
+
+test("nested native media, JSON and event diagnostics identify the consuming filter", async () => {
+  const snapshot = partial();
+  const product = snapshot.products[0];
+  const variant = product?.variants[0];
+  assert.ok(product && variant);
+  product.media = [
+    ...product.images.map((image) => ({ mediaType: "image" as const, file: image.file })),
+    {
+      mediaType: "video",
+      alt: "video",
+      sources: [{ file: "v.mp4", format: "mp4", mimeType: "video/mp4", width: 600, height: 400 }],
+    },
+  ];
+  for (const expression of [
+    "product.media.first | media_tag",
+    "product.media.last | video_tag",
+    "product.media.last | json",
+    "product | standard_event_data: 'view'",
+  ]) {
+    const result = await render(
+      `{% if true %}\n\n{{${expression}}}\n{% endif %}`,
+      snapshot,
+      `/products/${product.handle}?variant=${variant.id}`,
+    );
+    const missing = result.diagnostics.filter((d) => d.code === "missing-resource");
+    assert.ok(missing.length, expression);
+    for (const diagnostic of missing) {
+      assert.equal(diagnostic.file, "sections/partial.liquid", expression);
+      assert.equal(diagnostic.line, 3, `${expression}: ${diagnostic.message}`);
+    }
+  }
+});
+
+test("nested native serializers attribute derived collection omissions to their callsite", async () => {
+  const snapshot = partial();
+  const collection = snapshot.collections[0];
+  assert.ok(collection);
+  for (const expression of ["collection | json", "collection | standard_event_data: 'view'"]) {
+    const result = await render(
+      `{% if true %}\n\n{{${expression}}}\n{% endif %}`,
+      snapshot,
+      `/collections/${collection.handle}`,
+    );
+    const missing = result.diagnostics.filter((d) => d.code === "missing-resource");
+    assert.ok(missing.length, expression);
+    for (const diagnostic of missing) assert.equal(diagnostic.line, 3, diagnostic.message);
+  }
+});

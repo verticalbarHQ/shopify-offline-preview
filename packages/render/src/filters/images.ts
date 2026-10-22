@@ -36,11 +36,7 @@ function escapeHtml(value: unknown): string {
     (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c,
   );
 }
-export function imageFilters(
-  snapshot: Snapshot,
-  read: (path: string) => void = () => {},
-  missingData: (message: string) => void = () => {},
-) {
+export function imageFilters(snapshot: Snapshot, read: (path: string) => void = () => {}) {
   const entries = snapshotImageEntries(snapshot);
   const images = new Map(entries.map(([, image]) => [image.file, image]));
   const paths = new Map(entries.map(([path, image]) => [image.file, path]));
@@ -52,6 +48,7 @@ export function imageFilters(
     input: unknown,
     args: unknown[],
     unsupported: (message: string) => void,
+    missingData: (message: string) => void,
   ): string | ImageUrlDrop {
     let value: unknown = toValue(input);
     let origin =

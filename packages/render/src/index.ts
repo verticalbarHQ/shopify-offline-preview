@@ -365,6 +365,31 @@ export async function renderTheme(
     }
     return output;
   });
+  // These synchronous native serializers can consume derived getters, whose diagnostics use
+  // the current render location. Keep that scope at the filter callsite, including nested tags.
+  for (const name of [
+    "json",
+    "structured_data",
+    "standard_event_data",
+    "video_tag",
+    "model_viewer_tag",
+    "media_tag",
+  ]) {
+    const native = engine.filters[name];
+    if (typeof native !== "function") throw new Error(`Native filter ${name} is unavailable`);
+    engine.registerFilter(name, function (value: unknown, ...args: unknown[]) {
+      const previous = location;
+      location = {
+        file: this.token.file ?? previous.file,
+        line: this.token.getPosition()[0] ?? previous.line,
+      };
+      try {
+        return native.call(this, value, ...args);
+      } finally {
+        location = previous;
+      }
+    });
+  }
   const nativeDate = engine.filters.date;
   if (typeof nativeDate === "function")
     engine.registerFilter("date", function (value: unknown, ...args: unknown[]) {

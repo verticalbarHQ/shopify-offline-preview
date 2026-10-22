@@ -1024,8 +1024,10 @@ export function liquidObjects(
             }
             if (
               snapshot.filters.some((filter) => filter.id === "filter.v.availability") &&
-              snapshot.products.some((product) =>
-                product.variants.some((variant) => variant.available === undefined),
+              source.products?.some((handle) =>
+                productSources
+                  .get(handle)
+                  ?.variants.some((variant) => variant.available === undefined),
               )
             ) {
               absent("collection", "filters (variant.available)");
@@ -1733,15 +1735,6 @@ export function liquidObjects(
           absent("search", "filters");
           return undefined;
         }
-        if (
-          snapshot.filters.some((filter) => filter.id === "filter.v.availability") &&
-          snapshot.products.some((product) =>
-            product.variants.some((variant) => variant.available === undefined),
-          )
-        ) {
-          absent("search", "filters (variant.available)");
-          return undefined;
-        }
         const query = new URL(route.path, "https://offline.invalid").searchParams;
         if (
           snapshot.filters.some((filter) =>
@@ -1753,6 +1746,15 @@ export function liquidObjects(
           );
         const matches = matching();
         if (matches === undefined) return undefined;
+        if (
+          snapshot.filters.some((filter) => filter.id === "filter.v.availability") &&
+          matches.some((value) =>
+            resultSources.get(value)?.variants.some((variant) => variant.available === undefined),
+          )
+        ) {
+          absent("search", "filters (variant.available)");
+          return undefined;
+        }
         return storefrontQuery(
           snapshot,
           route.path,

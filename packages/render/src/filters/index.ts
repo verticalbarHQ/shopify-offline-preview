@@ -247,18 +247,11 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
     return `<link ${output.join(" ")} rel="preload">`;
   });
   engine.registerFilter("md5", (value: unknown) => md5(String(toValue(value) ?? "")));
-  const images = imageFilters(hooks.snapshot, hooks.readData, (message) =>
-    hooks.diagnostic("missing-resource", message, null, null),
-  );
+  const images = imageFilters(hooks.snapshot, hooks.readData);
   engine.registerFilter("image_url", function (value: unknown, ...args: unknown[]) {
-    return images.imageUrl(value, args, (message) =>
-      hooks.diagnostic(
-        "not-implemented",
-        message,
-        this.token.file ?? null,
-        this.token.getPosition()[0] ?? null,
-      ),
-    );
+    const report = (code: string) => (message: string) =>
+      hooks.diagnostic(code, message, this.token.file ?? null, this.token.getPosition()[0] ?? null);
+    return images.imageUrl(value, args, report("not-implemented"), report("missing-resource"));
   });
   registerMediaFilters(
     engine,
@@ -269,7 +262,13 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
         (message) => hooks.diagnostic("not-implemented", message, file, line),
         (message) => hooks.diagnostic("missing-resource", message, file, line),
       ),
-    (input, args) => images.imageUrl(input, args, () => {}),
+    (input, args, file, line) =>
+      images.imageUrl(
+        input,
+        args,
+        (message) => hooks.diagnostic("not-implemented", message, file, line),
+        (message) => hooks.diagnostic("missing-resource", message, file, line),
+      ),
     (media) => mediaProductTitle(media),
   );
   engine.registerFilter("image_tag", function (value: unknown, ...args: unknown[]) {
