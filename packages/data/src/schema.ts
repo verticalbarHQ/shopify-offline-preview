@@ -411,7 +411,7 @@ export const snapshotSchema = completeSnapshotSchema.extend({
     })
     .extend({ socialSharingImage: partialImage.nullable().optional() }),
   products: z.array(
-    product.extend({
+    product.partial({ metafields: true }).extend({
       variants: z
         .array(
           variant.partial({ available: true, image: true }).extend({
@@ -449,11 +449,12 @@ export const snapshotSchema = completeSnapshotSchema.extend({
       image: partialImage.nullable().optional(),
     }),
   ),
+  pages: z.array(page.partial({ metafields: true })),
   blogs: z.array(
-    completeSnapshotSchema.shape.blogs.element.extend({
+    completeSnapshotSchema.shape.blogs.element.partial({ metafields: true }).extend({
       articles: z.array(
         article
-          .partial({ publishedAt: true })
+          .partial({ publishedAt: true, metafields: true })
           .extend({ image: partialImage.nullable().optional() }),
       ),
     }),

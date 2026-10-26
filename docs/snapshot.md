@@ -173,7 +173,7 @@ listed language that matches `shop.locale`.
 ## Products
 
 Required: `handle`, `title`, `descriptionHtml`, `vendor`, `productType`, `tags`, `templateSuffix`
-(or `null`), `options`, `variants` (at least one), `images` and `metafields`.
+(or `null`), `options`, `variants` (at least one) and `images`.
 
 The optional fields are these:
 
@@ -249,6 +249,10 @@ value can take two forms:
   works with `metafield_tag`.
 - **Plain**: any other JSON value. It is passed to Liquid as it is.
 
+The map is optional for preview snapshots. Omit it when capture is unknown or incomplete;
+the renderer preserves its absence and reports `missing-resource` when a theme reads it.
+Use `{}` only for a known empty map. Complete snapshots for store seeding require the map.
+
 Reference types such as `product_reference` and `list.collection_reference` are not resolved.
 Reading their `value` reports `not-implemented`.
 
@@ -269,14 +273,14 @@ unless you supply a collection with the handle `all`. Looping over `collections`
 `/collections`) follows the snapshot's order; Shopify lists collections by title, so keep them in
 title order to see the same list.
 
-**Pages** require `handle`, `title`, `bodyHtml`, `templateSuffix` and `metafields`. The optional
-fields are `id` and `seo`.
+**Pages** require `handle`, `title`, `bodyHtml` and `templateSuffix`. The optional
+fields are `id`, `seo` and `metafields`.
 
-**Blogs** require `handle`, `title`, `templateSuffix`, `metafields` and `articles`. The optional
-fields are `id`, `seo`, `commentsEnabled` and `commentsModerated` (whether comments wait for approval).
+**Blogs** require `handle`, `title`, `templateSuffix` and `articles`. The optional
+fields include `id`, `seo`, `metafields`, `commentsEnabled` and `commentsModerated` (whether comments wait for approval).
 
 **Articles** require these fields: `handle`, `title`, `bodyHtml`, `excerptHtml`, `author`,
-`publishedAt`, `image`, `tags`, `templateSuffix` and `metafields`. The optional fields are `id`,
+`publishedAt`, `image`, `tags` and `templateSuffix`. The optional fields include `metafields`, `id`,
 `createdAt`, `updatedAt`, `commentsCount` and `seo`. A blog lists its articles newest first by `publishedAt`, as
 Shopify does; articles published at the same moment list the higher `id` first.
 

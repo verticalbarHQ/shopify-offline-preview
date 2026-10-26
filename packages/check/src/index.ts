@@ -364,9 +364,15 @@ function scanLiquid(text: string, file: string, bindings: Symbols): Scan {
         node.name === "layout" &&
         typeof node.markup !== "string"
       ) {
-        if (node.markup.type === NodeTypes.String) result.layout = node.markup.value;
-        else if (node.markup.type === NodeTypes.LiquidLiteral && node.markup.value === null)
-          result.layout = false;
+        let layout: string | false | undefined;
+        if (node.markup.type === NodeTypes.String) layout = node.markup.value;
+        else if (
+          (node.markup.type === NodeTypes.LiquidLiteral && node.markup.value === null) ||
+          (node.markup.type === NodeTypes.VariableLookup &&
+            node.markup.name === "none" &&
+            !node.markup.lookups.length)
+        )
+          layout = false;
         else {
           result.complete = false;
           result.diagnostics.push(
@@ -377,6 +383,30 @@ function scanLiquid(text: string, file: string, bindings: Symbols): Scan {
               location(node),
             ),
           );
+        }
+        if (layout !== undefined) {
+          let conditional = false;
+          for (let parent = parents.get(node); parent; parent = parents.get(parent))
+            if (
+              parent.type === NodeTypes.LiquidBranch ||
+              (parent.type === NodeTypes.LiquidTag &&
+                ["if", "unless", "case", "for", "tablerow"].includes(parent.name))
+            )
+              conditional = true;
+          if (conditional) {
+            // No snapshot is supplied to the checker: retain every literal candidate
+            // without assuming which branch (or whether a loop iteration) executes.
+            if (layout !== false) result.refs.push(reference("layout", layout, ".liquid"));
+            result.complete = false;
+            result.diagnostics.push(
+              diagnostic(
+                "conditional-layout",
+                file,
+                "Conditionally selected layout needs runtime coverage.",
+                location(node),
+              ),
+            );
+          } else result.layout = layout;
         }
       }
       if (node.type === NodeTypes.ContentForMarkup) {
@@ -457,24 +487,13 @@ export async function checkTheme(
   const implementations = new Map(evidence.map((e) => [`${e.kind}:${e.name}`, e]));
   const templates = files.filter(
     (file) =>
-      /^templates\/[^/]+\.json$/.test(file) && pageTypes.has(file.slice(10).split(".")[0] ?? ""),
+      /^templates\/[^/]+\.(?:json|liquid)$/.test(file) &&
+      pageTypes.has(file.slice(10).split(".")[0] ?? ""),
   );
-  const vintage = files.filter(
-    (file) =>
-      /^templates\/[^/]+\.liquid$/.test(file) && pageTypes.has(file.slice(10).split(".")[0] ?? ""),
-  );
-  const supported = !vintage.length && templates.length > 0;
-  for (const file of vintage)
-    diagnostics.push(
-      diagnostic(
-        "unsupported-theme",
-        file,
-        "Vintage Liquid templates are outside the Online Store 2.0 scope.",
-      ),
-    );
+  const supported = templates.length > 0;
   if (!templates.length)
     diagnostics.push(
-      diagnostic("unsupported-theme", null, "No supported Online Store 2.0 JSON templates found."),
+      diagnostic("unsupported-theme", null, "No supported JSON or Liquid templates found."),
     );
 
   function contextKey(file: string, bindings: Symbols): string {

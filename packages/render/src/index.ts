@@ -66,6 +66,8 @@ export interface RenderOptions {
   scenario?: string;
   designMode?: boolean;
   inspect?: boolean;
+  /** Preserve diagnostics while allowing a host to hide inline error text. */
+  liquidErrors?: "inline" | "omit";
 }
 
 class SchemaTag extends Tag {
@@ -289,6 +291,21 @@ export async function renderTheme(
     return yield* renderTemplates.call(this, templates, context, emitter);
   };
   engine.registerTag("schema", SchemaTag);
+  const liquidLayout: { name: string | false } = { name: "theme" };
+  if (route.template.endsWith(".liquid"))
+    engine.registerTag(
+      "layout",
+      class extends Tag {
+        render() {
+          if (this.token.file !== route.template)
+            throw new Error("Layout declarations must be in the Liquid template");
+          const value = /^(?:"([^"]*)"|'([^']*)'|(none))$/.exec(this.token.args.trim());
+          if (!value) throw new Error("Layout requires a quoted name or none");
+          liquidLayout.name = value[3] ? false : (value[1] ?? value[2] ?? "");
+          return "";
+        }
+      },
+    );
   engine.registerTag(
     "assign",
     class extends AssignTag {
@@ -501,6 +518,7 @@ export async function renderTheme(
     location = { file, line };
     diagnostic("liquid-error", message, "error");
     location = previous;
+    if (options.liquidErrors === "omit") return "";
     // Shopify names the file without its .liquid extension, such as "sections/main line 3".
     const shown = file.replace(/\.liquid$/, "");
     return `Liquid error (${escapeHtml(shown)} line ${line}): ${escapeHtml(message)}`;
@@ -936,7 +954,11 @@ export async function renderTheme(
       return assetBundles.header();
     },
   });
-  const templateSuffix = route.template.slice(10, -5).split(".")[1] ?? null;
+  const templateSuffix =
+    route.template
+      .slice(10)
+      .replace(/\.(?:json|liquid)$/, "")
+      .split(".")[1] ?? null;
   globals.template = track(
     new ScalarDrop(
       { name: route.pageType, suffix: templateSuffix, directory: null },
@@ -1263,23 +1285,40 @@ export async function renderTheme(
     },
   );
   engineObserver?.(engine, stubbed);
-  const config = templateConfig(source(route.template), route.template);
   let html: string;
-  if (config.layout === false) html = await assembly(route.template);
-  else {
-    const layout = config.layout ?? "theme";
-    const file = themePath(`layout/${layout}.liquid`);
-    source(file); // An absent outer layout is fatal; individual section errors remain inline.
-    html = await inside(node("layout", layout, file, null), async () => {
-      let content: Promise<string> | undefined;
-      Object.defineProperty(globals, "content_for_layout", {
-        get() {
-          content ??= assembly(route.template);
-          return content;
-        },
+  if (route.template.endsWith(".liquid")) {
+    source(route.template);
+    // A Liquid template executes before its layout. Its assignments and chosen
+    // layout survive, while captured inputs and all file reads remain unchanged.
+    const context = new PreviewContext(globals, engine.options);
+    const content = await renderFile(route.template, context);
+    if (liquidLayout.name === false) html = content;
+    else {
+      const file = themePath(`layout/${liquidLayout.name}.liquid`);
+      source(file);
+      globals.content_for_layout = content;
+      html = await inside(node("layout", liquidLayout.name, file, null), () =>
+        renderFile(file, context),
+      );
+    }
+  } else {
+    const config = templateConfig(source(route.template), route.template);
+    if (config.layout === false) html = await assembly(route.template);
+    else {
+      const layout = config.layout ?? "theme";
+      const file = themePath(`layout/${layout}.liquid`);
+      source(file); // An absent outer layout is fatal; individual section errors remain inline.
+      html = await inside(node("layout", layout, file, null), async () => {
+        let content: Promise<string> | undefined;
+        Object.defineProperty(globals, "content_for_layout", {
+          get() {
+            content ??= assembly(route.template);
+            return content;
+          },
+        });
+        return renderFile(file, new PreviewContext(globals, engine.options));
       });
-      return renderFile(file, new PreviewContext(globals, engine.options));
-    });
+    }
   }
   if (object(settingsConfig.blocks)) {
     let embeds = "";

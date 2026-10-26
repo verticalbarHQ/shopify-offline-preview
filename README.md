@@ -49,6 +49,19 @@ collection, a page, a blog with three articles, menus and a cart.
 The package also exports `@verticalbar/shopify-offline-preview/browser` for in-browser rendering.
 Always supply your snapshot when showing backed-up store data; omitting it selects the sample store.
 
+Saved JSON and Liquid templates are supported for the listed page types. A resource's assigned
+template or `?view=` can select either format; a missing alternate uses the captured assigned or
+default template. Liquid templates use `layout/theme.liquid` unless a quoted `layout` declaration
+selects another captured layout or `layout none` omits it. Missing template/layout files remain
+errors. Support for a Liquid template does not imply compatibility with every vintage-theme feature.
+The static checker follows literal layouts in conditional branches and reports incomplete analysis
+when selecting a layout needs runtime coverage.
+
+`renderTheme(theme, path, { snapshot, liquidErrors: "omit" })` omits inline Liquid error text
+while retaining the same `liquid-error` diagnostics and successful output from the same file.
+The default `"inline"` behavior is unchanged. This option does not certify a useful preview:
+hosts must still distinguish an empty/error-only page from content they can display.
+
 ## Fonts in captured themes
 
 System font settings use Shopify's published family, fallback, weight and style metadata.

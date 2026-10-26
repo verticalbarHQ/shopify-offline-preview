@@ -1421,8 +1421,7 @@
           "templateSuffix",
           "options",
           "variants",
-          "images",
-          "metafields"
+          "images"
         ],
         "additionalProperties": false
       }
@@ -1649,8 +1648,7 @@
           "handle",
           "title",
           "bodyHtml",
-          "templateSuffix",
-          "metafields"
+          "templateSuffix"
         ],
         "additionalProperties": false
       }
@@ -1869,8 +1867,7 @@
                 "excerptHtml",
                 "author",
                 "tags",
-                "templateSuffix",
-                "metafields"
+                "templateSuffix"
               ],
               "additionalProperties": false
             }
@@ -1901,8 +1898,7 @@
           "handle",
           "title",
           "articles",
-          "templateSuffix",
-          "metafields"
+          "templateSuffix"
         ],
         "additionalProperties": false
       }

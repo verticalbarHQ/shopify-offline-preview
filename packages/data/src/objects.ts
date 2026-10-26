@@ -494,6 +494,7 @@ export function liquidObjects(
     );
   }
   function metafields(source: Snapshot["products"][number]["metafields"], path: string) {
+    if (source === undefined) return undefined;
     return Object.fromEntries(
       Object.entries(source).map(([namespace, fields]) => [
         namespace,
@@ -920,7 +921,7 @@ export function liquidObjects(
       featured_image: images[0] ?? null,
       media,
       featured_media: media[0] ?? null,
-      metafields: metafields(source.metafields, `${path}.metafields`),
+      ...availableFields({ metafields: metafields(source.metafields, `${path}.metafields`) }),
     };
     const product = tracked(dto, "product", path);
     products.set(source.handle, product);
@@ -1201,7 +1202,9 @@ export function liquidObjects(
           content: source.bodyHtml,
           url: `/pages/${source.handle}`,
           template_suffix: source.templateSuffix,
-          metafields: metafields(source.metafields, `pages[${index}].metafields`),
+          ...availableFields({
+            metafields: metafields(source.metafields, `pages[${index}].metafields`),
+          }),
         },
         "page",
         `pages[${index}]`,
@@ -1267,10 +1270,12 @@ export function liquidObjects(
                 url: `/blogs/${source.handle}/${article.handle}`,
                 tags: article.tags,
                 template_suffix: article.templateSuffix,
-                metafields: metafields(
-                  article.metafields,
-                  `blogs[${blogIndex}].articles[${index}].metafields`,
-                ),
+                ...availableFields({
+                  metafields: metafields(
+                    article.metafields,
+                    `blogs[${blogIndex}].articles[${index}].metafields`,
+                  ),
+                }),
               },
               "article",
               `blogs[${blogIndex}].articles[${index}]`,
@@ -1284,7 +1289,9 @@ export function liquidObjects(
             return dto;
           }),
           articles_count: source.articles.length,
-          metafields: metafields(source.metafields, `blogs[${blogIndex}].metafields`),
+          ...availableFields({
+            metafields: metafields(source.metafields, `blogs[${blogIndex}].metafields`),
+          }),
           ...availableFields({
             "comments_enabled?": source.commentsEnabled,
             "moderated?": source.commentsModerated,
