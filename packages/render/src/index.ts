@@ -1291,7 +1291,10 @@ export async function renderTheme(
     // A Liquid template executes before its layout. Its assignments and chosen
     // layout survive, while captured inputs and all file reads remain unchanged.
     const context = new PreviewContext(globals, engine.options);
-    const content = await renderFile(route.template, context);
+    const content = await inside(
+      node("layout", `template:${route.template.slice(10, -7)}`, route.template, null),
+      () => renderFile(route.template, context),
+    );
     if (liquidLayout.name === false) html = content;
     else {
       const file = themePath(`layout/${liquidLayout.name}.liquid`);

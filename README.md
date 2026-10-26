@@ -56,6 +56,9 @@ selects another captured layout or `layout none` omits it. Missing template/layo
 errors. Support for a Liquid template does not imply compatibility with every vintage-theme feature.
 The static checker follows literal layouts in conditional branches and reports incomplete analysis
 when selecting a layout needs runtime coverage.
+Liquid template execution has its own render-tree root using the existing `layout` kind and a
+`template:<name>` type. Its exact template file, nested nodes and inspected data reads remain
+separate from the selected outer layout.
 
 `renderTheme(theme, path, { snapshot, liquidErrors: "omit" })` omits inline Liquid error text
 while retaining the same `liquid-error` diagnostics and successful output from the same file.

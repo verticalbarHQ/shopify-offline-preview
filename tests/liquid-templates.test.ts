@@ -120,3 +120,86 @@ test("route selection keeps assigned Liquid ahead of default JSON and falls back
     "templates/product.liquid",
   );
 });
+
+test("layout-free Liquid templates retain their source, data reads and diagnostic attribution", async () => {
+  const snapshot = defaultFixture();
+  const files = {
+    "templates/index.liquid": "{% layout none %}\n{{ shop.currency }}\n{{ '%' | url_decode }}",
+  };
+  const result = await renderTheme(new MemoryThemeFileSystem(files), "/", {
+    snapshot,
+    inspect: true,
+    liquidErrors: "omit",
+  });
+  assert.equal(result.html.trim(), snapshot.shop.currency);
+  assert.equal(result.tree.length, 1);
+  const template = result.tree[0];
+  assert.ok(template);
+  assert.equal(template.kind, "layout");
+  assert.equal(template.type, "template:index");
+  assert.equal(template.file, "templates/index.liquid");
+  assert.equal(template.settingsPath, null);
+  assert.ok(result.dataUsed[template.id]?.includes("shop.currency"));
+  assert.deepEqual(
+    result.diagnostics.map(({ code, file, line, nodeId }) => ({ code, file, line, nodeId })),
+    [{ code: "liquid-error", file: template.file, line: 3, nodeId: template.id }],
+  );
+  const uninspected = await renderTheme(new MemoryThemeFileSystem(files), "/", {
+    snapshot,
+    liquidErrors: "omit",
+  });
+  assert.equal(uninspected.html, result.html);
+  assert.deepEqual(uninspected.dataUsed, {});
+});
+
+test("Liquid template reads stay separate from default and named outer layout reads", async () => {
+  for (const name of ["theme", "wide"]) {
+    const result = await renderTheme(
+      new MemoryThemeFileSystem({
+        "templates/index.liquid": `${name === "theme" ? "" : "{% layout 'wide' %}"}{{ shop.currency }}`,
+        [`layout/${name}.liquid`]: "<main>{{ content_for_layout }}</main>{{ shop.name }}",
+      }),
+      "/",
+      { snapshot: defaultFixture(), inspect: true },
+    );
+    const template = result.tree.find((node) => node.file === "templates/index.liquid");
+    const layout = result.tree.find((node) => node.file === `layout/${name}.liquid`);
+    assert.ok(template);
+    assert.ok(layout);
+    assert.ok(result.dataUsed[template.id]?.includes("shop.currency"));
+    assert.ok(!result.dataUsed[template.id]?.includes("shop.name"));
+    assert.ok(result.dataUsed[layout.id]?.includes("shop.name"));
+    assert.ok(!result.dataUsed[layout.id]?.includes("shop.currency"));
+  }
+});
+
+test("nested Liquid sections and snippets retain their own inspection scope under the template", async () => {
+  const files = {
+    "templates/index.liquid": "{% layout none %}{{ shop.currency }}{% section 'saved' %}",
+    "sections/saved.liquid": "{{ shop.name }}{% render 'detail' %}",
+    "snippets/detail.liquid": "{{ shop.domain }}",
+  };
+  const result = await renderTheme(new MemoryThemeFileSystem(files), "/", {
+    snapshot: defaultFixture(),
+    inspect: true,
+  });
+  const template = result.tree[0];
+  assert.equal(template?.file, "templates/index.liquid");
+  const section = template?.children[0];
+  assert.equal(section?.file, "sections/saved.liquid");
+  const snippet = section?.children[0];
+  assert.equal(snippet?.file, "snippets/detail.liquid");
+  assert.ok(template && result.dataUsed[template.id]?.includes("shop.currency"));
+  assert.ok(section && result.dataUsed[section.id]?.includes("shop.name"));
+  assert.ok(snippet && result.dataUsed[snippet.id]?.includes("shop.domain"));
+  const browser: typeof import("../packages/check/src/browser.js") = await import(
+    new URL("../dist/browser.js", import.meta.url).href
+  );
+  assert.deepEqual(
+    await browser.renderTheme(new browser.MemoryThemeFileSystem(files), "/", {
+      snapshot: defaultFixture(),
+      inspect: true,
+    }),
+    result,
+  );
+});
