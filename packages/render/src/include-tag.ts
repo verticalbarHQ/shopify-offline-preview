@@ -14,7 +14,7 @@ import { LiquidRange } from "./range-values.js";
 /** Includes keep the caller's context and registers; all parser state belongs to this tag. */
 export function registerIncludeTag(
   engine: Liquid,
-  render: (name: string, context: Context) => Promise<string>,
+  render: (name: string, context: Context, bindings: Record<string, unknown>) => Promise<string>,
   trace: (name: string, run: () => Promise<string>) => Promise<string>,
 ): void {
   engine.registerTag(
@@ -85,7 +85,7 @@ export function registerIncludeTag(
             for (const item of items) {
               context.renderLimit.use(1);
               scope[alias] = item;
-              html += await render(name, context);
+              html += await render(name, context, scope);
               if (context.breakCalled || context.continueCalled) break;
             }
             return html;

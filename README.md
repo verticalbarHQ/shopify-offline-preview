@@ -65,6 +65,50 @@ while retaining the same `liquid-error` diagnostics and successful output from t
 The default `"inline"` behavior is unchanged. This option does not certify a useful preview:
 hosts must still distinguish an empty/error-only page from content they can display.
 
+## Saved backup content (1.0.5)
+
+Hosts displaying captured content can opt into `renderTheme(theme, path, {
+  snapshot, liquidErrors: "omit", backupPreview: { standardMoneyFormat: true }
+})`. `backupPreview` is optional; ordinary theme development keeps its existing behavior.
+This policy reconstructs saved content and does not promise the historical public storefront.
+
+- Unknown product prices and availability remain unknown through Liquid defaults, assignments
+  and conditions, including captures and iteration. A capture's direct output preserves its
+  known markup; using its uncertain value in a fallback or condition remains restricted.
+  A missing value must not become a theme's sample price or sold-out badge.
+- Captured money formats remain authoritative. `standardMoneyFormat: true` explicitly permits
+  `USD 699.95`-style output when an older snapshot lacks the format. Omit it or use `false` when
+  failed new collection of that setting must leave the expression unknown, including downstream
+  defaults or captures. The snapshot is unchanged.
+- A bounded, price-only snippet whose price output depends on an unknown selected variant can
+  be omitted while adjacent titles and media remain. An unused `use_variant` argument does not
+  hide a known product minimum. Output provenance includes local assignments and translation
+  parameters; unrelated shop, page or settings content remains in granular rendering. A complete variant set with identical prices and compare-at values
+  can use its common product price without selecting a variant. Unrecognized snippet content
+  retains granular value guards; literal media, unrelated text or unproven nested snippets
+  cannot qualify for whole-snippet omission. Proven unit-price regions are omitted when their
+  amount or measurement is unknown. The renderer does not rewrite arbitrary HTML numbers.
+- A collection's absent `products` is unknown membership; `products: []` is known empty.
+  Unknown membership can retain the theme's empty-card layout. Known empty membership does not
+  run a collection loop's sample-card `else` branch. Card counts are never invented by the renderer.
+- An explicitly missing member uses its original position: provide its handle in both the
+  ordered `products` and `missingProducts` arrays, with no corresponding product record.
+  Undeclared broken references remain invalid. Filters that discard or reorder these slots
+  produce an internal diagnostic and an unknown list, without running sample-empty branches.
+  Known-empty semantics survive supported list transformations.
+
+Neutral decoration markers preserve a supported theme's card layout. The empty
+`span[data-sop-backup-image-placeholder]` is 24×24 CSS pixels inside a positioning wrapper;
+`[data-sop-backup-price-placeholder]` is a static decorative bar. Both are `aria-hidden` and
+contain no animation, loading text or product facts. The package includes no host icon artwork.
+A host can populate the image marker with its own trusted, licensed static glyph. Older
+`snippets/card-product.liquid` media boxes with one `card__inner` boundary are supported even
+without `placeholder_svg_tag`; unsupported boundaries produce an internal diagnostic.
+
+This option does not sanitize HTML or sandbox theme scripts. Embedding hosts remain responsible
+for their sanitizer, iframe sandbox, CSP, captured-asset ownership and blocked external requests,
+including HTML in captured money formats and their own placeholder artwork.
+
 ## Fonts in captured themes
 
 System font settings use Shopify's published family, fallback, weight and style metadata.

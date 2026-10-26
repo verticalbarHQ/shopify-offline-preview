@@ -447,6 +447,8 @@ export const snapshotSchema = completeSnapshotSchema.extend({
   collections: z.array(
     completeSnapshotSchema.shape.collections.element.partial({ products: true }).extend({
       image: partialImage.nullable().optional(),
+      // Explicit unresolved references retain their positions; absent products alone remain invalid.
+      missingProducts: z.array(handle).optional(),
     }),
   ),
   pages: z.array(page.partial({ metafields: true })),

@@ -3,6 +3,12 @@ import { ImageDirectory, MissingImage, NamedImageDrop } from "../../../data/src/
 import { liquidObjectKind, mediaProductTitle, ScalarDrop } from "../../../data/src/objects.js";
 import type { Snapshot } from "../../../data/src/schema.js";
 import { themePath } from "../../../theme/src/index.js";
+import {
+  type BackupPreviewOptions,
+  backupImagePlaceholder,
+  unknownBackupFact,
+  unknownBackupValue,
+} from "../backup-preview.js";
 import { registerFontFilters } from "../fonts.js";
 import { registerNumericFilters } from "../numbers.js";
 import { registerRangeFilters } from "../range-values.js";
@@ -27,6 +33,7 @@ import { registerStructuredDataFilter } from "./structured-data.js";
 import { translateFactory } from "./translations.js";
 
 interface FilterHooks {
+  backupPreview?: BackupPreviewOptions | undefined;
   snapshot: Snapshot;
   files: Map<string, string>;
   paths: ReadonlySet<string>;
@@ -40,6 +47,7 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
     const native = engine.filters[name];
     if (typeof native !== "function") throw new Error(`Pinned LiquidJS ${name} filter unavailable`);
     engine.registerFilter(name, function (input: unknown, ...args: unknown[]) {
+      if (hooks.backupPreview && unknownBackupValue(input)) return input;
       if (input instanceof MissingImage) return name === "default" ? args[0] : 0;
       if (
         (input instanceof NamedImageDrop ||
@@ -73,6 +81,15 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
     read: hooks.readData,
     diagnostic: hooks.diagnostic,
   });
+  if (hooks.backupPreview) {
+    const placeholder = engine.filters.placeholder_svg_tag;
+    if (typeof placeholder !== "function") throw new Error("Placeholder filter unavailable");
+    engine.registerFilter("placeholder_svg_tag", function (input: unknown, cssClass?: unknown) {
+      if (/^product-(?:[1-6]|apparel-[1-4])$/.test(String(toValue(input))))
+        return backupImagePlaceholder;
+      return placeholder.call(this, input, cssClass);
+    });
+  }
   registerPaymentTypeFilter(engine, hooks.snapshot, {
     read: hooks.readData,
     diagnostic: hooks.diagnostic,
@@ -159,14 +176,29 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
   });
   const translate = translateFactory(hooks.files, hooks.snapshot.shop.locale, hooks.sectionLocales);
   engine.registerFilter("translate", function (value: unknown, ...args: unknown[]) {
-    return translate(value, args, (key) =>
+    if (
+      hooks.backupPreview &&
+      /^(?:onboarding\.product_title|onboarding\.product_description)$/.test(String(value))
+    )
+      return "";
+    const rangePrice =
+      hooks.backupPreview && value === "products.product.price.from_price_html"
+        ? namedArgs(args).price
+        : undefined;
+    if (rangePrice === "") return "";
+    let missing = false;
+    const translated = translate(value, args, (key) => {
+      missing = true;
       hooks.diagnostic(
         "missing-resource",
         `Translation ${key} is missing.`,
         this.token.file ?? null,
         this.token.getPosition()[0] ?? null,
-      ),
-    );
+      );
+    });
+    // Preserve a supplied known amount when the range label's locale is unavailable;
+    // this does not invent a localized "From" prefix or replace unrelated translations.
+    return missing && typeof rangePrice === "string" ? rangePrice : translated;
   });
   for (const [name, withCurrency, withoutCurrency, withoutZeros] of [
     ["money", false, false, false],
@@ -175,6 +207,11 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
     ["money_without_trailing_zeros", false, false, true],
   ] as const)
     engine.registerFilter(name, function (value: unknown) {
+      if (
+        hooks.backupPreview &&
+        (value === null || value === undefined || unknownBackupValue(value))
+      )
+        return "";
       const format = withCurrency
         ? hooks.snapshot.shop.money_with_currency_format
         : hooks.snapshot.shop.money_format;
@@ -185,7 +222,11 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
           this.token.file ?? null,
           this.token.getPosition()[0] ?? null,
         );
-        return "";
+        return hooks.backupPreview?.standardMoneyFormat
+          ? `${hooks.snapshot.shop.currency} ${formatMoney(value, "{{ amount }}")}`
+          : hooks.backupPreview
+            ? unknownBackupFact()
+            : "";
       }
       return formatMoney(value, format, withoutCurrency, withoutZeros);
     });

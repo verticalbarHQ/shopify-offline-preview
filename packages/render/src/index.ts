@@ -28,6 +28,7 @@ import { registry } from "../../spec/src/index.js";
 import { parseThemeJson, type ThemeFileSystem, themePath } from "../../theme/src/index.js";
 import { appendAppEmbeds, appIdentity, appMarkup } from "./apps.js";
 import { ThemeAssetBundles } from "./asset-bundles.js";
+import { BackupPreviewGuard, type BackupPreviewOptions } from "./backup-preview.js";
 import { registerBasicTags } from "./basic-tags.js";
 import { ColorScheme, ColorSchemeGroup, colorPalette, colorSetting } from "./color-settings.js";
 import { registerContentFor } from "./content-for.js";
@@ -68,6 +69,8 @@ export interface RenderOptions {
   inspect?: boolean;
   /** Preserve diagnostics while allowing a host to hide inline error text. */
   liquidErrors?: "inline" | "omit";
+  /** Saved-content semantics: unknown commercial facts never become theme sample values. */
+  backupPreview?: BackupPreviewOptions;
 }
 
 class SchemaTag extends Tag {
@@ -268,9 +271,13 @@ export async function renderTheme(
   });
   // Liquid's renderer visits nested tags and snippets too. Scope snapshot-property
   // diagnostics to each actual template invocation, without changing other diagnostics.
+  const backupGuard = options.backupPreview
+    ? new BackupPreviewGuard((message) => diagnostic("missing-resource", message))
+    : undefined;
   const scopedTemplates = new WeakSet<Template>();
   const renderTemplates = engine.renderer.renderTemplates;
   engine.renderer.renderTemplates = function* (templates, context, emitter) {
+    backupGuard?.prepare(context);
     for (const template of templates) {
       if (scopedTemplates.has(template)) continue;
       scopedTemplates.add(template);
@@ -311,7 +318,11 @@ export async function renderTheme(
     class extends AssignTag {
       override *render(context: Context) {
         try {
-          return yield* super.render(context);
+          const before = backupGuard?.reads(context);
+          const result = yield* super.render(context);
+          if (before !== undefined)
+            backupGuard?.assignment(context, before, [...this.localScope()][0]?.content);
+          return result;
         } catch (error) {
           const detail = LiquidError.is(error) ? (error.originalError ?? error) : error;
           if (!(detail instanceof ImageUrlInputError)) throw error;
@@ -334,6 +345,7 @@ export async function renderTheme(
     },
     (error, token) =>
       liquidError(error, token.file ?? "layout/theme.liquid", token.getPosition()[0] ?? 1),
+    backupGuard ? (value) => backupGuard.skipLoop(value) : undefined,
   );
   const assetBundles = new ThemeAssetBundles(files, snapshot);
   registerBasicTags(engine);
@@ -357,6 +369,7 @@ export async function renderTheme(
   });
   const assetBytes = new Map<string, Promise<Uint8Array>>();
   registerShopifyFilters(engine, {
+    backupPreview: options.backupPreview,
     snapshot,
     readData: readSnapshot,
     files,
@@ -469,9 +482,11 @@ export async function renderTheme(
     const filter = engine.filters[name];
     if (filter) engine.registerFilter(alias, filter);
   }
+  backupGuard?.wrapFilters(engine);
   registerRenderTag(
     engine,
-    (name, context) => renderFile(themePath(`snippets/${name}.liquid`), context),
+    (name, context, bindings) =>
+      renderFile(themePath(`snippets/${name}.liquid`), context, bindings),
     () => {
       diagnostic("not-implemented", "Dynamic snippet references are not implemented.");
       return "[not implemented: dynamic render]";
@@ -487,7 +502,8 @@ export async function renderTheme(
   );
   registerIncludeTag(
     engine,
-    (name, context) => renderFile(themePath(`snippets/${name}.liquid`), context),
+    (name, context, bindings) =>
+      renderFile(themePath(`snippets/${name}.liquid`), context, bindings),
     (name, run) => inside(node("snippet", name, themePath(`snippets/${name}.liquid`), null), run),
   );
   function placeholder(type: string): string {
@@ -532,36 +548,69 @@ export async function renderTheme(
   function parse(file: string): Template[] {
     let parsed = parsedFiles.get(file);
     if (!parsed) {
-      parsed = parseLiquid(engine, source(file), file, (error, token) => {
-        liquidError(error, token.file ?? file, token.getPosition()[0] ?? 1);
-      });
+      parsed = parseLiquid(
+        engine,
+        source(file),
+        file,
+        (error, token) => {
+          liquidError(error, token.file ?? file, token.getPosition()[0] ?? 1);
+        },
+        backupGuard,
+      );
       parsedFiles.set(file, parsed);
     }
     return parsed;
   }
-  async function renderFile(file: string, context: Context): Promise<string> {
-    let parsed: Template[];
+  async function renderFile(
+    file: string,
+    context: Context,
+    bindings?: Record<string, unknown>,
+  ): Promise<string> {
+    const restore = backupGuard?.enterSnippet(file, context, bindings);
     try {
+      return await renderBoundFile(file, context);
+    } finally {
+      restore?.();
+    }
+  }
+  async function renderBoundFile(file: string, context: Context): Promise<string> {
+    backupGuard?.prepare(context);
+    let parsed: Template[];
+    let commonPrice = false;
+    let emptyPrice = false;
+    try {
+      const policy = backupGuard?.priceSnippet(file, source(file), context);
+      if (policy && "html" in policy) return policy.html;
+      commonPrice = !!policy && "commonPrice" in policy;
+      emptyPrice = !!policy && "emptyPrice" in policy;
       assetBundles.use(file);
       parsed = parse(file);
     } catch (error) {
       return liquidError(error, file, 1);
     }
-    let html = "";
-    for (const template of parsed) {
-      const previous = location;
-      location = { file, line: template.token.getPosition()[0] ?? 1 };
-      try {
-        html += await engine.render([template], context);
-      } catch (error) {
-        html += liquidError(error, file, location.line ?? 1);
-      } finally {
-        location = previous;
+    if (commonPrice) context.push({ use_variant: false });
+    try {
+      let html = "";
+      for (const template of parsed) {
+        const previous = location;
+        location = { file, line: template.token.getPosition()[0] ?? 1 };
+        try {
+          html += await engine.render([template], context);
+        } catch (error) {
+          html += liquidError(error, file, location.line ?? 1);
+        } finally {
+          location = previous;
+        }
+        if (context.breakCalled || context.continueCalled) break;
       }
-      if (context.breakCalled || context.continueCalled) break;
+      html = backupGuard?.priceRegions(file, html, context) ?? html;
+      if (emptyPrice) html = backupGuard?.emptyPrice(file, html) ?? html;
+      return backupGuard?.cardPlaceholder(file, html, context) ?? html;
+    } finally {
+      if (commonPrice) context.pop();
     }
-    return html;
   }
+
   function imageSetting(value: unknown, key: string): unknown {
     if (value === null || value === undefined || value === "") return null;
     if (
@@ -1346,7 +1395,7 @@ export async function renderTheme(
     );
   return renderSchema.parse({
     schemaVersion: "1.0",
-    html,
+    html: backupGuard?.stripUnitMarkers(html) ?? html,
     tree,
     diagnostics,
     dataUsed: Object.fromEntries([...data].map(([id, paths]) => [id, [...paths].sort()])),

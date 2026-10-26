@@ -3,6 +3,7 @@ import {
   type Context,
   Drop,
   type Emitter,
+  evalToken,
   ForTag,
   type Liquid,
   type Parser,
@@ -67,6 +68,7 @@ export function registerLoopTrace(
     render: () => Promise<string>,
   ) => Promise<string>,
   onError: (error: unknown, token: TagToken) => string,
+  skipEmpty?: (value: unknown) => boolean,
 ): void {
   const ranges = new Map<string, { start: number; end: number }[] | null>();
   function safeRegion(token: TagToken): boolean {
@@ -106,6 +108,7 @@ export function registerLoopTrace(
     "for",
     class extends ForTag {
       *render(context: Context, emitter: Emitter) {
+        if (skipEmpty?.(yield evalToken(this.collection, context))) return;
         const saved = context.saveRegister("sop-for-parentloop");
         context.setRegister("sop-for-parentloop", context.getSync(["forloop"]) ?? null);
         try {

@@ -264,10 +264,19 @@ Reading their `value` reports `not-implemented`.
 **Collections** require these fields:
 
 - `handle`, `title`, `descriptionHtml`, `image` (or `null`) and `templateSuffix`;
-- `products`: product handles, in the collection's order;
+- `products`: product handles, in the collection's order; absence means unknown membership,
+  while an empty array means a captured empty collection;
 - `sortOrder`: the default `sort_by`.
 
-The optional fields are `id`, `seo` and `sortOptions`. `sortOptions` holds the sort labels as
+`missingProducts` optionally names handles whose position is captured in `products` but whose
+product content is absent. Each must occur in `products`, be absent from the product catalog and
+occur only once in `missingProducts`. The Liquid list retains a nil slot at each missing position;
+it never creates a placeholder product record. Unknown or partial membership must not be sent as
+a complete empty list. Filtering or changing the sort of a list containing missing products is
+unavailable because that operation cannot establish the missing product's position. `backupPreview`
+rendering can decorate the theme's existing empty slots; see the README for that host policy.
+
+The other optional fields are `id`, `seo` and `sortOptions`. `sortOptions` holds the sort labels as
 `{value, name}`; without it, English labels are used. `collections.all` contains every product
 unless you supply a collection with the handle `all`. Looping over `collections` (as on
 `/collections`) follows the snapshot's order; Shopify lists collections by title, so keep them in

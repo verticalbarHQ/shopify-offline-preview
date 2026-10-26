@@ -8,6 +8,7 @@ export {
 } from "../../data/src/schema.js";
 export {
   type RenderNode,
+  type RenderOptions,
   type RenderResult,
   renderSchema,
   renderTheme,
