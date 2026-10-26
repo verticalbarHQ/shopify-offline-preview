@@ -324,11 +324,7 @@ export async function renderTheme(
     class extends AssignTag {
       override *render(context: Context) {
         try {
-          const before = backupGuard?.reads(context);
-          const result = yield* super.render(context);
-          if (before !== undefined)
-            backupGuard?.assignment(context, before, [...this.localScope()][0]?.content);
-          return result;
+          return yield* super.render(context);
         } catch (error) {
           const detail = LiquidError.is(error) ? (error.originalError ?? error) : error;
           if (!(detail instanceof ImageUrlInputError)) throw error;

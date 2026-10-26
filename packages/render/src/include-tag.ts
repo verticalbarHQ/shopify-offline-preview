@@ -8,6 +8,7 @@ import {
   TypeGuards,
   type ValueToken,
 } from "liquidjs";
+import { unknownBackupValue } from "./backup-values.js";
 import { evalNumericValue } from "./numbers.js";
 import { LiquidRange } from "./range-values.js";
 
@@ -22,6 +23,7 @@ export function registerIncludeTag(
     class extends Tag {
       readonly #file: ValueToken;
       readonly #binding?: ValueToken;
+      readonly #for: boolean = false;
       readonly #alias?: string;
       readonly #args: Hash;
       constructor(token: TagToken, tokens: TopLevelToken[], liquid: Liquid) {
@@ -36,6 +38,7 @@ export function registerIncludeTag(
           const value = this.tokenizer.readValue();
           if (!value) throw new Error("include binding requires a value");
           this.#binding = value;
+          this.#for = word.content === "for";
         } else this.tokenizer.p = beforeBinding;
         const beforeAlias = this.tokenizer.p;
         const aliasWord = this.tokenizer.readIdentifier();
@@ -68,6 +71,7 @@ export function registerIncludeTag(
           ? await evalNumericValue(engine, this.#binding.getText(), context)
           : context.getSync([name]);
         const alias = this.#alias ?? name.split("/").at(-1) ?? name;
+        if (this.#for && unknownBackupValue(value)) return "";
         return trace(name, async () => {
           const scope: Record<string, unknown> = Object.create(null);
           context.push(scope);

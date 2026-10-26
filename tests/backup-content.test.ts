@@ -1401,3 +1401,54 @@ test("hosts independently choose Dawn decoration and sample text policy", async 
   assert.doesNotMatch(undecorated.html, /data-host-|data-sop-backup/);
   assert.match(undecorated.html, /Example product/);
 });
+
+for (const [name, body] of [
+  [
+    "assigned range size",
+    "{% assign amount = (0..product.selected_or_first_available_variant.price) | size %}{{ amount | money }}",
+  ],
+  [
+    "assigned range iteration",
+    "{% assign numbers = (0..product.selected_or_first_available_variant.price) %}{% for n in numbers %}invented{% else %}invented empty{% endfor %}{{ numbers | size | default: 1999 | money }}",
+  ],
+  [
+    "direct range iteration",
+    "{% for n in (0..product.selected_or_first_available_variant.price) %}invented{% else %}invented empty{% endfor %}",
+  ],
+  [
+    "table range iteration",
+    "{% tablerow n in (0..product.selected_or_first_available_variant.price) %}invented{% endtablerow %}",
+  ],
+  [
+    "render range iteration",
+    "{% render 'range-item' for (0..product.selected_or_first_available_variant.price) as item %}",
+  ],
+  [
+    "include range iteration",
+    "{% include 'range-item' for (0..product.selected_or_first_available_variant.price) as item %}",
+  ],
+]) {
+  test(`unknown endpoints survive ${name} in common and Dawn backup modes`, async () => {
+    const source = fixture();
+    for (const variant of firstProduct(source).variants) delete variant.available;
+    const files = theme(`before|${body}|after`, { "snippets/range-item.liquid": "invented" });
+    for (const backupPreview of [{}, { dawn: hostDawn }]) {
+      const output = await renderTheme(files, `/products/${firstProduct(source).handle}`, {
+        snapshot: source,
+        backupPreview,
+      });
+      assert.equal(output.html, "before||after");
+      assert.ok(output.diagnostics.some((d) => d.code === "missing-resource"));
+      const browser: typeof import("../packages/check/src/browser.js") = await import(
+        new URL("../dist/browser.js", import.meta.url).href
+      );
+      assert.deepEqual(
+        await browser.renderTheme(files, `/products/${firstProduct(source).handle}`, {
+          snapshot: source,
+          backupPreview,
+        }),
+        output,
+      );
+    }
+  });
+}

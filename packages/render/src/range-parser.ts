@@ -81,6 +81,7 @@ class BoundTag extends Tag {
         yield this.liquid.renderer.renderTemplates(original.elseTemplates, context, emitter);
       return;
     }
+    const beforeAssignment = original.name === "assign" ? this.backup?.reads(context) : undefined;
     // These SDK-owned tags evaluate their arguments in their actual binding scopes.
     if (!["include", "render", "cycle"].includes(original.name)) {
       try {
@@ -127,6 +128,12 @@ class BoundTag extends Tag {
       this.backup?.capture(
         context,
         beforeCapture,
+        [...(original.localScope?.() ?? [])][0]?.content,
+      );
+    if (beforeAssignment !== undefined)
+      this.backup?.assignment(
+        context,
+        beforeAssignment,
         [...(original.localScope?.() ?? [])][0]?.content,
       );
     return result;

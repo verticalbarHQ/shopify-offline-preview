@@ -2,7 +2,7 @@ import {
   type Comparable,
   type Context,
   Drop,
-  evalTokenValue,
+  evalToken,
   type Liquid,
   type RangeToken,
   type Template,
@@ -13,6 +13,7 @@ import {
   toValue,
   Value,
 } from "liquidjs";
+import { type UnknownBackupValue, unknown, unknownBackupValue } from "./backup-values.js";
 
 /** Range identity survives storage and remains distinct from an array. */
 export class LiquidRange extends Drop implements Comparable, Iterable<number> {
@@ -74,7 +75,7 @@ export class LiquidRange extends Drop implements Comparable, Iterable<number> {
 export class PreparedRangeToken extends Token implements RangeToken {
   lhs: RangeToken["lhs"];
   rhs: RangeToken["rhs"];
-  content: LiquidRange | undefined;
+  content: LiquidRange | UnknownBackupValue | undefined;
   constructor(token: RangeToken) {
     super(TokenKind.Range, token.input, token.begin, token.end, token.file);
     this.lhs = token.lhs;
@@ -83,15 +84,20 @@ export class PreparedRangeToken extends Token implements RangeToken {
   async prepare(context: Context): Promise<void> {
     await prepareRangeToken(this.lhs, context);
     await prepareRangeToken(this.rhs, context);
-    const low: unknown = await toPromise(evalTokenValue(this.lhs, context));
-    const high: unknown = await toPromise(evalTokenValue(this.rhs, context));
+    // Preserve unknown Drops before Liquid's ordinary nil-to-zero integer coercion.
+    const low: unknown = await toPromise(evalToken(this.lhs, context));
+    const high: unknown = await toPromise(evalToken(this.rhs, context));
+    if (unknownBackupValue(low) || unknownBackupValue(high)) {
+      this.content = unknown;
+      return;
+    }
     const dynamic =
       TypeGuards.isPropertyAccessToken(this.lhs) ||
       TypeGuards.isPropertyAccessToken(this.rhs) ||
       TypeGuards.isFilteredValueToken(this.lhs) ||
       TypeGuards.isFilteredValueToken(this.rhs);
-    const start = integer(low, dynamic),
-      end = integer(high, dynamic);
+    const start = integer(await toPromise(toValue(low)), dynamic),
+      end = integer(await toPromise(toValue(high)), dynamic);
     const length = Math.max(0, end - start + 1);
     if (!Number.isSafeInteger(length)) throw new Error("Range size exceeds preview limits");
     context.memoryLimit.use(length);
