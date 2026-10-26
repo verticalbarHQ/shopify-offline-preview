@@ -21,6 +21,7 @@ class UnknownCapturedValue extends UnknownBackupValue {
     super();
   }
 }
+class UnknownSelectedVariant extends UnknownBackupValue {}
 export function capturedBackupOutput(value: unknown): string | undefined {
   return value instanceof UnknownCapturedValue ? value.output : undefined;
 }
@@ -28,6 +29,11 @@ export function unknownBackupValue(value: unknown): boolean {
   return value instanceof UnknownBackupValue;
 }
 const unknown = new UnknownBackupValue();
+const unknownSelectedVariant = new UnknownSelectedVariant();
+const selectedVariantProperties = new Set([
+  "selected_or_first_available_variant",
+  "first_available_variant",
+]);
 export function unknownBackupFact(): unknown {
   return unknown;
 }
@@ -60,7 +66,10 @@ const backupPricePlaceholder = `<span aria-hidden="true" style="display:block;po
  */
 export class BackupPreviewGuard {
   constructor(private readonly diagnostic: (message: string) => void) {}
-  private readonly contexts = new WeakMap<Context, { reads: number }>();
+  private readonly contexts = new WeakMap<
+    Context,
+    { reads: number; mediaReferenceRoot?: unknown; directMediaReference: boolean }
+  >();
   private unknownReads = 0;
   private readonly priceFiles = new Map<string, boolean>();
   private readonly unitPriceRegions = new Map<
@@ -74,6 +83,241 @@ export class BackupPreviewGuard {
   private readonly selectedPriceFiles = new Set<string>();
   private readonly derivedCollectionLists = new WeakSet<unknown[]>();
   private readonly cardGlobals = new WeakSet<object>();
+  private readonly variantControls = new Map<
+    string,
+    { start: number; end: number; open: string; close: string } | null
+  >();
+  prepareVariantPicker(file: string, source: string): void {
+    if (file !== "snippets/product-variant-picker.liquid" || this.variantControls.has(file)) return;
+    this.variantControls.set(file, null);
+    try {
+      const ast = toLiquidHtmlAST(source, { mode: "tolerant", allowUnclosedDocumentNode: false });
+      let mutable = false;
+      const controls: Extract<LiquidHtmlNode, { type: NodeTypes.HtmlElement }>[] = [];
+      walk(ast, (node) => {
+        if (
+          (node.type === NodeTypes.AssignMarkup && node.name === "product") ||
+          (node.type === NodeTypes.ForMarkup && node.variableName === "product") ||
+          (node.type === NodeTypes.LiquidTag && ["include", "capture"].includes(node.name))
+        )
+          mutable = true;
+        if (
+          node.type !== NodeTypes.HtmlElement ||
+          tagName(node) !== "select" ||
+          literalAttribute(node, "name")?.value !== "id" ||
+          node.attributes.some((a) => attributeName(a) === "multiple")
+        )
+          return;
+        const loops: Extract<LiquidHtmlNode, { type: NodeTypes.ForMarkup }>[] = [];
+        walk(node, (child) => {
+          if (child.type === NodeTypes.ForMarkup && lookup(child.collection, "product", "variants"))
+            loops.push(child);
+        });
+        const loop = loops.length === 1 ? loops[0] : undefined;
+        if (!loop) return;
+        let options = 0,
+          bound = true,
+          selected = false;
+        walk(node, (child) => {
+          if (child.type !== NodeTypes.HtmlElement || tagName(child) !== "option") return;
+          options++;
+          const value = child.attributes.find((a) => attributeName(a) === "value");
+          const output =
+            value && "value" in value && value.value.length === 1 ? value.value[0] : undefined;
+          const variable =
+            output?.type === NodeTypes.LiquidVariableOutput && typeof output.markup !== "string"
+              ? output.markup
+              : undefined;
+          bound &&=
+            !!variable &&
+            !variable.filters.length &&
+            lookup(variable.expression, loop.variableName, "id");
+          for (const attribute of child.attributes) {
+            if (attribute.type !== NodeTypes.LiquidTag || attribute.name !== "if") continue;
+            const condition = attribute.markup;
+            if (
+              !condition ||
+              typeof condition === "string" ||
+              condition.type !== NodeTypes.Comparison ||
+              condition.comparator !== "=="
+            )
+              continue;
+            const boundSelection =
+              (lookup(condition.left, loop.variableName) &&
+                lookup(condition.right, "product", "selected_or_first_available_variant")) ||
+              (lookup(condition.right, loop.variableName) &&
+                lookup(condition.left, "product", "selected_or_first_available_variant"));
+            walk(attribute, (part) => {
+              if (
+                boundSelection &&
+                (part.type === NodeTypes.AttrEmpty ||
+                  part.type === NodeTypes.AttrDoubleQuoted ||
+                  part.type === NodeTypes.AttrSingleQuoted ||
+                  part.type === NodeTypes.AttrUnquoted) &&
+                attributeName(part) === "selected"
+              )
+                selected = true;
+            });
+          }
+        });
+        if (options > 0 && bound && selected) controls.push(node);
+      });
+      const control = controls.length === 1 ? controls[0] : undefined;
+      if (!mutable && control)
+        this.variantControls.set(file, {
+          ...control.position,
+          open: `<!--${this.markerNamespace}:variant:start-->`,
+          close: `<!--${this.markerNamespace}:variant:end-->`,
+        });
+    } catch {
+      this.diagnostic(`Variant selection retained: ${file} has no proven control boundary.`);
+    }
+  }
+  variantOptions(file: string, html: string, context: Context): string {
+    const proof = this.variantControls.get(file);
+    if (!proof) return html;
+    const clean = () => html.replaceAll(proof.open, "").replaceAll(proof.close, "");
+    const selected: unknown = context.getSync(["product", "selected_or_first_available_variant"]);
+    if (selected !== undefined && !unknownBackupValue(selected)) return clean();
+    const start = html.indexOf(proof.open),
+      end = html.indexOf(proof.close);
+    if (
+      start < 0 ||
+      end < start ||
+      start !== html.lastIndexOf(proof.open) ||
+      end !== html.lastIndexOf(proof.close)
+    )
+      return clean();
+    const inner = html.slice(start + proof.open.length, end);
+    try {
+      const ast = toLiquidHtmlAST(inner, { mode: "tolerant", allowUnclosedDocumentNode: false });
+      const control = ast.children[0];
+      if (
+        ast.children.length !== 1 ||
+        control?.type !== NodeTypes.HtmlElement ||
+        tagName(control) !== "select"
+      )
+        return clean();
+      const edits = [
+        {
+          start: control.blockStartPosition.end,
+          end: control.blockStartPosition.end,
+          value:
+            '<option value="" selected disabled hidden aria-hidden="true" data-sop-backup-unselected></option>',
+        },
+        {
+          start: control.blockStartPosition.end - 1,
+          end: control.blockStartPosition.end - 1,
+          value: control.attributes.some((a) => attributeName(a) === "disabled") ? "" : " disabled",
+        },
+      ];
+      walk(control, (node) => {
+        if (node.type === NodeTypes.HtmlElement && tagName(node) === "option")
+          for (const attribute of node.attributes)
+            if (attributeName(attribute) === "selected")
+              edits.push({ ...attribute.position, value: "" });
+      });
+      let output = inner;
+      for (const edit of edits.sort((a, b) => b.start - a.start))
+        output = `${output.slice(0, edit.start)}${edit.value}${output.slice(edit.end)}`;
+      return `${html.slice(0, start)}${output}${html.slice(end + proof.close.length)}`;
+    } catch {
+      this.diagnostic(`Variant selection retained: ${file} has no source-bound rendered select.`);
+      return clean();
+    }
+  }
+  private captureDepth = 0;
+  private readonly money = new WeakMap<Context, { values: Set<string>; outputs: number }>();
+  private moneyState(context: Context) {
+    let state = this.money.get(context);
+    if (!state) {
+      state = { values: new Set(), outputs: 0 };
+      this.money.set(context, state);
+    }
+    return state;
+  }
+  moneyOutputs(context: Context): number {
+    return this.moneyState(context).outputs;
+  }
+  recordOutput(context: Context, value: unknown): void {
+    const state = this.moneyState(context);
+    if (!this.captureDepth && typeof value === "string" && state.values.has(value.trim()))
+      state.outputs++;
+  }
+  captureMoney(): () => void {
+    this.captureDepth++;
+    return () => {
+      this.captureDepth--;
+    };
+  }
+  markKnownPrice(file: string, html: string, context: Context, before: number): string {
+    return !this.captureDepth && this.priceFiles.get(file) && this.moneyOutputs(context) > before
+      ? `<!--${this.markerNamespace}:price:start-->${html}<!--${this.markerNamespace}:price:end-->`
+      : html;
+  }
+  finishHtml(html: string): string {
+    const open = `<!--${this.markerNamespace}:price:start-->`,
+      close = `<!--${this.markerNamespace}:price:end-->`;
+    const edits: { start: number; end: number; value: string }[] = [];
+    if (html.includes(open))
+      try {
+        walk(
+          toLiquidHtmlAST(html, { mode: "tolerant", allowUnclosedDocumentNode: false }),
+          (node) => {
+            if (
+              node.type !== NodeTypes.HtmlElement ||
+              !["div", "span"].includes(tagName(node)) ||
+              !hasClass(node, "no-js-hidden")
+            )
+              return;
+            if (
+              node.attributes.some((a) =>
+                /^(?:on|tabindex$|contenteditable$)/.test(attributeName(a)),
+              )
+            )
+              return;
+            const role = literalAttribute(node, "role")?.value;
+            if (role && role !== "status") return;
+            const children = node.children.filter(
+              (child) => !(child.type === NodeTypes.TextNode && !child.value.trim()),
+            );
+            const first = children[0],
+              last = children.at(-1);
+            if (
+              first?.type !== NodeTypes.HtmlComment ||
+              last?.type !== NodeTypes.HtmlComment ||
+              html.slice(first.position.start, first.position.end) !== open ||
+              html.slice(last.position.start, last.position.end) !== close
+            )
+              return;
+            if (
+              children.filter(
+                (child) =>
+                  child.type === NodeTypes.HtmlComment &&
+                  [open, close].includes(html.slice(child.position.start, child.position.end)),
+              ).length !== 2
+            )
+              return;
+            const classes = literalAttribute(node, "class");
+            if (classes)
+              edits.push({
+                ...classes.node.position,
+                value: `class="${escapeAttribute(
+                  classes.value
+                    .split(/\s+/)
+                    .filter((value) => value !== "no-js-hidden")
+                    .join(" "),
+                )}"`,
+              });
+          },
+        );
+      } catch {
+        this.diagnostic("Known-price visibility retained: no unambiguous parsed wrapper.");
+      }
+    for (const edit of edits.sort((a, b) => b.start - a.start))
+      html = `${html.slice(0, edit.start)}${edit.value}${html.slice(edit.end)}`;
+    return this.stripUnitMarkers(html.replaceAll(open, "").replaceAll(close, ""));
+  }
 
   /** A missing card owns no ambient page product; explicit snippet bindings still take priority. */
   enterSnippet(
@@ -173,6 +417,8 @@ export class BackupPreviewGuard {
         const result: unknown = await toPromise(native.call(this, input, ...args));
         if (guard.reads(this.context) !== before || unknownBackupValue(result))
           return guard.unknown(this.context);
+        if (/^money(?:_|$)/.test(name) && typeof result === "string" && result.trim())
+          guard.moneyState(this.context).values.add(result.trim());
         if (Array.isArray(result) && lists.length > 0) guard.derivedCollectionLists.add(result);
         return result;
       });
@@ -181,19 +427,62 @@ export class BackupPreviewGuard {
 
   prepare(context: Context): void {
     if (this.contexts.has(context)) return;
-    const state = { reads: 0 };
+    const state: { reads: number; mediaReferenceRoot?: unknown; directMediaReference: boolean } = {
+      reads: 0,
+      directMediaReference: false,
+    };
     this.contexts.set(context, state);
     const guard = this;
+    const getFromScope = context._getFromScope;
+    context._getFromScope = function* (scope, paths, strictVariables) {
+      const parts = typeof paths === "string" ? paths.split(".") : paths;
+      const media = parts.indexOf("featured_media");
+      const referenceOnly =
+        media >= 0 &&
+        (media === parts.length - 1 || (media === parts.length - 2 && parts[media + 1] === "id"));
+      const previousRoot = state.mediaReferenceRoot,
+        previousDirect = state.directMediaReference;
+      // A missing selected-media reference must not hide the independently saved product gallery.
+      // Root selection/identity and every commercial lookup retain their ordinary unknown guards.
+      state.mediaReferenceRoot =
+        referenceOnly &&
+        (media === 1 || (media > 1 && selectedVariantProperties.has(String(parts[media - 1]))))
+          ? parts[media - 1]
+          : undefined;
+      state.directMediaReference = referenceOnly && media === 0;
+      try {
+        return yield* getFromScope.call(this, scope, paths, strictVariables);
+      } finally {
+        state.mediaReferenceRoot = previousRoot;
+        state.directMediaReference = previousDirect;
+      }
+    };
     const read = context.readProperty;
     context.readProperty = function (
       object: Parameters<Context["readProperty"]>[0],
       key: Parameters<Context["readProperty"]>[1],
     ) {
       const value: unknown = read.call(this, object, key);
+      if (
+        (state.mediaReferenceRoot !== undefined &&
+          key === state.mediaReferenceRoot &&
+          (value instanceof UnknownSelectedVariant ||
+            (value === undefined &&
+              selectedVariantProperties.has(String(key)) &&
+              liquidObjectKind(object) === "product"))) ||
+        (state.directMediaReference &&
+          key === "featured_media" &&
+          object instanceof UnknownSelectedVariant)
+      )
+        return undefined;
       if (unknownBackupValue(value) || unknownBackupValue(object)) {
         state.reads++;
         guard.unknownReads++;
-        return unknownBackupValue(value) ? value : unknown;
+        return object instanceof UnknownSelectedVariant
+          ? unknown
+          : unknownBackupValue(value)
+            ? value
+            : unknown;
       }
       if (
         key === "products" &&
@@ -213,7 +502,9 @@ export class BackupPreviewGuard {
       ) {
         state.reads++;
         guard.unknownReads++;
-        return unknown;
+        return selectedVariantProperties.has(String(key)) && liquidObjectKind(object) === "product"
+          ? unknownSelectedVariant
+          : unknown;
       }
       return value;
     };
@@ -228,11 +519,7 @@ export class BackupPreviewGuard {
     return this.unknownReads;
   }
   assignment(context: Context, before: number, key: string | undefined): void {
-    if (
-      key &&
-      this.reads(context) !== before &&
-      !(context.bottom()[key] instanceof UnknownCapturedValue)
-    )
+    if (key && this.reads(context) !== before && !unknownBackupValue(context.bottom()[key]))
       context.bottom()[key] = unknown;
   }
   capture(context: Context, before: number, key: string | undefined): void {
@@ -242,11 +529,13 @@ export class BackupPreviewGuard {
   }
 
   unitRegion(file: string) {
-    return this.unitPriceRegions.get(file);
+    return this.unitPriceRegions.get(file) ?? this.variantControls.get(file) ?? undefined;
   }
   stripUnitMarkers(html: string): string {
     for (const region of this.unitPriceRegions.values())
       html = html.replaceAll(region.open, "").replaceAll(region.close, "");
+    for (const region of this.variantControls.values())
+      if (region) html = html.replaceAll(region.open, "").replaceAll(region.close, "");
     return html;
   }
   /** The markers execute at the proven source node, preserving identity across branches/snippets. */
@@ -438,7 +727,7 @@ export class BackupPreviewGuard {
     file: string,
     source: string,
     context: Context,
-  ): { html: string } | { commonPrice: true } | { emptyPrice: true } | undefined {
+  ): { commonPrice: true } | { emptyPrice: true } | undefined {
     if (!/^snippets\/(?:[\w-]+-)?price(?:-[\w-]+)?\.liquid$/.test(file)) return;
     if (!this.priceFiles.has(file)) {
       let money = false,
@@ -778,7 +1067,8 @@ export class BackupPreviewGuard {
           )
             return { commonPrice: true };
         }
-        return { html: "" };
+        // Execute ordinary assignments and branches: an earlier selected alias may be overwritten.
+        // Granular value guards omit only the unknown facts actually consumed by the theme.
       }
     }
     return;
@@ -809,4 +1099,36 @@ function hasClass(
       (part) => part.type === NodeTypes.TextNode && part.value.split(/\s+/).includes(name),
     );
   });
+}
+
+type HtmlElement = Extract<LiquidHtmlNode, { type: NodeTypes.HtmlElement }>;
+function tagName(node: HtmlElement): string {
+  return node.name.map((part) => (part.type === NodeTypes.TextNode ? part.value : "")).join("");
+}
+function attributeName(attribute: HtmlElement["attributes"][number]): string {
+  return "name" in attribute && Array.isArray(attribute.name)
+    ? attribute.name.map((part) => (part.type === NodeTypes.TextNode ? part.value : "")).join("")
+    : "";
+}
+function literalAttribute(node: HtmlElement, name: string) {
+  const attribute = node.attributes.find((item) => attributeName(item) === name);
+  return attribute &&
+    "value" in attribute &&
+    attribute.value.every((part) => part.type === NodeTypes.TextNode)
+    ? {
+        node: attribute,
+        value: attribute.value
+          .map((part) => (part.type === NodeTypes.TextNode ? part.value : ""))
+          .join(""),
+      }
+    : undefined;
+}
+function lookup(node: LiquidHtmlNode | undefined, name: string, property?: string): boolean {
+  return (
+    node?.type === NodeTypes.VariableLookup &&
+    node.name === name &&
+    node.lookups.length === (property ? 1 : 0) &&
+    (!property ||
+      (node.lookups[0]?.type === NodeTypes.String && node.lookups[0].value === property))
+  );
 }

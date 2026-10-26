@@ -98,6 +98,7 @@ class BoundTag extends Tag {
           const value = yield argument.value(context, false);
           const partial = capturedBackupOutput(value);
           if (partial !== undefined) {
+            this.backup?.recordOutput(context, partial);
             emitter.write(partial);
             return;
           }
@@ -106,14 +107,22 @@ class BoundTag extends Tag {
             unknownBackupValue(value)
           )
             return;
-          emitter.write(liquidOutputValue(value));
+          const output = liquidOutputValue(value);
+          this.backup?.recordOutput(context, output);
+          emitter.write(output);
           break;
         }
       }
       return;
     }
     const beforeCapture = original.name === "capture" ? this.backup?.captureReads() : undefined;
-    const result = yield this.#original.render(context, emitter);
+    const endCapture = original.name === "capture" ? this.backup?.captureMoney() : undefined;
+    let result: unknown;
+    try {
+      result = yield this.#original.render(context, emitter);
+    } finally {
+      endCapture?.();
+    }
     if (beforeCapture !== undefined)
       this.backup?.capture(
         context,
@@ -151,12 +160,15 @@ class BoundOutput extends Output {
     const raw: unknown = yield this.value.value(context, false);
     const partial = capturedBackupOutput(raw);
     if (partial !== undefined) {
+      this.backup?.recordOutput(context, partial);
       emitter.write(partial);
       return;
     }
     const value = yield toValue(raw);
     if (before !== undefined && this.backup?.reads(context) !== before) return;
-    emitter.write(liquidOutputValue(value));
+    const output = liquidOutputValue(value);
+    this.backup?.recordOutput(context, output);
+    emitter.write(output);
   }
 }
 /** The tag a parsed template stands for, without the preview's range binding. */

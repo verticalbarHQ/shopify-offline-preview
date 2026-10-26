@@ -91,7 +91,7 @@ test("backup preview standard currency uses captured amount, without changing sn
   assert.doesNotMatch(ordinary.html, /699\.95/);
 });
 
-test("unknown selected price omits only its snippet, not product title or stored image", async () => {
+test("unknown selected price is omitted while product title and stored image remain", async () => {
   const source = fixture();
   for (const [index, variant] of firstProduct(source).variants.entries()) {
     delete variant.available;
@@ -108,7 +108,7 @@ test("unknown selected price omits only its snippet, not product title or stored
     },
   );
   assert.match(output.html, /<h1>.+<\/h1><img src="saved.png">/);
-  assert.doesNotMatch(output.html, /19\.99|Sold out|Unavailable|class="price"/);
+  assert.doesNotMatch(output.html, /19\.99|20\.00|30\.00|Sold out|Unavailable/);
 });
 
 test("known card minimum remains while unknown availability never becomes false through default", async () => {
@@ -221,8 +221,7 @@ test("selection observes the first unknown or available position, including all-
       `/products/${firstProduct(source).handle}`,
       { snapshot: source, backupPreview: {} },
     );
-    if (expected === null)
-      assert.doesNotMatch(output.html, /class="price"|Sold out|Unavailable|19\.99/);
+    if (expected === null) assert.doesNotMatch(output.html, /\$[\d,]|Sold out|Unavailable|19\.99/);
     else assert.ok(output.html.includes(`$${expected}`), JSON.stringify(states));
     assert.match(output.html, /<h1>.+<\/h1>/);
   }
@@ -1050,4 +1049,287 @@ test("missing include card restores the caller's prior local product binding", a
   assert.match(output.html, /data-sop-backup-price-placeholder/);
   assert.equal(output.html.match(/\$39\.99/g)?.length, 1);
   assert.match(output.html, /<footer>\$39\.99<\/footer>/);
+});
+
+for (const [name, body, expected] of [
+  [
+    "selected alias overwritten by known product",
+    "{% assign target = product.selected_or_first_available_variant %}{% assign target = product %}{{ target.price | money }}",
+    "$20.00",
+  ],
+  [
+    "known alias overwritten by unknown selection",
+    "{% assign target = product %}{% assign target = product.selected_or_first_available_variant %}{{ target.price | money }}",
+    "",
+  ],
+  [
+    "known overwrite carried through an alias chain",
+    "{% assign a = product.selected_or_first_available_variant %}{% assign a = product %}{% assign b = a %}{% assign target = b %}{{ target.price | money }}",
+    "$20.00",
+  ],
+  [
+    "earlier unknown alias retains its assigned value",
+    "{% assign a = product.selected_or_first_available_variant %}{% assign target = a %}{% assign a = product %}{{ target.price | money }}",
+    "",
+  ],
+  [
+    "unexecuted selected assignment does not erase known minimum",
+    "{% assign target = product %}{% if false %}{% assign target = product.selected_or_first_available_variant %}{% endif %}{{ target.price | money }}",
+    "$20.00",
+  ],
+  [
+    "executed known branch replaces unknown selection",
+    "{% assign target = product.selected_or_first_available_variant %}{% if true %}{% assign target = product %}{% endif %}{{ target.price | money }}",
+    "$20.00",
+  ],
+  [
+    "unknown availability branch does not erase established minimum",
+    "{% assign target = product %}{% if product.available %}{% assign target = product.selected_or_first_available_variant %}{% endif %}{{ target.price | money }}",
+    "$20.00",
+  ],
+  [
+    "known general body remains after price alias overwrite",
+    "{% assign target = product.selected_or_first_available_variant %}{% assign target = shop.name %}<span>{{ target }}</span>",
+    "<span>Offline Example Shop</span>",
+  ],
+] as const) {
+  test(`price rendering respects runtime assignments: ${name}`, async () => {
+    const source = fixture();
+    for (const [index, variant] of firstProduct(source).variants.entries()) {
+      delete variant.available;
+      variant.price = `${20 + index * 10}.00`;
+    }
+    const output = await renderTheme(
+      theme("{% render 'price', product: product, use_variant: true %}", {
+        "snippets/price.liquid": body,
+      }),
+      `/products/${firstProduct(source).handle}`,
+      { snapshot: source, backupPreview: {} },
+    );
+    assert.equal(output.html, expected);
+    assert.equal(output.diagnostics.filter((item) => item.code === "liquid-error").length, 0);
+  });
+}
+
+const savedGallery = `{% if selected.featured_media != nil %}<img data-media="{{ selected.featured_media.id }}" src="{{ selected.featured_media | image_url: width: 64 }}">{% endif %}{% for media in product.media %}{% unless media.id == selected.featured_media.id %}<img data-media="{{ media.id }}" src="{{ media | image_url: width: 64 }}">{% endunless %}{% endfor %}`;
+for (const selectedKnown of [false, true]) {
+  for (const binding of ["direct", "alias", "render", "include"] as const) {
+    test(`saved gallery survives ${selectedKnown ? "known" : "unknown"} selection via ${binding}`, async () => {
+      const source = fixture();
+      if (!selectedKnown)
+        for (const variant of firstProduct(source).variants) delete variant.available;
+      const body =
+        binding === "direct"
+          ? savedGallery.replaceAll("selected.", "product.selected_or_first_available_variant.")
+          : binding === "alias"
+            ? `{% assign selected = product.selected_or_first_available_variant %}${savedGallery}`
+            : `{% ${binding} 'gallery', selected: product.selected_or_first_available_variant %}`;
+      const output = await renderTheme(
+        theme(body, { "snippets/gallery.liquid": savedGallery }),
+        `/products/${firstProduct(source).handle}`,
+        { snapshot: source, backupPreview: {} },
+      );
+      assert.equal(output.html.match(/<img /g)?.length, 2);
+      assert.equal(output.html.match(/pattern-01\.png/g)?.length, 1);
+      assert.equal(output.html.match(/pattern-02\.png/g)?.length, 1);
+      assert.equal(output.diagnostics.filter((item) => item.code === "liquid-error").length, 0);
+    });
+  }
+}
+
+for (const body of [
+  "{{ product.selected_or_first_available_variant | default: 1999 | money }}",
+  "{% capture selected %}{{ product.selected_or_first_available_variant }}{% endcapture %}{{ selected | default: 1999 | money }}",
+  "{% capture selected %}{% echo product.selected_or_first_available_variant %}{% endcapture %}{{ selected | default: 1999 | money }}",
+  "{% assign selected = product.selected_or_first_available_variant %}{{ selected.id | default: 'invented' }}{% if selected == nil %}Sold out{% endif %}",
+  "{% render 'identity' with product.selected_or_first_available_variant as selected %}",
+  "{% for selected in product.selected_or_first_available_variant %}invented{% else %}Sold out{% endfor %}",
+] as const) {
+  test(`media reference handling retains unknown selected identity: ${body}`, async () => {
+    const source = fixture();
+    for (const variant of firstProduct(source).variants) delete variant.available;
+    const output = await renderTheme(
+      theme(body, { "snippets/identity.liquid": "{{ selected | default: 1999 | money }}" }),
+      `/products/${firstProduct(source).handle}`,
+      { snapshot: source, backupPreview: {} },
+    );
+    assert.equal(output.html, "");
+  });
+}
+
+test("a commercial unknown is not reclassified as an absent selected-media reference", async () => {
+  const source = fixture();
+  for (const variant of firstProduct(source).variants) delete variant.available;
+  const output = await renderTheme(
+    theme(
+      "{% assign selected = product.selected_or_first_available_variant.price %}{% unless selected.featured_media.id %}invented{% endunless %}",
+    ),
+    `/products/${firstProduct(source).handle}`,
+    { snapshot: source, backupPreview: {} },
+  );
+  assert.equal(output.html, "");
+});
+
+test("selected-media reference handling does not admit a commercial property suffix", async () => {
+  const source = fixture();
+  for (const variant of firstProduct(source).variants) delete variant.available;
+  const output = await renderTheme(
+    theme(
+      "{{ product.selected_or_first_available_variant.featured_media.price | default: 1999 | money }}{% assign selected = product.selected_or_first_available_variant %}{% capture amount %}{{ selected.featured_media.price }}{% endcapture %}{{ amount | default: 1999 | money }}",
+    ),
+    `/products/${firstProduct(source).handle}`,
+    { snapshot: source, backupPreview: {} },
+  );
+  assert.equal(output.html, "");
+});
+
+test("dynamic selected-media lookups restore commercial guards and match the browser bundle", async () => {
+  const source = fixture();
+  for (const variant of firstProduct(source).variants) delete variant.available;
+  const files = {
+    "layout/theme.liquid": "{{ content_for_layout }}",
+    "templates/product.liquid": `{% assign selector = 'selected_or_first_available_variant' %}{% assign reference = 'featured_media' %}{% for media in product.media %}{% unless media.id == product[selector][reference].id %}<img src="{{ media | image_url: width: 64 }}">{% endunless %}{% endfor %}{{ product[selector].price | default: 1999 | money }}{% if product[selector] == nil %}Sold out{% endif %}`,
+  };
+  const options = { snapshot: source, backupPreview: {}, inspect: true };
+  const path = `/products/${firstProduct(source).handle}`;
+  const output = await renderTheme(new MemoryThemeFileSystem(files), path, options);
+  assert.equal(output.html.match(/<img /g)?.length, 2);
+  assert.doesNotMatch(output.html, /19\.99|Sold out/);
+  const browser: typeof import("../packages/check/src/browser.js") = await import(
+    new URL("../dist/browser.js", import.meta.url).href
+  );
+  assert.deepEqual(
+    await browser.renderTheme(new browser.MemoryThemeFileSystem(files), path, options),
+    output,
+  );
+});
+
+test("known emitted price reveals only its dedicated no-JS wrapper", async () => {
+  const source = fixture();
+  const output = await renderTheme(
+    theme(
+      '<div class="no-js-hidden" id="known-price">{% render \'price\', product: product, use_variant: true %}</div><div class="no-js-hidden" id="other">Saved body</div>',
+    ),
+    `/products/${firstProduct(source).handle}`,
+    { snapshot: source, backupPreview: {} },
+  );
+  assert.match(output.html, /class="" id="known-price"/);
+  assert.match(output.html, /\$699\.95/);
+  assert.match(output.html, /class="no-js-hidden" id="other">Saved body/);
+});
+
+test("computed or captured unused money does not reveal an unknown-price wrapper", async () => {
+  const source = fixture();
+  for (const [i, variant] of firstProduct(source).variants.entries()) {
+    delete variant.available;
+    variant.price = i ? "30.00" : "20.00";
+  }
+  for (const computation of [
+    "{% assign unused = product.price | money %}",
+    "{% capture unused %}{{ product.price | money }}{% endcapture %}",
+  ]) {
+    const output = await renderTheme(
+      theme(
+        "<div class=\"no-js-hidden\">{% render 'price', product: product, use_variant: true %}</div>",
+        {
+          "snippets/price.liquid": `${computation}<div class="price">{{ product.selected_or_first_available_variant.price | money }}</div>`,
+        },
+      ),
+      `/products/${firstProduct(source).handle}`,
+      { snapshot: source, backupPreview: {} },
+    );
+    assert.match(output.html, /class="no-js-hidden"/);
+    assert.doesNotMatch(output.html, /\$20|\$30/);
+  }
+});
+
+test("price visibility proof does not reveal mixed or unexecuted content", async () => {
+  const source = fixture();
+  for (const body of [
+    "<div class=\"no-js-hidden\">Saved body{% render 'price', product: product %}</div>",
+    "<div class=\"no-js-hidden\"><span>Saved body</span>{% render 'price', product: product %}</div>",
+    "{% if false %}{% render 'price', product: product %}{% endif %}<div class=\"no-js-hidden\">Saved body</div>",
+  ]) {
+    const output = await renderTheme(theme(body), `/products/${firstProduct(source).handle}`, {
+      snapshot: source,
+      backupPreview: {},
+    });
+    assert.match(output.html, /class="no-js-hidden"/);
+    assert.match(output.html, /Saved body/);
+  }
+});
+
+const variantPicker = `<select name="id">{% for variant in product.variants %}<option value="{{ variant.id }}" {% if variant == product.selected_or_first_available_variant %}selected="selected"{% endif %}>{{ variant.title }} - {{ variant.price | money }}</option>{% endfor %}</select>`;
+for (const known of [false, true]) {
+  test(`native variant control preserves ${known ? "known selection" : "unknown selection without a first-option fallback"}`, async () => {
+    const source = fixture();
+    if (!known) for (const variant of firstProduct(source).variants) delete variant.available;
+    const output = await renderTheme(
+      theme("{% render 'product-variant-picker', product: product %}", {
+        "snippets/product-variant-picker.liquid": variantPicker,
+      }),
+      `/products/${firstProduct(source).handle}`,
+      { snapshot: source, backupPreview: {} },
+    );
+    for (const variant of firstProduct(source).variants)
+      assert.ok(output.html.includes(variant.id));
+    assert.equal(
+      output.html.match(/<option\b/g)?.length,
+      firstProduct(source).variants.length + (known ? 0 : 1),
+    );
+    if (known) assert.doesNotMatch(output.html, /data-sop-backup-unselected|<select[^>]*disabled/);
+    else {
+      assert.match(output.html, /<select[^>]*disabled/);
+      assert.match(
+        output.html,
+        /<option value="" selected disabled hidden aria-hidden="true" data-sop-backup-unselected><\/option>/,
+      );
+    }
+  });
+}
+
+test("unrendered variant-control proof cannot change an unrelated select", async () => {
+  const source = fixture();
+  for (const variant of firstProduct(source).variants) delete variant.available;
+  const output = await renderTheme(
+    theme("{% render 'product-variant-picker', product: product %}", {
+      "snippets/product-variant-picker.liquid": `{% if false %}${variantPicker}{% endif %}<select name="id"><option value="topic">Saved topic</option></select>`,
+    }),
+    `/products/${firstProduct(source).handle}`,
+    { snapshot: source, backupPreview: {} },
+  );
+  assert.equal(
+    output.html,
+    '<select name="id"><option value="topic">Saved topic</option></select>',
+  );
+});
+
+test("captured price snippets retain their body without transporting internal proof markers", async () => {
+  const source = fixture();
+  const output = await renderTheme(
+    theme(
+      "{% capture body %}{% render 'price', product: product %}{% endcapture %}<pre>{{ body | escape }}</pre>",
+    ),
+    `/products/${firstProduct(source).handle}`,
+    { snapshot: source, backupPreview: {} },
+  );
+  assert.match(output.html, /699\.95/);
+  assert.doesNotMatch(output.html, /:price:start|:price:end|&lt;!--/);
+});
+
+test("static price and variant control policy leaves generic rendering unchanged", async () => {
+  const source = fixture();
+  for (const variant of firstProduct(source).variants) delete variant.available;
+  const output = await renderTheme(
+    theme(
+      `<div class="no-js-hidden">{% render 'price', product: product %}</div>{% render 'product-variant-picker', product: product %}`,
+      {
+        "snippets/product-variant-picker.liquid": variantPicker,
+      },
+    ),
+    `/products/${firstProduct(source).handle}`,
+    { snapshot: source },
+  );
+  assert.match(output.html, /class="no-js-hidden"/);
+  assert.doesNotMatch(output.html, /data-sop-backup-unselected|<select[^>]*disabled/);
 });

@@ -578,9 +578,10 @@ export async function renderTheme(
     let parsed: Template[];
     let commonPrice = false;
     let emptyPrice = false;
+    const beforeMoney = backupGuard?.moneyOutputs(context) ?? 0;
     try {
+      backupGuard?.prepareVariantPicker(file, source(file));
       const policy = backupGuard?.priceSnippet(file, source(file), context);
-      if (policy && "html" in policy) return policy.html;
       commonPrice = !!policy && "commonPrice" in policy;
       emptyPrice = !!policy && "emptyPrice" in policy;
       assetBundles.use(file);
@@ -604,7 +605,9 @@ export async function renderTheme(
         if (context.breakCalled || context.continueCalled) break;
       }
       html = backupGuard?.priceRegions(file, html, context) ?? html;
+      html = backupGuard?.variantOptions(file, html, context) ?? html;
       if (emptyPrice) html = backupGuard?.emptyPrice(file, html) ?? html;
+      html = backupGuard?.markKnownPrice(file, html, context, beforeMoney) ?? html;
       return backupGuard?.cardPlaceholder(file, html, context) ?? html;
     } finally {
       if (commonPrice) context.pop();
@@ -1395,7 +1398,7 @@ export async function renderTheme(
     );
   return renderSchema.parse({
     schemaVersion: "1.0",
-    html: backupGuard?.stripUnitMarkers(html) ?? html,
+    html: backupGuard?.finishHtml(html) ?? html,
     tree,
     diagnostics,
     dataUsed: Object.fromEntries([...data].map(([id, paths]) => [id, [...paths].sort()])),

@@ -80,14 +80,23 @@ This policy reconstructs saved content and does not promise the historical publi
   `USD 699.95`-style output when an older snapshot lacks the format. Omit it or use `false` when
   failed new collection of that setting must leave the expression unknown, including downstream
   defaults or captures. The snapshot is unchanged.
-- A bounded, price-only snippet whose price output depends on an unknown selected variant can
-  be omitted while adjacent titles and media remain. An unused `use_variant` argument does not
-  hide a known product minimum. Output provenance includes local assignments and translation
-  parameters; unrelated shop, page or settings content remains in granular rendering. A complete variant set with identical prices and compare-at values
-  can use its common product price without selecting a variant. Unrecognized snippet content
-  retains granular value guards; literal media, unrelated text or unproven nested snippets
-  cannot qualify for whole-snippet omission. Proven unit-price regions are omitted when their
-  amount or measurement is unknown. The renderer does not rewrite arbitrary HTML numbers.
+- Unknown selected-price values are omitted through granular value guards. Ordinary assignments
+  and branches still execute, preserving known product minima, native wrappers, titles, media and
+  unrelated body content. An earlier selected-variant alias or an unused `use_variant` argument
+  does not erase a later known value. In a bounded price-only snippet, a complete variant set
+  with identical prices and compare-at values can use its common product price without selecting
+  a variant. A missing product in such a snippet uses decorative blank content and a static bar
+  while retaining the supported theme's native price line box. Unrecognized snippet content
+  retains granular rendering. Source-proven unit-price regions are omitted when their amount or
+  measurement is unknown. The renderer does not rewrite arbitrary HTML numbers.
+- An emitted known price in a proven price-only snippet can make its dedicated noninteractive
+  `no-js-hidden` wrapper visible. Other hidden content and theme JavaScript stay unchanged.
+  For a source-proven Dawn-style `product-variant-picker` select, unknown selection uses a blank,
+  disabled, non-product option; actual variant options remain saved content. Known selection
+  and unrelated controls are unchanged. No first variant is silently chosen by the browser.
+- An unknown selected variant keeps its identity and commercial values unknown. Its uncaptured
+  `featured_media` reference does not exclude independently saved product-gallery images.
+  Known selected-media references retain the theme's normal duplicate removal.
 - A collection's absent `products` is unknown membership; `products: []` is known empty.
   Unknown membership can retain the theme's empty-card layout. Known empty membership does not
   run a collection loop's sample-card `else` branch. Card counts are never invented by the renderer.
