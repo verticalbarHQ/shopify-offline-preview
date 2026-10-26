@@ -29,6 +29,9 @@ import { parseThemeJson, type ThemeFileSystem, themePath } from "../../theme/src
 import { appendAppEmbeds, appIdentity, appMarkup } from "./apps.js";
 import { ThemeAssetBundles } from "./asset-bundles.js";
 import { BackupPreviewGuard, type BackupPreviewOptions } from "./backup-preview.js";
+
+export type { BackupPreviewOptions, DawnBackupPreviewOptions } from "./backup-preview.js";
+
 import { registerBasicTags } from "./basic-tags.js";
 import { ColorScheme, ColorSchemeGroup, colorPalette, colorSetting } from "./color-settings.js";
 import { registerContentFor } from "./content-for.js";
@@ -272,7 +275,10 @@ export async function renderTheme(
   // Liquid's renderer visits nested tags and snippets too. Scope snapshot-property
   // diagnostics to each actual template invocation, without changing other diagnostics.
   const backupGuard = options.backupPreview
-    ? new BackupPreviewGuard((message) => diagnostic("missing-resource", message))
+    ? new BackupPreviewGuard(
+        (message) => diagnostic("missing-resource", message),
+        options.backupPreview,
+      )
     : undefined;
   const scopedTemplates = new WeakSet<Template>();
   const renderTemplates = engine.renderer.renderTemplates;
@@ -566,7 +572,7 @@ export async function renderTheme(
     context: Context,
     bindings?: Record<string, unknown>,
   ): Promise<string> {
-    const restore = backupGuard?.enterSnippet(file, context, bindings);
+    const restore = backupGuard?.dawn?.enterSnippet(file, context, bindings);
     try {
       return await renderBoundFile(file, context);
     } finally {
@@ -578,10 +584,10 @@ export async function renderTheme(
     let parsed: Template[];
     let commonPrice = false;
     let emptyPrice = false;
-    const beforeMoney = backupGuard?.moneyOutputs(context) ?? 0;
+    const beforeMoney = backupGuard?.dawn?.moneyOutputs(context) ?? 0;
     try {
-      backupGuard?.prepareVariantPicker(file, source(file));
-      const policy = backupGuard?.priceSnippet(file, source(file), context);
+      backupGuard?.dawn?.prepareVariantPicker(file, source(file));
+      const policy = backupGuard?.dawn?.priceSnippet(file, source(file), context);
       commonPrice = !!policy && "commonPrice" in policy;
       emptyPrice = !!policy && "emptyPrice" in policy;
       assetBundles.use(file);
@@ -604,11 +610,11 @@ export async function renderTheme(
         }
         if (context.breakCalled || context.continueCalled) break;
       }
-      html = backupGuard?.priceRegions(file, html, context) ?? html;
-      html = backupGuard?.variantOptions(file, html, context) ?? html;
-      if (emptyPrice) html = backupGuard?.emptyPrice(file, html) ?? html;
-      html = backupGuard?.markKnownPrice(file, html, context, beforeMoney) ?? html;
-      return backupGuard?.cardPlaceholder(file, html, context) ?? html;
+      html = backupGuard?.dawn?.priceRegions(file, html, context) ?? html;
+      html = backupGuard?.dawn?.variantOptions(file, html, context) ?? html;
+      if (emptyPrice) html = backupGuard?.dawn?.emptyPrice(file, html) ?? html;
+      html = backupGuard?.dawn?.markKnownPrice(file, html, context, beforeMoney) ?? html;
+      return backupGuard?.dawn?.cardPlaceholder(file, html, context) ?? html;
     } finally {
       if (commonPrice) context.pop();
     }
@@ -1398,7 +1404,7 @@ export async function renderTheme(
     );
   return renderSchema.parse({
     schemaVersion: "1.0",
-    html: backupGuard?.finishHtml(html) ?? html,
+    html: backupGuard?.dawn?.finishHtml(html) ?? html,
     tree,
     diagnostics,
     dataUsed: Object.fromEntries([...data].map(([id, paths]) => [id, [...paths].sort()])),

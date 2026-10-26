@@ -98,7 +98,7 @@ class BoundTag extends Tag {
           const value = yield argument.value(context, false);
           const partial = capturedBackupOutput(value);
           if (partial !== undefined) {
-            this.backup?.recordOutput(context, partial);
+            this.backup?.dawn?.recordOutput(context, partial);
             emitter.write(partial);
             return;
           }
@@ -108,7 +108,7 @@ class BoundTag extends Tag {
           )
             return;
           const output = liquidOutputValue(value);
-          this.backup?.recordOutput(context, output);
+          this.backup?.dawn?.recordOutput(context, output);
           emitter.write(output);
           break;
         }
@@ -116,7 +116,7 @@ class BoundTag extends Tag {
       return;
     }
     const beforeCapture = original.name === "capture" ? this.backup?.captureReads() : undefined;
-    const endCapture = original.name === "capture" ? this.backup?.captureMoney() : undefined;
+    const endCapture = original.name === "capture" ? this.backup?.dawn?.captureMoney() : undefined;
     let result: unknown;
     try {
       result = yield this.#original.render(context, emitter);
@@ -160,14 +160,14 @@ class BoundOutput extends Output {
     const raw: unknown = yield this.value.value(context, false);
     const partial = capturedBackupOutput(raw);
     if (partial !== undefined) {
-      this.backup?.recordOutput(context, partial);
+      this.backup?.dawn?.recordOutput(context, partial);
       emitter.write(partial);
       return;
     }
     const value = yield toValue(raw);
     if (before !== undefined && this.backup?.reads(context) !== before) return;
     const output = liquidOutputValue(value);
-    this.backup?.recordOutput(context, output);
+    this.backup?.dawn?.recordOutput(context, output);
     emitter.write(output);
   }
 }

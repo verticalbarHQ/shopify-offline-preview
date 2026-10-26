@@ -65,12 +65,37 @@ while retaining the same `liquid-error` diagnostics and successful output from t
 The default `"inline"` behavior is unchanged. This option does not certify a useful preview:
 hosts must still distinguish an empty/error-only page from content they can display.
 
-## Saved backup content (1.0.5)
+## Saved backup content
 
-Hosts displaying captured content can opt into `renderTheme(theme, path, {
-  snapshot, liquidErrors: "omit", backupPreview: { standardMoneyFormat: true }
-})`. `backupPreview` is optional; ordinary theme development keeps its existing behavior.
-This policy reconstructs saved content and does not promise the historical public storefront.
+The common `backupPreview` policy preserves unknown facts without recognizing a particular theme
+or adding decoration. Dawn compatibility is a separate, explicit `dawn` option:
+
+```ts
+renderTheme(theme, path, {
+  snapshot,
+  liquidErrors: "omit",
+  backupPreview: {
+    standardMoneyFormat: true, // host permission for old captures without a saved format
+    dawn: {
+      hideSampleText: true,
+      imagePlaceholder: '<span class="my-empty-image" aria-hidden="true"></span>',
+      pricePlaceholder: '<span class="my-empty-price" aria-hidden="true"></span>',
+    },
+  },
+});
+```
+
+The embedding application owns these trusted HTML strings and their CSS. Both placeholders default
+to empty strings; `hideSampleText` defaults to false. This is application configuration, not an end-user
+settings UI. No default colors, dimensions, price bars or icon artwork are supplied by the library.
+The host still sanitizes the resulting document and restricts scripts and external resources.
+
+Migration from 1.0.5: `backupPreview: {}` now enables only generic unknown-value guards. Explicitly
+supply `dawn: { ... }` for the previous Dawn compatibility behavior, and provide your own placeholder
+markup and sample-text policy to retain your presentation. Ordinary rendering with no `backupPreview`
+is unchanged. No snapshot is modified and this policy does not promise a historical public storefront.
+
+Common value semantics:
 
 - Unknown product prices and availability remain unknown through Liquid defaults, assignments
   and conditions, including captures and iteration. A capture's direct output preserves its
@@ -80,12 +105,15 @@ This policy reconstructs saved content and does not promise the historical publi
   `USD 699.95`-style output when an older snapshot lacks the format. Omit it or use `false` when
   failed new collection of that setting must leave the expression unknown, including downstream
   defaults or captures. The snapshot is unchanged.
+
+Dawn adapter behavior (only with `backupPreview.dawn`):
+
 - Unknown selected-price values are omitted through granular value guards. Ordinary assignments
   and branches still execute, preserving known product minima, native wrappers, titles, media and
   unrelated body content. An earlier selected-variant alias or an unused `use_variant` argument
   does not erase a later known value. In a bounded price-only snippet, a complete variant set
   with identical prices and compare-at values can use its common product price without selecting
-  a variant. A missing product in such a snippet uses decorative blank content and a static bar
+  a variant. A missing product in such a snippet uses blank content and optional host decoration
   while retaining the supported theme's native price line box. Unrecognized snippet content
   retains granular rendering. Source-proven unit-price regions are omitted when their amount or
   measurement is unknown. The renderer does not rewrite arbitrary HTML numbers.
@@ -106,13 +134,11 @@ This policy reconstructs saved content and does not promise the historical publi
   produce an internal diagnostic and an unknown list, without running sample-empty branches.
   Known-empty semantics survive supported list transformations.
 
-Neutral decoration markers preserve a supported theme's card layout. The empty
-`span[data-sop-backup-image-placeholder]` is 24×24 CSS pixels inside a positioning wrapper;
-`[data-sop-backup-price-placeholder]` is a static decorative bar. Both are `aria-hidden` and
-contain no animation, loading text or product facts. The package includes no host icon artwork.
-A host can populate the image marker with its own trusted, licensed static glyph. Older
-`snippets/card-product.liquid` media boxes with one `card__inner` boundary are supported even
-without `placeholder_svg_tag`; unsupported boundaries produce an internal diagnostic.
+For empty supported Dawn price regions, the adapter retains the native line box and inserts the
+host's `pricePlaceholder`. Image placeholders replace recognized product placeholder calls or are
+inserted at a unique older `card__inner` boundary. The host owns the decoration's accessibility and
+appearance; prefer static, noninteractive, `aria-hidden` markup for decorative slots. Unsupported
+boundaries produce an internal diagnostic. The library includes no host artwork.
 
 This option does not sanitize HTML or sandbox theme scripts. Embedding hosts remain responsible
 for their sanitizer, iframe sandbox, CSP, captured-asset ownership and blocked external requests,

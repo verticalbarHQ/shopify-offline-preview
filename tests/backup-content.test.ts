@@ -6,6 +6,14 @@ import { type Snapshot, snapshotSchema } from "../packages/data/src/schema.js";
 import { renderTheme } from "../packages/render/src/index.js";
 import { MemoryThemeFileSystem } from "../packages/theme/src/index.js";
 
+const hostDawn = {
+  hideSampleText: true,
+  imagePlaceholder:
+    '<span aria-hidden="true" style="position:absolute;inset:0;display:grid;place-items:center;color:rgba(var(--color-foreground,0,0,0),.22);background:rgba(var(--color-foreground,0,0,0),.035)"><span data-sop-backup-image-placeholder aria-hidden="true" style="display:inline-block;width:24px;height:24px"></span></span>',
+  pricePlaceholder:
+    '<span data-sop-backup-price-placeholder aria-hidden="true" style="visibility:visible;position:absolute;inset-inline-start:0;top:4px;width:38%;height:12px;border-radius:3px;background:rgba(var(--color-foreground,0,0,0),.1)"></span>',
+};
+
 const price = `{% liquid
   if use_variant
     assign target = product.selected_or_first_available_variant
@@ -78,7 +86,7 @@ test("backup preview standard currency uses captured amount, without changing sn
     `/products/${firstProduct(source).handle}`,
     {
       snapshot: source,
-      backupPreview: { standardMoneyFormat: true },
+      backupPreview: { dawn: hostDawn, standardMoneyFormat: true },
     },
   );
   assert.match(output.html, /USD 699\.95/);
@@ -104,7 +112,7 @@ test("unknown selected price is omitted while product title and stored image rem
     `/products/${firstProduct(source).handle}`,
     {
       snapshot: source,
-      backupPreview: {},
+      backupPreview: { dawn: hostDawn },
     },
   );
   assert.match(output.html, /<h1>.+<\/h1><img src="saved.png">/);
@@ -119,7 +127,7 @@ test("known card minimum remains while unknown availability never becomes false 
     `/products/${firstProduct(source).handle}`,
     {
       snapshot: source,
-      backupPreview: {},
+      backupPreview: { dawn: hostDawn },
     },
   );
   assert.match(output.html, /\$699\.95/);
@@ -137,7 +145,7 @@ test("known unavailable variant still shows its saved zero price and sold-out st
     `/products/${firstProduct(source).handle}`,
     {
       snapshot: source,
-      backupPreview: {},
+      backupPreview: { dawn: hostDawn },
     },
   );
   assert.match(output.html, /\$0\.00/);
@@ -151,7 +159,10 @@ test("explicit missing collection member preserves its original slot without inv
   firstCollection(source).products = [first.handle, "missing", second.handle];
   firstCollection(source).missingProducts = ["missing"];
   const before = structuredClone(source);
-  const output = await renderTheme(theme(listing), "/", { snapshot: source, backupPreview: {} });
+  const output = await renderTheme(theme(listing), "/", {
+    snapshot: source,
+    backupPreview: { dawn: hostDawn },
+  });
   assert.match(
     output.html,
     /data-position="1"[\s\S]*data-position="2"[\s\S]*data-sop-backup-image-placeholder[\s\S]*data-position="3"/,
@@ -166,12 +177,18 @@ test("explicit missing collection member preserves its original slot without inv
 test("unknown whole membership uses theme's four empty slots but known empty suppresses sample branch", async () => {
   const source = fixture();
   delete firstCollection(source).products;
-  const unknown = await renderTheme(theme(listing), "/", { snapshot: source, backupPreview: {} });
+  const unknown = await renderTheme(theme(listing), "/", {
+    snapshot: source,
+    backupPreview: { dawn: hostDawn },
+  });
   assert.equal(unknown.html.match(/data-sop-backup-image-placeholder/g)?.length, 4);
   assert.equal(unknown.html.match(/data-sop-backup-price-placeholder/g)?.length, 4);
   assert.doesNotMatch(unknown.html, /Example product|19\.99|aria-busy|animation|<svg/);
   firstCollection(source).products = [];
-  const empty = await renderTheme(theme(listing), "/", { snapshot: source, backupPreview: {} });
+  const empty = await renderTheme(theme(listing), "/", {
+    snapshot: source,
+    backupPreview: { dawn: hostDawn },
+  });
   assert.match(empty.html, /Featured products/);
   assert.doesNotMatch(empty.html, /<li>|data-sop-backup/);
 });
@@ -193,7 +210,7 @@ test("equal captured variant prices can render without choosing an unknown varia
       "{% render 'price', product: product, use_variant: true %}<span>{{ product.selected_or_first_available_variant.title }}</span>",
     ),
     `/products/${firstProduct(source).handle}`,
-    { snapshot: source, backupPreview: {} },
+    { snapshot: source, backupPreview: { dawn: hostDawn } },
   );
   assert.match(output.html, /\$699\.95/);
   assert.doesNotMatch(output.html, /Sold out|Unavailable/);
@@ -219,7 +236,7 @@ test("selection observes the first unknown or available position, including all-
         "<h1>{{ product.title }}</h1>{% render 'price', product: product, use_variant: true %}",
       ),
       `/products/${firstProduct(source).handle}`,
-      { snapshot: source, backupPreview: {} },
+      { snapshot: source, backupPreview: { dawn: hostDawn } },
     );
     if (expected === null) assert.doesNotMatch(output.html, /\$[\d,]|Sold out|Unavailable|19\.99/);
     else assert.ok(output.html.includes(`$${expected}`), JSON.stringify(states));
@@ -236,11 +253,11 @@ test("failed format capture remains unknown while legacy standard formatting is 
   const [failed, legacy] = await Promise.all([
     renderTheme(theme(body), `/products/${firstProduct(source).handle}`, {
       snapshot: source,
-      backupPreview: { standardMoneyFormat: false },
+      backupPreview: { dawn: hostDawn, standardMoneyFormat: false },
     }),
     renderTheme(theme(body), `/products/${firstProduct(source).handle}`, {
       snapshot: source,
-      backupPreview: { standardMoneyFormat: true },
+      backupPreview: { dawn: hostDawn, standardMoneyFormat: true },
     }),
   ]);
   assert.doesNotMatch(failed.html, /699\.95|19\.99/);
@@ -258,7 +275,7 @@ test("missing range translation retains the supplied known amount, without an in
       "{% assign amount = product.price | money %}{{ 'products.product.price.from_price_html' | t: price: amount }}",
     ),
     `/products/${firstProduct(source).handle}`,
-    { snapshot: source, backupPreview: { standardMoneyFormat: true } },
+    { snapshot: source, backupPreview: { dawn: hostDawn, standardMoneyFormat: true } },
   );
   assert.match(output.html, /USD 699\.95/);
   assert.doesNotMatch(output.html, /From|translation missing/);
@@ -271,7 +288,10 @@ test("older captured card media box gets a neutral marker without changing its r
   const files = theme(listing, {
     "snippets/card-product.liquid": `<article class="card"><div class="card__inner ratio" style="--ratio-percent:125%"><span class="existing"></span></div><div class="card__content"><h3>{{ 'onboarding.product_title' | t }}</h3>{% render 'price' %}</div></article>`,
   });
-  const output = await renderTheme(files, "/", { snapshot: source, backupPreview: {} });
+  const output = await renderTheme(files, "/", {
+    snapshot: source,
+    backupPreview: { dawn: hostDawn },
+  });
   assert.equal(output.html.match(/data-sop-backup-image-placeholder/g)?.length, 4);
   assert.equal(output.html.match(/data-sop-backup-price-placeholder/g)?.length, 4);
   assert.equal(output.html.match(/--ratio-percent:125%/g)?.length, 4);
@@ -290,7 +310,7 @@ test("price-named snippet containing known product content preserves that conten
   });
   const output = await renderTheme(files, `/products/${firstProduct(source).handle}`, {
     snapshot: source,
-    backupPreview: {},
+    backupPreview: { dawn: hostDawn },
   });
   assert.match(output.html, /<h2>.+<\/h2>/);
   assert.match(output.html, /1999 edition/);
@@ -324,7 +344,7 @@ for (const [name, body] of [
       `/products/${firstProduct(source).handle}`,
       {
         snapshot: source,
-        backupPreview: { standardMoneyFormat: true },
+        backupPreview: { dawn: hostDawn, standardMoneyFormat: true },
       },
     );
     assert.equal(output.html, "BeforeAfter");
@@ -353,7 +373,7 @@ for (const filter of [
         `Before{% assign list = collections.featured.products | ${filter} %}{% for item in list %}[{{ forloop.index }}:{{ item.title | default: 'MISSING' }}]{% else %}FAKE PRODUCT{% endfor %}After`,
       ),
       "/",
-      { snapshot: source, backupPreview: {} },
+      { snapshot: source, backupPreview: { dawn: hostDawn } },
     );
     assert.equal(output.html, "BeforeAfter");
     assert.ok(
@@ -371,7 +391,7 @@ for (const filter of ["sort: 'title'", "reverse", "where: 'available', true", "c
         `Before{% assign list = collections.featured.products | ${filter} %}{% for item in list %}CARD{% else %}FAKE PRODUCT{% endfor %}After`,
       ),
       "/",
-      { snapshot: source, backupPreview: {} },
+      { snapshot: source, backupPreview: { dawn: hostDawn } },
     );
     assert.equal(output.html, "BeforeAfter");
   });
@@ -402,7 +422,7 @@ for (const [name, content, expected] of [
         "snippets/photo.liquid": '<img src="saved.png" alt="Saved product">',
       }),
       `/products/${firstProduct(source).handle}`,
-      { snapshot: source, backupPreview: {} },
+      { snapshot: source, backupPreview: { dawn: hostDawn } },
     );
     assert.equal(output.html, expected);
   });
@@ -416,7 +436,7 @@ test("common price omits only the proven unknown unit-price region", async () =>
       "snippets/price.liquid": `{% if use_variant %}{% assign target = product.selected_or_first_available_variant %}{% else %}{% assign target = product %}{% endif %}<div class="price">{{ target.price | money }}<small class="unit-price caption{% if product.selected_or_first_available_variant.unit_price_measurement == nil %} hidden{% endif %}">{{ product.selected_or_first_available_variant.unit_price | money }}/{{ product.selected_or_first_available_variant.unit_price_measurement.reference_unit }}</small></div>`,
     }),
     `/products/${firstProduct(source).handle}`,
-    { snapshot: source, backupPreview: {} },
+    { snapshot: source, backupPreview: { dawn: hostDawn } },
   );
   assert.match(output.html, /\$699\.95/);
   assert.doesNotMatch(output.html, /unit-price|<small/);
@@ -430,7 +450,7 @@ test("partial captures preserve known markup on direct output and echo, includin
       `{% capture body %}<img src="saved.png"><p>Archive 1999</p>{{ product.selected_or_first_available_variant.price | money }}{% endcapture %}{{ body }}{% assign alias = body %}{% echo alias %}{% if body == blank %}Sold out{% endif %}{{ body | default: 1999 | money }}`,
     ),
     `/products/${firstProduct(source).handle}`,
-    { snapshot: source, backupPreview: {} },
+    { snapshot: source, backupPreview: { dawn: hostDawn } },
   );
   assert.equal(
     output.html,
@@ -449,7 +469,7 @@ test("capture retains unknown provenance across a nested rendered snippet", asyn
       },
     ),
     `/products/${firstProduct(source).handle}`,
-    { snapshot: source, backupPreview: {} },
+    { snapshot: source, backupPreview: { dawn: hostDawn } },
   );
   assert.equal(output.html, "BeforeAfter");
 });
@@ -480,7 +500,7 @@ test("direct limited missing slots and known list transformations retain proven 
       `{% for item in collections.featured.products limit: 2 %}[{{ forloop.index }}:{{ item.title | default: 'MISSING' }}]{% endfor %}`,
     ),
     "/",
-    { snapshot: source, backupPreview: {} },
+    { snapshot: source, backupPreview: { dawn: hostDawn } },
   );
   assert.equal(output.html, "[1:Z][2:MISSING]");
   firstCollection(source).products = [first.handle, second.handle];
@@ -490,7 +510,7 @@ test("direct limited missing slots and known list transformations retain proven 
       `{% assign list = collections.featured.products | sort: 'title' %}{% for item in list %}{{ item.title }}{% endfor %}`,
     ),
     "/",
-    { snapshot: source, backupPreview: {} },
+    { snapshot: source, backupPreview: { dawn: hostDawn } },
   );
   assert.equal(sorted.html, "AZ");
 });
@@ -505,7 +525,7 @@ test("refused collection URL reorder does not run the sample-empty branch", asyn
         "Before{% for item in collection.products %}CARD{% else %}FAKE PRODUCT{% endfor %}After",
     }),
     "/collections/featured?sort_by=title-ascending",
-    { snapshot: source, backupPreview: {} },
+    { snapshot: source, backupPreview: { dawn: hostDawn } },
   );
   assert.equal(output.html, "BeforeAfter");
   assert.ok(output.diagnostics.some((item) => item.message.includes("missing members")));
@@ -530,7 +550,7 @@ test("known unit price and measurement remain visible in a proven price region",
       "snippets/price.liquid": priceSource,
     }),
     `/products/${firstProduct(source).handle}`,
-    { snapshot: source, backupPreview: {} },
+    { snapshot: source, backupPreview: { dawn: hostDawn } },
   );
   assert.match(output.html, /<small class="unit-price">\$1\.25\/kg<\/small>/);
   delete variant.unitPrice;
@@ -539,7 +559,7 @@ test("known unit price and measurement remain visible in a proven price region",
       "snippets/price.liquid": priceSource,
     }),
     `/products/${firstProduct(source).handle}`,
-    { snapshot: source, backupPreview: {} },
+    { snapshot: source, backupPreview: { dawn: hostDawn } },
   );
   assert.match(unknownAmount.html, /\$699\.95/);
   assert.doesNotMatch(unknownAmount.html, /unit-price|<small/);
@@ -557,7 +577,7 @@ test("nested section uncertainty does not erase a JSON template's known page con
       "sections/main-product.liquid": `<h1>{{ product.title }}</h1><img src="saved.png">{% render 'price', product: product, use_variant: true %}{% schema %}{"name":"Product","settings":[]}{% endschema %}`,
     }),
     `/products/${firstProduct(source).handle}`,
-    { snapshot: source, backupPreview: {} },
+    { snapshot: source, backupPreview: { dawn: hostDawn } },
   );
   assert.match(output.html, /<h1>.+<\/h1><img src="saved.png">/);
   assert.match(output.html, /\$699\.95/);
@@ -576,7 +596,7 @@ for (const expression of [
         "snippets/show.liquid": "{{ v | default: 1999 | money }}",
       }),
       `/products/${firstProduct(source).handle}`,
-      { snapshot: source, backupPreview: { standardMoneyFormat: true } },
+      { snapshot: source, backupPreview: { dawn: hostDawn, standardMoneyFormat: true } },
     );
     assert.equal(output.html, "BeforeAfter");
   });
@@ -593,7 +613,7 @@ test("render with preserves known partial capture markup but not semantic defaul
       },
     ),
     `/products/${firstProduct(source).handle}`,
-    { snapshot: source, backupPreview: {} },
+    { snapshot: source, backupPreview: { dawn: hostDawn } },
   );
   assert.equal(output.html, '<img src="saved.png"><p>Archive 1999</p>|');
 });
@@ -610,7 +630,7 @@ for (const expression of [
     const output = await renderTheme(
       theme(`Before${expression}After`),
       `/products/${firstProduct(source).handle}`,
-      { snapshot: source, backupPreview: { standardMoneyFormat: false } },
+      { snapshot: source, backupPreview: { dawn: hostDawn, standardMoneyFormat: false } },
     );
     assert.equal(output.html, "BeforeAfter");
   });
@@ -636,7 +656,7 @@ for (const [content, expected] of [
         ]),
       }),
       `/products/${firstProduct(source).handle}`,
-      { snapshot: source, backupPreview: {} },
+      { snapshot: source, backupPreview: { dawn: hostDawn } },
     );
     assert.equal(output.html, expected);
   });
@@ -654,7 +674,7 @@ test("mixed price snippet omits only its independently proven unknown unit regio
       "snippets/price.liquid": `<p>Archive 1999</p>${unit}{{ product.selected_or_first_available_variant.price | money }}`,
     }),
     `/products/${firstProduct(source).handle}`,
-    { snapshot: source, backupPreview: {} },
+    { snapshot: source, backupPreview: { dawn: hostDawn } },
   );
   assert.equal(output.html, "<p>Archive 1999</p>");
   const mixedUnit = await renderTheme(
@@ -662,7 +682,7 @@ test("mixed price snippet omits only its independently proven unknown unit regio
       "snippets/price.liquid": `${unit.replace('<small class="unit-price">', '<small class="unit-price"><span>{{ shop.name }}</span>')}{{ product.selected_or_first_available_variant.price | money }}`,
     }),
     `/products/${firstProduct(source).handle}`,
-    { snapshot: source, backupPreview: {} },
+    { snapshot: source, backupPreview: { dawn: hostDawn } },
   );
   assert.match(mixedUnit.html, /<span>Offline Example Shop<\/span>/);
 });
@@ -679,7 +699,7 @@ for (const field of ["price", "price_min"] as const) {
         "snippets/price.liquid": `{{ product.${field} | money }}`,
       }),
       `/products/${firstProduct(source).handle}`,
-      { snapshot: source, backupPreview: {} },
+      { snapshot: source, backupPreview: { dawn: hostDawn } },
     );
     assert.equal(output.html, "$20.00");
   });
@@ -696,7 +716,7 @@ test("known product minimum survives alongside an unknown selected compare-at ou
       "snippets/price.liquid": `<div class="price">{{ product.price_min | money }}{{ product.selected_or_first_available_variant.compare_at_price | money }}</div>`,
     }),
     `/products/${firstProduct(source).handle}`,
-    { snapshot: source, backupPreview: {} },
+    { snapshot: source, backupPreview: { dawn: hostDawn } },
   );
   assert.equal(output.html, '<div class="price">$20.00</div>');
 });
@@ -729,7 +749,7 @@ for (const [name, other] of [
         "snippets/other.liquid": '<small class="unit-price"><span>{{ shop.name }}</span></small>',
       }),
       `/products/${firstProduct(source).handle}`,
-      { snapshot: source, backupPreview: {} },
+      { snapshot: source, backupPreview: { dawn: hostDawn } },
     );
     assert.equal(
       output.html,
@@ -749,7 +769,7 @@ test("unit omission targets its rendered source node while preserving a same-cla
       "snippets/price.liquid": `<small class="unit-price">{{ product.selected_or_first_available_variant.unit_price | money }}/{{ product.selected_or_first_available_variant.unit_price_measurement.reference_unit }}</small><small class="unit-price"><span>{{ shop.name }}</span></small>{{ product.selected_or_first_available_variant.price | money }}`,
     }),
     `/products/${firstProduct(source).handle}`,
-    { snapshot: source, backupPreview: {} },
+    { snapshot: source, backupPreview: { dawn: hostDawn } },
   );
   assert.equal(output.html, '<small class="unit-price"><span>Offline Example Shop</span></small>');
 });
@@ -773,7 +793,7 @@ test("a later product binding change cannot erase an already rendered known unit
       "snippets/price.liquid": `<small class="unit-price">{{ product.selected_or_first_available_variant.unit_price | money }}/{{ product.selected_or_first_available_variant.unit_price_measurement.reference_unit }}</small>{% assign product = all_products['${second.handle}'] %}{{ product.selected_or_first_available_variant.price | money }}`,
     }),
     `/products/${first.handle}`,
-    { snapshot: source, backupPreview: {} },
+    { snapshot: source, backupPreview: { dawn: hostDawn } },
   );
   assert.match(output.html, /<small class="unit-price">\$1\.25\/kg<\/small>/);
   assert.doesNotMatch(output.html, /sop-backup-unit/);
@@ -793,7 +813,7 @@ test("unit transport does not alter source error attribution or leak into result
     renderTheme(files, `/products/${firstProduct(source).handle}`, {
       snapshot: source,
       liquidErrors: "omit",
-      backupPreview: {},
+      backupPreview: { dawn: hostDawn },
     }),
   ]);
   const errors = (output: typeof backup) =>
@@ -833,7 +853,7 @@ test("known unit markup and whitespace stay identical, including an escaped capt
       renderTheme(files, `/products/${firstProduct(source).handle}`, { snapshot: source }),
       renderTheme(files, `/products/${firstProduct(source).handle}`, {
         snapshot: source,
-        backupPreview: {},
+        backupPreview: { dawn: hostDawn },
       }),
     ]);
     assert.equal(backup.html, ordinary.html);
@@ -849,7 +869,7 @@ test("empty product price keeps the theme line box and wrappers with only decora
       "snippets/price.liquid": `<div class="price" style="font-size:var(--price-size)"><div class="price__container"><div class="price__regular"><span class="visually-hidden">{{ 'products.product.price.sold_out' | t }}</span><span class="price-item" tabindex="0" style="line-height:var(--price-line-height)">{{ product.price | default: 1999 | money }}</span></div></div></div>`,
     }),
     "/",
-    { snapshot: source, backupPreview: {} },
+    { snapshot: source, backupPreview: { dawn: hostDawn } },
   );
   assert.match(output.html, /class="price"/);
   assert.match(output.html, /class="price__container"/);
@@ -869,7 +889,7 @@ test("bare empty price output retains an inherited line box without an invented 
       "snippets/price.liquid": "{{ product.price | default: 1999 | money }}",
     }),
     "/",
-    { snapshot: source, backupPreview: {} },
+    { snapshot: source, backupPreview: { dawn: hostDawn } },
   );
   assert.match(output.html, /&nbsp;/);
   assert.match(output.html, /data-sop-backup-price-placeholder/);
@@ -902,7 +922,7 @@ for (const [name, missingBody, helper] of [
       );
       const output = await renderTheme(files, `/products/${first.handle}`, {
         snapshot: source,
-        backupPreview: {},
+        backupPreview: { dawn: hostDawn },
       });
       const emptyCards = [
         ...output.html.matchAll(/<article data-kind="missing">([\s\S]*?)<\/article>/g),
@@ -941,7 +961,7 @@ for (const kind of ["render", "include"] as const) {
         },
       ),
       `/products/${first.handle}`,
-      { snapshot: source, backupPreview: {} },
+      { snapshot: source, backupPreview: { dawn: hostDawn } },
     );
     assert.match(output.html, /\$39\.99/);
     assert.match(output.html, /<footer>\$699\.95<\/footer>/);
@@ -970,7 +990,7 @@ test("explicit nil inside a missing card stays empty instead of reviving sample 
       "snippets/empty-helper.liquid": "{% render 'price' %}",
     }),
     `/products/${firstProduct(source).handle}`,
-    { snapshot: source, backupPreview: {} },
+    { snapshot: source, backupPreview: { dawn: hostDawn } },
   );
   assert.match(output.html, /data-sop-backup-price-placeholder/);
   assert.doesNotMatch(output.html, /699\.95|1999|19\.99/);
@@ -987,7 +1007,7 @@ for (const kind of ["render", "include"] as const) {
         "snippets/card-product.liquid": `{% assign product = all_products['${second.handle}'] %}<span>{{ product.title }}</span><div>{{ product.price | money }}</div>{% render 'price', product: product %}`,
       }),
       `/products/${first.handle}`,
-      { snapshot: source, backupPreview: {} },
+      { snapshot: source, backupPreview: { dawn: hostDawn } },
     );
     assert.match(output.html, /<span>SOP Product 02<\/span><div>\$39\.99<\/div>/);
     assert.equal(output.html.match(/\$39\.99/g)?.length, 2);
@@ -1003,7 +1023,7 @@ for (const kind of ["render", "include"] as const) {
           "{% capture product %}<strong>Saved note</strong>{% endcapture %}{{ product }}",
       }),
       `/products/${firstProduct(source).handle}`,
-      { snapshot: source, backupPreview: {} },
+      { snapshot: source, backupPreview: { dawn: hostDawn } },
     );
     assert.equal(output.html, "<strong>Saved note</strong><footer>$699.95</footer>");
   });
@@ -1022,7 +1042,7 @@ for (const captured of [false, true]) {
           : `{% assign product = all_products['${second.handle}'] %}`,
       }),
       `/products/${firstProduct(source).handle}`,
-      { snapshot: source, backupPreview: {} },
+      { snapshot: source, backupPreview: { dawn: hostDawn } },
     );
     assert.equal(
       output.html,
@@ -1044,7 +1064,7 @@ test("missing include card restores the caller's prior local product binding", a
       },
     ),
     `/products/${firstProduct(source).handle}`,
-    { snapshot: source, backupPreview: {} },
+    { snapshot: source, backupPreview: { dawn: hostDawn } },
   );
   assert.match(output.html, /data-sop-backup-price-placeholder/);
   assert.equal(output.html.match(/\$39\.99/g)?.length, 1);
@@ -1104,7 +1124,7 @@ for (const [name, body, expected] of [
         "snippets/price.liquid": body,
       }),
       `/products/${firstProduct(source).handle}`,
-      { snapshot: source, backupPreview: {} },
+      { snapshot: source, backupPreview: { dawn: hostDawn } },
     );
     assert.equal(output.html, expected);
     assert.equal(output.diagnostics.filter((item) => item.code === "liquid-error").length, 0);
@@ -1127,7 +1147,7 @@ for (const selectedKnown of [false, true]) {
       const output = await renderTheme(
         theme(body, { "snippets/gallery.liquid": savedGallery }),
         `/products/${firstProduct(source).handle}`,
-        { snapshot: source, backupPreview: {} },
+        { snapshot: source, backupPreview: { dawn: hostDawn } },
       );
       assert.equal(output.html.match(/<img /g)?.length, 2);
       assert.equal(output.html.match(/pattern-01\.png/g)?.length, 1);
@@ -1151,7 +1171,7 @@ for (const body of [
     const output = await renderTheme(
       theme(body, { "snippets/identity.liquid": "{{ selected | default: 1999 | money }}" }),
       `/products/${firstProduct(source).handle}`,
-      { snapshot: source, backupPreview: {} },
+      { snapshot: source, backupPreview: { dawn: hostDawn } },
     );
     assert.equal(output.html, "");
   });
@@ -1165,7 +1185,7 @@ test("a commercial unknown is not reclassified as an absent selected-media refer
       "{% assign selected = product.selected_or_first_available_variant.price %}{% unless selected.featured_media.id %}invented{% endunless %}",
     ),
     `/products/${firstProduct(source).handle}`,
-    { snapshot: source, backupPreview: {} },
+    { snapshot: source, backupPreview: { dawn: hostDawn } },
   );
   assert.equal(output.html, "");
 });
@@ -1178,7 +1198,7 @@ test("selected-media reference handling does not admit a commercial property suf
       "{{ product.selected_or_first_available_variant.featured_media.price | default: 1999 | money }}{% assign selected = product.selected_or_first_available_variant %}{% capture amount %}{{ selected.featured_media.price }}{% endcapture %}{{ amount | default: 1999 | money }}",
     ),
     `/products/${firstProduct(source).handle}`,
-    { snapshot: source, backupPreview: {} },
+    { snapshot: source, backupPreview: { dawn: hostDawn } },
   );
   assert.equal(output.html, "");
 });
@@ -1190,7 +1210,7 @@ test("dynamic selected-media lookups restore commercial guards and match the bro
     "layout/theme.liquid": "{{ content_for_layout }}",
     "templates/product.liquid": `{% assign selector = 'selected_or_first_available_variant' %}{% assign reference = 'featured_media' %}{% for media in product.media %}{% unless media.id == product[selector][reference].id %}<img src="{{ media | image_url: width: 64 }}">{% endunless %}{% endfor %}{{ product[selector].price | default: 1999 | money }}{% if product[selector] == nil %}Sold out{% endif %}`,
   };
-  const options = { snapshot: source, backupPreview: {}, inspect: true };
+  const options = { snapshot: source, backupPreview: { dawn: hostDawn }, inspect: true };
   const path = `/products/${firstProduct(source).handle}`;
   const output = await renderTheme(new MemoryThemeFileSystem(files), path, options);
   assert.equal(output.html.match(/<img /g)?.length, 2);
@@ -1211,7 +1231,7 @@ test("known emitted price reveals only its dedicated no-JS wrapper", async () =>
       '<div class="no-js-hidden" id="known-price">{% render \'price\', product: product, use_variant: true %}</div><div class="no-js-hidden" id="other">Saved body</div>',
     ),
     `/products/${firstProduct(source).handle}`,
-    { snapshot: source, backupPreview: {} },
+    { snapshot: source, backupPreview: { dawn: hostDawn } },
   );
   assert.match(output.html, /class="" id="known-price"/);
   assert.match(output.html, /\$699\.95/);
@@ -1236,7 +1256,7 @@ test("computed or captured unused money does not reveal an unknown-price wrapper
         },
       ),
       `/products/${firstProduct(source).handle}`,
-      { snapshot: source, backupPreview: {} },
+      { snapshot: source, backupPreview: { dawn: hostDawn } },
     );
     assert.match(output.html, /class="no-js-hidden"/);
     assert.doesNotMatch(output.html, /\$20|\$30/);
@@ -1252,7 +1272,7 @@ test("price visibility proof does not reveal mixed or unexecuted content", async
   ]) {
     const output = await renderTheme(theme(body), `/products/${firstProduct(source).handle}`, {
       snapshot: source,
-      backupPreview: {},
+      backupPreview: { dawn: hostDawn },
     });
     assert.match(output.html, /class="no-js-hidden"/);
     assert.match(output.html, /Saved body/);
@@ -1269,7 +1289,7 @@ for (const known of [false, true]) {
         "snippets/product-variant-picker.liquid": variantPicker,
       }),
       `/products/${firstProduct(source).handle}`,
-      { snapshot: source, backupPreview: {} },
+      { snapshot: source, backupPreview: { dawn: hostDawn } },
     );
     for (const variant of firstProduct(source).variants)
       assert.ok(output.html.includes(variant.id));
@@ -1296,7 +1316,7 @@ test("unrendered variant-control proof cannot change an unrelated select", async
       "snippets/product-variant-picker.liquid": `{% if false %}${variantPicker}{% endif %}<select name="id"><option value="topic">Saved topic</option></select>`,
     }),
     `/products/${firstProduct(source).handle}`,
-    { snapshot: source, backupPreview: {} },
+    { snapshot: source, backupPreview: { dawn: hostDawn } },
   );
   assert.equal(
     output.html,
@@ -1311,7 +1331,7 @@ test("captured price snippets retain their body without transporting internal pr
       "{% capture body %}{% render 'price', product: product %}{% endcapture %}<pre>{{ body | escape }}</pre>",
     ),
     `/products/${firstProduct(source).handle}`,
-    { snapshot: source, backupPreview: {} },
+    { snapshot: source, backupPreview: { dawn: hostDawn } },
   );
   assert.match(output.html, /699\.95/);
   assert.doesNotMatch(output.html, /:price:start|:price:end|&lt;!--/);
@@ -1332,4 +1352,52 @@ test("static price and variant control policy leaves generic rendering unchanged
   );
   assert.match(output.html, /class="no-js-hidden"/);
   assert.doesNotMatch(output.html, /data-sop-backup-unselected|<select[^>]*disabled/);
+});
+
+test("generic backup guards preserve unknown facts without enabling Dawn presentation", async () => {
+  const source = fixture();
+  for (const variant of firstProduct(source).variants) delete variant.available;
+  const files = theme(
+    `<h1>{{ product.title }}</h1><i>{{ product.selected_or_first_available_variant.price | default: 1999 | money }}</i>{{ 'onboarding.product_title' | t }}<div class="no-js-hidden">{% render 'price', product: product %}</div>`,
+  );
+  const options = { snapshot: source, backupPreview: {} };
+  const output = await renderTheme(files, `/products/${firstProduct(source).handle}`, options);
+  assert.match(output.html, /<i><\/i>/);
+  assert.match(output.html, /Example product/);
+  assert.match(output.html, /class="no-js-hidden"/);
+  assert.doesNotMatch(output.html, /data-sop-backup|24px|width:38%/);
+  assert.ok(output.diagnostics.some((item) => item.code === "missing-resource"));
+  const browser: typeof import("../packages/check/src/browser.js") = await import(
+    new URL("../dist/browser.js", import.meta.url).href
+  );
+  assert.deepEqual(
+    await browser.renderTheme(files, `/products/${firstProduct(source).handle}`, options),
+    output,
+  );
+});
+
+test("hosts independently choose Dawn decoration and sample text policy", async () => {
+  const source = fixture();
+  const files = theme("{% render 'card-product' %}");
+  const dawn = {
+    imagePlaceholder: '<span data-host-image aria-hidden="true"></span>',
+    pricePlaceholder: '<span data-host-price aria-hidden="true"></span>',
+  };
+  const visible = await renderTheme(files, "/", { snapshot: source, backupPreview: { dawn } });
+  assert.equal(visible.html.match(/data-host-image/g)?.length, 1);
+  assert.equal(visible.html.match(/data-host-price/g)?.length, 1);
+  assert.match(visible.html, /Example product/);
+  assert.doesNotMatch(visible.html, /data-sop-backup|24px|width:38%/);
+  const hidden = await renderTheme(files, "/", {
+    snapshot: source,
+    backupPreview: { dawn: { ...dawn, hideSampleText: true } },
+  });
+  assert.doesNotMatch(hidden.html, /Example product/);
+  assert.match(hidden.html, /data-host-image/);
+  const undecorated = await renderTheme(files, "/", {
+    snapshot: source,
+    backupPreview: { dawn: {} },
+  });
+  assert.doesNotMatch(undecorated.html, /data-host-|data-sop-backup/);
+  assert.match(undecorated.html, /Example product/);
 });

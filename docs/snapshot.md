@@ -273,8 +273,8 @@ product content is absent. Each must occur in `products`, be absent from the pro
 occur only once in `missingProducts`. The Liquid list retains a nil slot at each missing position;
 it never creates a placeholder product record. Unknown or partial membership must not be sent as
 a complete empty list. Filtering or changing the sort of a list containing missing products is
-unavailable because that operation cannot establish the missing product's position. `backupPreview`
-rendering can decorate the theme's existing empty slots; see the README for that host policy.
+unavailable because that operation cannot establish the missing product's position. `backupPreview.dawn`
+can decorate the theme's existing empty slots using host-supplied markup; see the README for that policy.
 
 The other optional fields are `id`, `seo` and `sortOptions`. `sortOptions` holds the sort labels as
 `{value, name}`; without it, English labels are used. `collections.all` contains every product

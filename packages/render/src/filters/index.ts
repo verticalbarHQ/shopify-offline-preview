@@ -5,7 +5,6 @@ import type { Snapshot } from "../../../data/src/schema.js";
 import { themePath } from "../../../theme/src/index.js";
 import {
   type BackupPreviewOptions,
-  backupImagePlaceholder,
   unknownBackupFact,
   unknownBackupValue,
 } from "../backup-preview.js";
@@ -81,12 +80,12 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
     read: hooks.readData,
     diagnostic: hooks.diagnostic,
   });
-  if (hooks.backupPreview) {
+  if (hooks.backupPreview?.dawn) {
     const placeholder = engine.filters.placeholder_svg_tag;
     if (typeof placeholder !== "function") throw new Error("Placeholder filter unavailable");
     engine.registerFilter("placeholder_svg_tag", function (input: unknown, cssClass?: unknown) {
       if (/^product-(?:[1-6]|apparel-[1-4])$/.test(String(toValue(input))))
-        return backupImagePlaceholder;
+        return hooks.backupPreview?.dawn?.imagePlaceholder ?? "";
       return placeholder.call(this, input, cssClass);
     });
   }
@@ -177,12 +176,12 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
   const translate = translateFactory(hooks.files, hooks.snapshot.shop.locale, hooks.sectionLocales);
   engine.registerFilter("translate", function (value: unknown, ...args: unknown[]) {
     if (
-      hooks.backupPreview &&
+      hooks.backupPreview?.dawn?.hideSampleText &&
       /^(?:onboarding\.product_title|onboarding\.product_description)$/.test(String(value))
     )
       return "";
     const rangePrice =
-      hooks.backupPreview && value === "products.product.price.from_price_html"
+      hooks.backupPreview?.dawn && value === "products.product.price.from_price_html"
         ? namedArgs(args).price
         : undefined;
     if (rangePrice === "") return "";

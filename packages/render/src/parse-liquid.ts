@@ -35,7 +35,7 @@ function unitRegionTokens(
   file: string,
   backup: BackupPreviewGuard | undefined,
 ): TopLevelToken[] {
-  const region = backup?.unitRegion(file);
+  const region = backup?.dawn?.unitRegion(file);
   if (!region) return tokens;
   const boundaries = [
     { at: region.start, markup: region.open },
