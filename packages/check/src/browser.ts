@@ -7,7 +7,10 @@ export {
   snapshotSchema,
 } from "../../data/src/schema.js";
 export {
+  type BackupPreviewOptions,
+  type DawnBackupPreviewOptions,
   type RenderNode,
+  type RenderOptions,
   type RenderResult,
   renderSchema,
   renderTheme,

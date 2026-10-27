@@ -92,6 +92,8 @@ point.
 - Online Store 2.0 themes: JSON templates, section groups, classic section blocks, theme blocks
   (`blocks/`, `content_for 'blocks'`, static blocks via `content_for 'block'`, nested blocks), `@app`
   block placeholders, `{% stylesheet %}`, `{% javascript %}`, `{% style %}`, and `{% schema %}`.
+- Saved Liquid templates for the supported page types, including their captured layout and static
+  sections. This does not claim full vintage-theme compatibility.
 - The page set in §9.3: home, product, collection, page, search, cart (empty and with items), 404,
   blog, and article.
 - A Node CLI (`dev`, `render`, `check`, `schema`), a dev server with an inspector, a browser build of
@@ -107,8 +109,7 @@ point.
 - Checkout, customer accounts, the password page, and gift cards.
 - Running real third-party apps. Apps appear as placeholders.
 - Editing settings through a UI. Edits are made to files and reflected by hot reload.
-- Vintage (pre-2.0) themes: `.liquid` templates and `{% include %}`-era themes. `check` reports such a
-  theme as unsupported.
+- Full vintage (pre-2.0) theme compatibility beyond the supported Liquid/template features.
 - Hosting a real store (the direction liquid-storefront takes).
 - Fetching or importing data directly from a live store. Data collection and conversion from
   provider-specific exports are external to this library; it consumes local snapshots (§7.1).
@@ -194,6 +195,9 @@ Exit codes:
    - The layout (`theme.liquid`, or the template's `layout` override) wraps
      `content_for_layout`.
    - JSON templates render their `order`, skipping sections marked `disabled`.
+   - Liquid templates render saved Liquid/HTML before the layout and retain their assignments.
+     A quoted `{% layout 'name' %}` selects `layout/name.liquid`; `{% layout none %}` omits it.
+     Required template and layout files are never substituted with fabricated markup.
    - Section groups render where the layout calls `{% sections %}`.
    - Section wrapper markup matches Shopify's (`shopify-section`, `shopify-section-group-*`).
    - Setting and default resolution follows Shopify. Any discrepancy found by the oracle (§9) is a
@@ -202,8 +206,13 @@ Exit codes:
    page renders as Shopify would and a `missing-resource` diagnostic is recorded. Nothing is
    synthesized. An optional snapshot field that a theme reads but the snapshot omits is reported
    the same way, separately from features that have no implementation (`not-implemented`).
+   Product, page, blog and article `metafields` may be omitted in preview snapshots. An omitted
+   map stays unknown and is diagnosed when accessed; an explicit `{}` is a known empty map.
+   Complete snapshots used by store seeders still require these maps.
 4. **Errors.** Liquid errors render inline the way Shopify renders them (`Liquid error (<file> line
    <n>): …`) and rendering continues. Each one is also recorded as a diagnostic.
+   API hosts may set `liquidErrors: "omit"` to hide only error text while retaining diagnostics and
+   successful output. The host remains responsible for deciding whether useful content remains.
 5. **Determinism.**
    - `now` comes from `snapshot.meta.now`. The sample store fixes it, so benchmark renders repeat.
    - The timezone is `shop.timezone`.

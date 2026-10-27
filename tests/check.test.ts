@@ -135,12 +135,104 @@ test("layout overrides and alternate templates have separate page graphs", async
   assert.ok(!alternate.files.includes("sections/product.liquid"));
 });
 
-test("vintage core templates are unsupported; excluded account pages do not affect support", async () => {
+test("Liquid core templates are analysed; excluded account pages do not affect support", async () => {
   const files = theme();
   files["templates/customers/login.liquid"] = "{{ customer }}";
   assert.equal((await checkTheme(new MemoryThemeFileSystem(files))).supported, true);
   files["templates/product.liquid"] = "{{ product.title }}";
-  assert.equal((await checkTheme(new MemoryThemeFileSystem(files))).supported, false);
+  const mixed = await checkTheme(new MemoryThemeFileSystem(files));
+  assert.equal(mixed.supported, true);
+  assert.ok(mixed.pages.some((page) => page.template === "templates/product.liquid"));
+  const liquid = await checkTheme(
+    new MemoryThemeFileSystem({
+      "templates/page.liquid": "{% layout 'saved' %}{{ page.title }}{% render 'body' %}",
+      "layout/saved.liquid": "{{ content_for_layout }}",
+      "snippets/body.liquid": "{{ page.content }}",
+    }),
+  );
+  assert.equal(liquid.supported, true);
+  assert.deepEqual(liquid.pages[0]?.files, [
+    "layout/saved.liquid",
+    "snippets/body.liquid",
+    "templates/page.liquid",
+  ]);
+  assert.equal(liquid.summary.complete, true);
+  assert.deepEqual(liquid.diagnostics, []);
+  const bare = await checkTheme(
+    new MemoryThemeFileSystem({ "templates/index.liquid": "{% layout none %}Saved" }),
+  );
+  assert.deepEqual(bare.pages[0]?.files, ["templates/index.liquid"]);
+  assert.equal(bare.summary.complete, true);
+});
+
+test("conditional Liquid layouts keep every possible graph and never assert a selected branch", async () => {
+  const missing = await checkTheme(
+    new MemoryThemeFileSystem({
+      "templates/index.liquid":
+        "{% if true %}{% layout 'missing' %}{% else %}{% layout none %}{% endif %}Saved",
+      "layout/theme.liquid": "{{ content_for_layout }}",
+    }),
+  );
+  assert.equal(missing.summary.complete, false);
+  assert.ok(
+    missing.diagnostics.some(
+      (d) => d.code === "missing-file" && d.file === "layout/missing.liquid",
+    ),
+  );
+  assert.ok(missing.diagnostics.some((d) => d.code === "conditional-layout"));
+
+  const conditionalNone = await checkTheme(
+    new MemoryThemeFileSystem({
+      "templates/index.liquid": "{% if false %}{% layout none %}{% endif %}Saved",
+    }),
+  );
+  assert.equal(conditionalNone.summary.complete, false);
+  assert.ok(
+    conditionalNone.diagnostics.some(
+      (d) => d.code === "missing-file" && d.file === "layout/theme.liquid",
+    ),
+  );
+
+  for (const control of [
+    "{% if true %}{% layout 'a' %}{% else %}{% layout 'b' %}{% endif %}",
+    "{% unless false %}{% layout 'a' %}{% else %}{% layout 'b' %}{% endunless %}",
+    "{% case 'a' %}{% when 'a' %}{% layout 'a' %}{% else %}{% layout 'b' %}{% endcase %}",
+    "{% for i in (1..2) %}{% layout 'a' %}{% layout 'b' %}{% endfor %}",
+  ]) {
+    const possible = await checkTheme(
+      new MemoryThemeFileSystem({
+        "templates/index.liquid": `{% layout none %}${control}Saved`,
+        "layout/a.liquid": "{{ content_for_layout }}{% render 'a' %}",
+        "layout/b.liquid": "{{ content_for_layout }}{% render 'b' %}",
+        "snippets/a.liquid": "A",
+        "snippets/b.liquid": "B",
+      }),
+    );
+    assert.equal(possible.summary.complete, false, control);
+    assert.deepEqual(possible.pages[0]?.files, [
+      "layout/a.liquid",
+      "layout/b.liquid",
+      "snippets/a.liquid",
+      "snippets/b.liquid",
+      "templates/index.liquid",
+    ]);
+    assert.ok(possible.diagnostics.every((d) => d.code === "conditional-layout"));
+  }
+});
+
+test("conditional Liquid layout diagnostics and graphs match in Node and browser", async () => {
+  const files = {
+    "templates/index.liquid":
+      "{% if true %}{% layout 'missing' %}{% else %}{% layout none %}{% endif %}Saved",
+    "layout/theme.liquid": "{{ content_for_layout }}",
+  };
+  const browser: typeof import("../packages/check/src/browser.js") = await import(
+    new URL("../dist/browser.js", import.meta.url).href
+  );
+  assert.deepEqual(
+    await browser.checkTheme(new browser.MemoryThemeFileSystem(files)),
+    await checkTheme(new MemoryThemeFileSystem(files)),
+  );
 });
 
 test("dictionary indexing and union-valued arrays resolve object properties without prototype keys", async () => {

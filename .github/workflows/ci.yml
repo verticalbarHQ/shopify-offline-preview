@@ -17,6 +17,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm verify
+      - run: node tools/check-package.mjs
       - run: pnpm benchmarks:fetch
       - run: pnpm agent:contract-check
       - run: pnpm pages:artifact-check

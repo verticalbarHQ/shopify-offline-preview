@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { defaultFixture } from "../packages/data/src/fixture.js";
 import { validateSnapshotReferences } from "../packages/data/src/scenarios.js";
-import { parseSnapshot } from "../packages/data/src/schema.js";
+import { completeSnapshotSchema, parseSnapshot } from "../packages/data/src/schema.js";
 import { renderTheme } from "../packages/render/src/index.js";
 import { MemoryThemeFileSystem } from "../packages/theme/src/index.js";
 
@@ -80,6 +80,73 @@ test("partial snapshot preserves unknown fields and known nulls without inventin
   assert.equal(Object.hasOwn(snapshot.shop, "name"), false);
   assert.equal(Object.hasOwn(snapshot, "filters"), false);
   assert.equal(snapshot.products[0]?.variants[0]?.sku, null);
+});
+
+test("uncaptured resource metafields stay absent and diagnose only when read", async () => {
+  const source = defaultFixture();
+  for (const product of source.products) Reflect.deleteProperty(product, "metafields");
+  for (const page of source.pages) Reflect.deleteProperty(page, "metafields");
+  for (const blog of source.blogs) {
+    Reflect.deleteProperty(blog, "metafields");
+    for (const article of blog.articles) Reflect.deleteProperty(article, "metafields");
+  }
+  assert.equal(completeSnapshotSchema.safeParse(source).success, false);
+  const snapshot = parseSnapshot(JSON.stringify(source));
+  const product = snapshot.products[0],
+    page = snapshot.pages[0],
+    blog = snapshot.blogs[0];
+  assert.ok(product && page && blog);
+  assert.equal(Object.hasOwn(product, "metafields"), false);
+  assert.equal(Object.hasOwn(page, "metafields"), false);
+  const result = await render(
+    `{{ collections.all.products.first.metafields.custom.x }}
+{{ pages['${page.handle}'].metafields.custom.x }}
+{{ blogs['${blog.handle}'].metafields.custom.x }}
+{{ blogs['${blog.handle}'].articles.first.metafields.custom.x }}`,
+    snapshot,
+  );
+  const messages = result.diagnostics
+    .filter((d) => d.code === "missing-resource")
+    .map((d) => d.message);
+  for (const type of ["product", "page", "blog", "article"])
+    assert.ok(
+      messages.some((message) => message.includes(`${type}.metafields`)),
+      type,
+    );
+  assert.ok(
+    !result.diagnostics.some((d) => d.code === "liquid-error" || d.code === "not-implemented"),
+  );
+  const unread = await render("<h1>Captured title</h1>", snapshot);
+  assert.deepEqual(unread.diagnostics, []);
+  assert.deepEqual(snapshot, source);
+});
+
+test("known empty resource metafields remain known empty without missing-data diagnostics", async () => {
+  const snapshot = defaultFixture();
+  for (const product of snapshot.products) product.metafields = {};
+  const result = await render("{{ collections.all.products.first.metafields.custom.x }}", snapshot);
+  assert.deepEqual(result.diagnostics, []);
+});
+
+test("filtering on uncaptured metafields keeps membership and counts unknown", async () => {
+  const source = defaultFixture();
+  for (const product of source.products) Reflect.deleteProperty(product, "metafields");
+  source.filters = [
+    {
+      id: "filter.p.m.custom.flag",
+      label: "Flag",
+      type: "boolean",
+      values: [{ label: "Yes", value: "1" }],
+    },
+  ];
+  const result = await render(
+    "{{ collection.products.size }}|{{ collection.products_count }}",
+    parseSnapshot(JSON.stringify(source)),
+    "/collections/all?filter.p.m.custom.flag=1",
+  );
+  assert.ok(result.diagnostics.some((d) => d.code === "missing-resource"));
+  assert.ok(!result.diagnostics.some((d) => d.code === "liquid-error"));
+  assert.doesNotMatch(result.html, />0\|0</);
 });
 
 test("partial data renders and reports accessed missing fields with source context", async () => {

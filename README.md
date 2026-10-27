@@ -49,6 +49,101 @@ collection, a page, a blog with three articles, menus and a cart.
 The package also exports `@verticalbar/shopify-offline-preview/browser` for in-browser rendering.
 Always supply your snapshot when showing backed-up store data; omitting it selects the sample store.
 
+Saved JSON and Liquid templates are supported for the listed page types. A resource's assigned
+template or `?view=` can select either format; a missing alternate uses the captured assigned or
+default template. Liquid templates use `layout/theme.liquid` unless a quoted `layout` declaration
+selects another captured layout or `layout none` omits it. Missing template/layout files remain
+errors. Support for a Liquid template does not imply compatibility with every vintage-theme feature.
+The static checker follows literal layouts in conditional branches and reports incomplete analysis
+when selecting a layout needs runtime coverage.
+Liquid template execution has its own render-tree root using the existing `layout` kind and a
+`template:<name>` type. Its exact template file, nested nodes and inspected data reads remain
+separate from the selected outer layout.
+
+`renderTheme(theme, path, { snapshot, liquidErrors: "omit" })` omits inline Liquid error text
+while retaining the same `liquid-error` diagnostics and successful output from the same file.
+The default `"inline"` behavior is unchanged. This option does not certify a useful preview:
+hosts must still distinguish an empty/error-only page from content they can display.
+
+## Saved backup content
+
+The common `backupPreview` policy preserves unknown facts without recognizing a particular theme
+or adding decoration. Dawn compatibility is a separate, explicit `dawn` option:
+
+```ts
+renderTheme(theme, path, {
+  snapshot,
+  liquidErrors: "omit",
+  backupPreview: {
+    standardMoneyFormat: true, // host permission for old captures without a saved format
+    dawn: {
+      hideSampleText: true,
+      imagePlaceholder: '<span class="my-empty-image" aria-hidden="true"></span>',
+      pricePlaceholder: '<span class="my-empty-price" aria-hidden="true"></span>',
+    },
+  },
+});
+```
+
+The embedding application owns these trusted HTML strings and their CSS. Both placeholders default
+to empty strings; `hideSampleText` defaults to false. This is application configuration, not an end-user
+settings UI. No default colors, dimensions, price bars or icon artwork are supplied by the library.
+The host still sanitizes the resulting document and restricts scripts and external resources.
+
+Migration from 1.0.5: `backupPreview: {}` now enables only generic unknown-value guards. Explicitly
+supply `dawn: { ... }` for the previous Dawn compatibility behavior, and provide your own placeholder
+markup and sample-text policy to retain your presentation. Ordinary rendering with no `backupPreview`
+is unchanged. No snapshot is modified and this policy does not promise a historical public storefront.
+
+Common value semantics:
+
+- Unknown product prices and availability remain unknown through Liquid defaults, assignments
+  and conditions, including captures and iteration. A capture's direct output preserves its
+  known markup; using its uncertain value in a fallback or condition remains restricted.
+  A missing value must not become a theme's sample price or sold-out badge.
+- Captured money formats remain authoritative. `standardMoneyFormat: true` explicitly permits
+  `USD 699.95`-style output when an older snapshot lacks the format. Omit it or use `false` when
+  failed new collection of that setting must leave the expression unknown, including downstream
+  defaults or captures. The snapshot is unchanged.
+
+Dawn adapter behavior (only with `backupPreview.dawn`):
+
+- Unknown selected-price values are omitted through granular value guards. Ordinary assignments
+  and branches still execute, preserving known product minima, native wrappers, titles, media and
+  unrelated body content. An earlier selected-variant alias or an unused `use_variant` argument
+  does not erase a later known value. In a bounded price-only snippet, a complete variant set
+  with identical prices and compare-at values can use its common product price without selecting
+  a variant. A missing product in such a snippet uses blank content and optional host decoration
+  while retaining the supported theme's native price line box. Unrecognized snippet content
+  retains granular rendering. Source-proven unit-price regions are omitted when their amount or
+  measurement is unknown. The renderer does not rewrite arbitrary HTML numbers.
+- An emitted known price in a proven price-only snippet can make its dedicated noninteractive
+  `no-js-hidden` wrapper visible. Other hidden content and theme JavaScript stay unchanged.
+  For a source-proven Dawn-style `product-variant-picker` select, unknown selection uses a blank,
+  disabled, non-product option; actual variant options remain saved content. Known selection
+  and unrelated controls are unchanged. No first variant is silently chosen by the browser.
+- An unknown selected variant keeps its identity and commercial values unknown. Its uncaptured
+  `featured_media` reference does not exclude independently saved product-gallery images.
+  Known selected-media references retain the theme's normal duplicate removal.
+- A collection's absent `products` is unknown membership; `products: []` is known empty.
+  Unknown membership can retain the theme's empty-card layout. Known empty membership does not
+  run a collection loop's sample-card `else` branch. Card counts are never invented by the renderer.
+- An explicitly missing member uses its original position: provide its handle in both the
+  ordered `products` and `missingProducts` arrays, with no corresponding product record.
+  Undeclared broken references remain invalid. Filters that discard or reorder these slots
+  produce an internal diagnostic and an unknown list, without running sample-empty branches.
+  Known-empty semantics survive supported list transformations.
+
+For empty supported Dawn price regions, the adapter retains the native line box and inserts the
+host's `pricePlaceholder`. Image placeholders replace recognized product placeholder calls or are
+inserted at a unique older `card__inner` boundary. The host owns the decoration's accessibility and
+appearance; prefer static, noninteractive, `aria-hidden` markup for decorative slots. Unsupported
+boundaries produce an internal diagnostic. The library includes no host artwork.
+
+This option does not sanitize HTML or sandbox theme scripts. Embedding hosts remain responsible
+for their sanitizer, iframe sandbox, CSP, captured-asset ownership and blocked external requests,
+including HTML in captured money formats and their own placeholder artwork.
+
 ## Fonts in captured themes
 
 System font settings use Shopify's published family, fallback, weight and style metadata.

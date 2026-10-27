@@ -19,6 +19,11 @@ function productAvailability(
 }
 
 const objectKinds = new WeakMap<object, string>();
+const collectionProductLists = new WeakSet<unknown[]>();
+/** Distinguishes a captured empty collection from an unobserved list in backup preview. */
+export function isCollectionProductList(value: unknown): value is unknown[] {
+  return Array.isArray(value) && collectionProductLists.has(value);
+}
 const mediaTitles = new WeakMap<object, string>();
 /** The title of the product that owns video, external video or model media. */
 export function mediaProductTitle(media: object): string | undefined {
@@ -494,6 +499,7 @@ export function liquidObjects(
     );
   }
   function metafields(source: Snapshot["products"][number]["metafields"], path: string) {
+    if (source === undefined) return undefined;
     return Object.fromEntries(
       Object.entries(source).map(([namespace, fields]) => [
         namespace,
@@ -920,7 +926,7 @@ export function liquidObjects(
       featured_image: images[0] ?? null,
       media,
       featured_media: media[0] ?? null,
-      metafields: metafields(source.metafields, `${path}.metafields`),
+      ...availableFields({ metafields: metafields(source.metafields, `${path}.metafields`) }),
     };
     const product = tracked(dto, "product", path);
     products.set(source.handle, product);
@@ -970,6 +976,24 @@ export function liquidObjects(
       return product ? [product] : [];
     });
     const query = collectionQuery(source.handle, source.products ?? [], source.sortOrder);
+    const missing = source.missingProducts?.length ? new Set(source.missingProducts) : null;
+    const slots = missing ? source.products?.map((handle) => products.get(handle) ?? null) : null;
+    const orderedMembers = () => {
+      if (missing) {
+        const parameters = new URL(route.path, "https://offline.invalid").searchParams;
+        if (
+          viewed(source.handle) &&
+          ((route.sortBy !== null && route.sortBy !== source.sortOrder) ||
+            [...parameters.keys()].some((key) => key.startsWith("filter.")))
+        )
+          return unknown("products (missing members cannot be filtered or reordered)");
+        if (slots) collectionProductLists.add(slots);
+        return slots;
+      }
+      const values = query()?.products;
+      if (values) collectionProductLists.add(values);
+      return values;
+    };
     const collectionImage = source.image
       ? tracked(
           {
@@ -994,26 +1018,38 @@ export function liquidObjects(
           description: source.descriptionHtml,
           url: `/collections/${source.handle}`,
           get products() {
-            return members === undefined ? unknown("products") : query()?.products;
+            return members === undefined ? unknown("products") : orderedMembers();
           },
           get products_count() {
-            return members === undefined ? unknown("products_count") : query()?.productsCount;
+            return members === undefined
+              ? unknown("products_count")
+              : missing
+                ? orderedMembers()?.length
+                : query()?.productsCount;
           },
-          ...availableFields({ all_products_count: members?.length }),
+          ...availableFields({ all_products_count: source.products?.length }),
           get all_tags() {
-            return members === undefined ? unknown("all_tags") : memberValues(members, "tags");
+            return members === undefined || missing
+              ? unknown("all_tags")
+              : memberValues(members, "tags");
           },
           get all_types() {
-            return members === undefined ? unknown("all_types") : memberValues(members, "type");
+            return members === undefined || missing
+              ? unknown("all_types")
+              : memberValues(members, "type");
           },
           get all_vendors() {
-            return members === undefined ? unknown("all_vendors") : memberValues(members, "vendor");
+            return members === undefined || missing
+              ? unknown("all_vendors")
+              : memberValues(members, "vendor");
           },
           ...availableFields({ image: collectionImage }),
           // The collection image, else the first product's featured image.
           get featured_image() {
             if (collectionImage === undefined) return unknown("image");
             if (collectionImage) return collectionImage;
+            if (source.products?.[0] && missing?.has(source.products[0]))
+              return unknown("featured_image (missing first product)");
             return members === undefined
               ? unknown("products")
               : (members[0]?.featured_image ?? null);
@@ -1029,7 +1065,7 @@ export function liquidObjects(
           current_type: null,
           sort_by: route.sortBy,
           get filters() {
-            if (members === undefined) return unknown("products (filters)");
+            if (members === undefined || missing) return unknown("products (filters)");
             if (members.length === 0) return [];
             if (snapshot.filters === undefined) {
               absent("collection", "filters");
@@ -1201,7 +1237,9 @@ export function liquidObjects(
           content: source.bodyHtml,
           url: `/pages/${source.handle}`,
           template_suffix: source.templateSuffix,
-          metafields: metafields(source.metafields, `pages[${index}].metafields`),
+          ...availableFields({
+            metafields: metafields(source.metafields, `pages[${index}].metafields`),
+          }),
         },
         "page",
         `pages[${index}]`,
@@ -1267,10 +1305,12 @@ export function liquidObjects(
                 url: `/blogs/${source.handle}/${article.handle}`,
                 tags: article.tags,
                 template_suffix: article.templateSuffix,
-                metafields: metafields(
-                  article.metafields,
-                  `blogs[${blogIndex}].articles[${index}].metafields`,
-                ),
+                ...availableFields({
+                  metafields: metafields(
+                    article.metafields,
+                    `blogs[${blogIndex}].articles[${index}].metafields`,
+                  ),
+                }),
               },
               "article",
               `blogs[${blogIndex}].articles[${index}]`,
@@ -1284,7 +1324,9 @@ export function liquidObjects(
             return dto;
           }),
           articles_count: source.articles.length,
-          metafields: metafields(source.metafields, `blogs[${blogIndex}].metafields`),
+          ...availableFields({
+            metafields: metafields(source.metafields, `blogs[${blogIndex}].metafields`),
+          }),
           ...availableFields({
             "comments_enabled?": source.commentsEnabled,
             "moderated?": source.commentsModerated,

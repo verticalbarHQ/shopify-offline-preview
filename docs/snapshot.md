@@ -173,7 +173,7 @@ listed language that matches `shop.locale`.
 ## Products
 
 Required: `handle`, `title`, `descriptionHtml`, `vendor`, `productType`, `tags`, `templateSuffix`
-(or `null`), `options`, `variants` (at least one), `images` and `metafields`.
+(or `null`), `options`, `variants` (at least one) and `images`.
 
 The optional fields are these:
 
@@ -249,6 +249,10 @@ value can take two forms:
   works with `metafield_tag`.
 - **Plain**: any other JSON value. It is passed to Liquid as it is.
 
+The map is optional for preview snapshots. Omit it when capture is unknown or incomplete;
+the renderer preserves its absence and reports `missing-resource` when a theme reads it.
+Use `{}` only for a known empty map. Complete snapshots for store seeding require the map.
+
 Reference types such as `product_reference` and `list.collection_reference` are not resolved.
 Reading their `value` reports `not-implemented`.
 
@@ -260,23 +264,32 @@ Reading their `value` reports `not-implemented`.
 **Collections** require these fields:
 
 - `handle`, `title`, `descriptionHtml`, `image` (or `null`) and `templateSuffix`;
-- `products`: product handles, in the collection's order;
+- `products`: product handles, in the collection's order; absence means unknown membership,
+  while an empty array means a captured empty collection;
 - `sortOrder`: the default `sort_by`.
 
-The optional fields are `id`, `seo` and `sortOptions`. `sortOptions` holds the sort labels as
+`missingProducts` optionally names handles whose position is captured in `products` but whose
+product content is absent. Each must occur in `products`, be absent from the product catalog and
+occur only once in `missingProducts`. The Liquid list retains a nil slot at each missing position;
+it never creates a placeholder product record. Unknown or partial membership must not be sent as
+a complete empty list. Filtering or changing the sort of a list containing missing products is
+unavailable because that operation cannot establish the missing product's position. `backupPreview.dawn`
+can decorate the theme's existing empty slots using host-supplied markup; see the README for that policy.
+
+The other optional fields are `id`, `seo` and `sortOptions`. `sortOptions` holds the sort labels as
 `{value, name}`; without it, English labels are used. `collections.all` contains every product
 unless you supply a collection with the handle `all`. Looping over `collections` (as on
 `/collections`) follows the snapshot's order; Shopify lists collections by title, so keep them in
 title order to see the same list.
 
-**Pages** require `handle`, `title`, `bodyHtml`, `templateSuffix` and `metafields`. The optional
-fields are `id` and `seo`.
+**Pages** require `handle`, `title`, `bodyHtml` and `templateSuffix`. The optional
+fields are `id`, `seo` and `metafields`.
 
-**Blogs** require `handle`, `title`, `templateSuffix`, `metafields` and `articles`. The optional
-fields are `id`, `seo`, `commentsEnabled` and `commentsModerated` (whether comments wait for approval).
+**Blogs** require `handle`, `title`, `templateSuffix` and `articles`. The optional
+fields include `id`, `seo`, `metafields`, `commentsEnabled` and `commentsModerated` (whether comments wait for approval).
 
 **Articles** require these fields: `handle`, `title`, `bodyHtml`, `excerptHtml`, `author`,
-`publishedAt`, `image`, `tags`, `templateSuffix` and `metafields`. The optional fields are `id`,
+`publishedAt`, `image`, `tags` and `templateSuffix`. The optional fields include `metafields`, `id`,
 `createdAt`, `updatedAt`, `commentsCount` and `seo`. A blog lists its articles newest first by `publishedAt`, as
 Shopify does; articles published at the same moment list the higher `id` first.
 

@@ -1,6 +1,6 @@
 {
   "name": "@verticalbar/shopify-offline-preview",
-  "version": "1.0.3",
+  "version": "1.0.5",
   "description": "Unofficial offline preview for Shopify Online Store 2.0 themes: a dev server with an inspector, a CLI with JSON output and a browser playground.",
   "keywords": [
     "shopify",
@@ -84,10 +84,12 @@
     "oracle:supplemental-backup-audit": "tsx tools/oracle/check-supplemental-backup.ts",
     "oracle:seed-prepare": "tsx tools/oracle/prepare-seed.ts",
     "oracle:seed-requests-prepare": "tsx tools/oracle/prepare-seed-requests.ts",
-    "pages:artifact-check": "node tools/check-pages-artifact.mjs"
+    "pages:artifact-check": "node tools/check-pages-artifact.mjs",
+    "package:check": "pnpm build && node tools/check-package.mjs"
   },
   "dependencies": {
     "@shopify/liquid-html-parser": "2.10.2",
+    "@types/node": "22.20.5",
     "entities": "8.1.0",
     "jsonc-parser": "3.3.1",
     "liquidjs": "10.30.0",
@@ -95,7 +97,6 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",
-    "@types/node": "22.20.5",
     "ajv": "8.17.1",
     "es-module-lexer": "3.0.3",
     "esbuild": "0.28.2",

@@ -11,6 +11,9 @@ importers:
       '@shopify/liquid-html-parser':
         specifier: 2.10.2
         version: 2.10.2
+      '@types/node':
+        specifier: 22.20.5
+        version: 22.20.5
       entities:
         specifier: 8.1.0
         version: 8.1.0
@@ -27,9 +30,6 @@ importers:
       '@biomejs/biome':
         specifier: 2.5.15
         version: 2.5.15
-      '@types/node':
-        specifier: 22.20.5
-        version: 22.20.5
       ajv:
         specifier: 8.17.1
         version: 8.17.1

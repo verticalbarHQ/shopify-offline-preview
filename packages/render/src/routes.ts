@@ -110,13 +110,15 @@ export function resolveRoute(
   for (const candidate of suffixes)
     if (candidate !== null && !/^[a-zA-Z0-9_-]+$/.test(candidate))
       throw new Error("Invalid alternate template suffix");
-  const templates = suffixes.map((candidate) =>
-    themePath(`templates/${pageType}${candidate ? `.${candidate}` : ""}.json`),
+  const templates = suffixes.flatMap((candidate) =>
+    ["json", "liquid"].map((extension) =>
+      themePath(`templates/${pageType}${candidate ? `.${candidate}` : ""}.${extension}`),
+    ),
   );
   const requested = templates[0] ?? themePath(`templates/${pageType}.json`);
   // An absent default template stays fatal when it is loaded.
-  const template = templates.find(hasTemplate) ?? templates.at(-1) ?? requested;
-  if (template !== requested)
+  const template = templates.find(hasTemplate) ?? themePath(`templates/${pageType}.json`);
+  if (template.replace(/\.(?:json|liquid)$/, "") !== requested.replace(/\.(?:json|liquid)$/, ""))
     diagnostics.push({
       code: "missing-resource",
       severity: "warning",

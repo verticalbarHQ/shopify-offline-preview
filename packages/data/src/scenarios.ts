@@ -134,9 +134,18 @@ export function validateSnapshotReferences(snapshot: Snapshot): void {
       }
     }
   }
-  for (const collection of snapshot.collections)
+  for (const collection of snapshot.collections) {
+    const missing = new Set(collection.missingProducts ?? []);
+    if (missing.size !== collection.missingProducts?.length && collection.missingProducts)
+      throw new Error("Duplicate missing collection member");
+    for (const handle of missing)
+      if (!collection.products?.includes(handle) || products.has(handle))
+        throw new Error(`Invalid missing collection member: ${handle}`);
+    unique(collection.products ?? [], `collection member in ${collection.handle}`);
     for (const handle of collection.products ?? [])
-      if (!products.has(handle)) throw new Error(`Missing collection member: ${handle}`);
+      if (!products.has(handle) && !missing.has(handle))
+        throw new Error(`Missing collection member: ${handle}`);
+  }
   for (const blog of snapshot.blogs)
     unique(
       blog.articles.map((a) => a.handle),

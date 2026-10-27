@@ -124,6 +124,32 @@ test("runtime errors render inline and preserve following outputs", async () => 
   assert.ok(result.diagnostics.some((d) => d.code === "liquid-error"));
 });
 
+test("hosts can omit inline Liquid errors while retaining diagnostics and successful content", async () => {
+  for (const text of ['{{ "%" | url_decode }}', 'Before{{ "%" | url_decode }}After']) {
+    const theme = new MemoryThemeFileSystem({
+      "templates/index.json": JSON.stringify({
+        layout: false,
+        sections: { a: { type: "error" } },
+        order: ["a"],
+      }),
+      "sections/error.liquid": text,
+    });
+    const inline = await renderTheme(theme, "/", { snapshot: fixture });
+    const explicitInline = await renderTheme(theme, "/", {
+      snapshot: fixture,
+      liquidErrors: "inline",
+    });
+    assert.deepEqual(inline, explicitInline);
+    const omitted = await renderTheme(theme, "/", { snapshot: fixture, liquidErrors: "omit" });
+    assert.deepEqual(omitted.diagnostics, inline.diagnostics);
+    assert.doesNotMatch(omitted.html, /Liquid error/);
+    assert.equal(
+      omitted.html.replace(/<[^>]+>/g, "").trim(),
+      text.startsWith("Before") ? "BeforeAfter" : "",
+    );
+  }
+});
+
 test("snapshot now and timezone determine date output without host clock dependence", async () => {
   const result = await renderTheme(
     new MemoryThemeFileSystem({

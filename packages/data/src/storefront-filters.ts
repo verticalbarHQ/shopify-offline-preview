@@ -63,6 +63,7 @@ function predicate(filter: Filter): ((product: Product, value: string) => Truth)
   if (metafield) {
     const [, namespace = "", key = ""] = metafield;
     return (product, value) => {
+      if (product.metafields === undefined) return undefined;
       const values = metafieldValues(product.metafields[namespace]?.[key]);
       return filter.type === "boolean"
         ? values.some((entry) => (entry === "true") === (value === "1" || value === "true"))

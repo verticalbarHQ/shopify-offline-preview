@@ -8,6 +8,7 @@ import {
   toValue,
   type ValueToken,
 } from "liquidjs";
+import { unknownBackupValue } from "./backup-preview.js";
 import { evalNumericValue } from "./numbers.js";
 import { LiquidRange } from "./range-values.js";
 
@@ -18,7 +19,7 @@ interface Binding {
 }
 export function registerRenderTag(
   engine: Liquid,
-  render: (name: string, context: Context) => Promise<string>,
+  render: (name: string, context: Context, bindings: Record<string, unknown>) => Promise<string>,
   unsupported: () => string,
   trace: (name: string, run: () => Promise<string>) => Promise<string>,
   resolveApp: (value: unknown) => Promise<string | null>,
@@ -88,10 +89,14 @@ export function registerRenderTag(
           let collection: unknown[] | undefined;
           let forAlias: string | undefined;
           for (const binding of this.bindings) {
-            const value: unknown = toValue(
-              await evalNumericValue(engine, binding.value.getText(), context),
+            const evaluated: unknown = await evalNumericValue(
+              engine,
+              binding.value.getText(),
+              context,
             );
+            const value: unknown = unknownBackupValue(evaluated) ? evaluated : toValue(evaluated);
             if (binding.kind === "for") {
+              if (unknownBackupValue(value)) return "";
               collection =
                 value instanceof LiquidRange
                   ? Array.from(value)
@@ -103,7 +108,7 @@ export function registerRenderTag(
               forAlias = binding.alias;
             } else args[binding.alias] = value;
           }
-          if (collection === undefined) return render(name, context.spawn(args));
+          if (collection === undefined) return render(name, context.spawn(args), args);
           let html = "";
           for (let i = 0; i < collection.length; i++) {
             const scope = {
@@ -119,7 +124,7 @@ export function registerRenderTag(
                 last: i === collection.length - 1,
               },
             };
-            html += await render(name, context.spawn(scope));
+            html += await render(name, context.spawn(scope), scope);
           }
           return html;
         });

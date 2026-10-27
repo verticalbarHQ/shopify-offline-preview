@@ -40,21 +40,25 @@ assert.deepEqual(
   "Sample theme manifest does not match its files",
 );
 
-for (const file of files) {
-  const text = await readFile(join(root, file), "latin1");
-  assert.ok(!/dawn|horizon/i.test(text), `Benchmark theme name found in ${file}`);
-}
-
 // When benchmarks are fetched (CI does), compare every shipped file against their hashes.
+// First-party compatibility code may name Dawn/Horizon. Names are not licensed theme bytes.
 let compared = 0;
-if (existsSync(".local/benchmark-paths.json")) {
+const benchmarks = process.argv[3] ?? ".local/benchmark-paths.json";
+if (existsSync(benchmarks)) {
   const forbidden = new Map();
-  for (const theme of JSON.parse(await readFile(".local/benchmark-paths.json", "utf8")))
+  for (const theme of JSON.parse(await readFile(benchmarks, "utf8")))
     for (const file of await list(theme.path))
       forbidden.set(hash(await readFile(join(theme.path, file))), `${theme.name}/${file}`);
   for (const file of files) {
-    const match = forbidden.get(hash(await readFile(join(root, file))));
+    const bytes = await readFile(join(root, file));
+    const match = forbidden.get(hash(bytes));
     assert.ok(!match, `Benchmark file ${match} shipped as ${file}`);
+    if (file.endsWith(".map"))
+      for (const content of JSON.parse(bytes.toString("utf8")).sourcesContent ?? []) {
+        if (typeof content !== "string") continue;
+        const source = forbidden.get(hash(Buffer.from(content)));
+        assert.ok(!source, `Benchmark source ${source} embedded in ${file}`);
+      }
   }
   compared = forbidden.size;
 }
