@@ -134,6 +134,28 @@ test("known card minimum remains while unknown availability never becomes false 
   assert.doesNotMatch(output.html, /Sold out|Unavailable/);
 });
 
+// Horizon's quick add reads product.selected_variant.available on every card, and its product list captures the cards.
+// A page without a selected variant has a nil one: its availability is nil, as in Liquid, not unknown (staging 11-06,
+// rnd5015-hand-stg-a: an unknown here omitted the whole captured list, so the home page showed no product cards).
+test("a captured card list that reads a property of a nil owner keeps its cards; an owner the backup lacks stays unknown", async () => {
+  const source = fixture();
+  const list = (owner: string) =>
+    `{% capture cards %}{% for product in collections.featured.products %}<li>{{ product.title }}{% if ${owner}.available %} add{% endif %}</li>{% endfor %}{% endcapture %}<ul>{{ cards | strip }}</ul>`;
+  const nil = await renderTheme(theme(list("product.selected_variant")), "/", {
+    snapshot: source,
+    backupPreview: { dawn: hostDawn },
+  });
+  assert.equal(
+    nil.html.match(/<ul>(.*)<\/ul>/s)?.[1],
+    source.products.map((product) => `<li>${product.title}</li>`).join(""),
+  );
+  const lacking = await renderTheme(theme(list("product.not_in_the_backup")), "/", {
+    snapshot: source,
+    backupPreview: { dawn: hostDawn },
+  });
+  assert.match(lacking.html, /<ul><\/ul>/);
+});
+
 test("known unavailable variant still shows its saved zero price and sold-out state", async () => {
   const source = fixture();
   for (const variant of firstProduct(source).variants) {

@@ -184,10 +184,13 @@ export class BackupPreviewGuard {
         guard.unknownReads++;
         return unknown;
       }
+      // A null owner is a captured absence (no selected variant on a page without one, a cleared reference): its
+      // properties are nil, as in Liquid. Only an owner the backup does not hold, or a product or variant missing the
+      // property, is unknown. Treating null as unknown poisoned whole captured card lists (Horizon's quick-add reads
+      // product.selected_variant.available on every card; staging 11-06, rnd5015-hand-stg-a showed no product cards).
       if (
         guardedProperties.has(String(key)) &&
         (object === undefined ||
-          object === null ||
           (value === undefined && ["product", "variant"].includes(liquidObjectKind(object) ?? "")))
       ) {
         state.reads++;
