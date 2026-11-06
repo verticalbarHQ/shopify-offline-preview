@@ -1,5 +1,6 @@
 import { type Liquid, toValue } from "liquidjs";
 import { liquidObjectKind, readSnapshotProperty, ScalarDrop } from "../../../data/src/objects.js";
+import { tokenLine } from "../token-line.js";
 import { namedArgs } from "./images.js";
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -138,11 +139,11 @@ export function registerMediaFilters(
           input,
           sized.length ? sized : width === undefined ? [] : [["width", width]],
           this.token.file ?? null,
-          this.token.getPosition()[0] ?? null,
+          tokenLine(this.token) ?? null,
         ),
         Object.entries(extra),
         this.token.file ?? null,
-        this.token.getPosition()[0] ?? null,
+        tokenLine(this.token) ?? null,
       );
     }
     throw new Error("media_tag requires media");

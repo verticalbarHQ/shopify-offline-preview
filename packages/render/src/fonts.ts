@@ -1,5 +1,6 @@
 import { Drop, type Liquid } from "liquidjs";
 import { namedArgs } from "./filters/images.js";
+import { tokenLine } from "./token-line.js";
 
 interface Family {
   name: string;
@@ -219,7 +220,7 @@ export function registerFontFilters(
     engine.registerFilter(name, function (input: unknown, ...args: unknown[]) {
       if (!(input instanceof Font)) return "";
       const file = this.token.file ?? null,
-        line = this.token.getPosition()[0] ?? null;
+        line = tokenLine(this.token) ?? null;
       const options = namedArgs(args);
       if (input["system?"]) return "";
       if (!input.url()) {

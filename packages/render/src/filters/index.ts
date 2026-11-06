@@ -12,6 +12,7 @@ import { registerFontFilters } from "../fonts.js";
 import { registerNumericFilters } from "../numbers.js";
 import { registerRangeFilters } from "../range-values.js";
 import { formKind } from "../shopify-tags.js";
+import { tokenLine } from "../token-line.js";
 import { renderAnchor } from "./anchors.js";
 import { registerCollectionLinkFilters } from "./collection-links.js";
 import { registerColorFilters } from "./colors.js";
@@ -117,7 +118,7 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
           ? "Shopify accelerated checkout is omitted; it requires server-issued credentials and live checkout."
           : "Shop Pay installment terms are omitted; they require Shopify's live payment service.",
         this.token.file ?? null,
-        this.token.getPosition()[0] ?? null,
+        tokenLine(this.token) ?? null,
       );
       return "";
     });
@@ -129,7 +130,7 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
       "shopify-server-only",
       "The Shop login button is omitted; it requires Shopify's live account service.",
       this.token.file ?? null,
-      this.token.getPosition()[0] ?? null,
+      tokenLine(this.token) ?? null,
     );
     return "";
   });
@@ -192,7 +193,7 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
         "missing-resource",
         `Translation ${key} is missing.`,
         this.token.file ?? null,
-        this.token.getPosition()[0] ?? null,
+        tokenLine(this.token) ?? null,
       );
     });
     // Preserve a supplied known amount when the range label's locale is unavailable;
@@ -219,7 +220,7 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
           "missing-resource",
           `shop.${withCurrency ? "money_with_currency_format" : "money_format"} is absent from the snapshot.`,
           this.token.file ?? null,
-          this.token.getPosition()[0] ?? null,
+          tokenLine(this.token) ?? null,
         );
         return hooks.backupPreview?.standardMoneyFormat
           ? `${hooks.snapshot.shop.currency} ${formatMoney(value, "{{ amount }}")}`
@@ -236,7 +237,7 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
         "missing-resource",
         `Theme asset ${path} is missing.`,
         this.token.file ?? null,
-        this.token.getPosition()[0] ?? null,
+        tokenLine(this.token) ?? null,
       );
     return `/sop/assets/${path.slice(7).split("/").map(encodeURIComponent).join("/")}`;
   });
@@ -249,7 +250,7 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
         "missing-resource",
         `Theme asset ${path} is missing.`,
         this.token.file ?? null,
-        this.token.getPosition()[0] ?? null,
+        tokenLine(this.token) ?? null,
       );
       return "<!-- inline_asset_content: Asset not found. -->";
     }
@@ -282,7 +283,7 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
       "shopify-server-only",
       "Shopify's HTTP Link preload header is omitted from the HTML render result.",
       this.token.file ?? null,
-      this.token.getPosition()[0] ?? null,
+      tokenLine(this.token) ?? null,
     );
     return `<link ${output.join(" ")} rel="preload">`;
   });
@@ -290,7 +291,7 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
   const images = imageFilters(hooks.snapshot, hooks.readData);
   engine.registerFilter("image_url", function (value: unknown, ...args: unknown[]) {
     const report = (code: string) => (message: string) =>
-      hooks.diagnostic(code, message, this.token.file ?? null, this.token.getPosition()[0] ?? null);
+      hooks.diagnostic(code, message, this.token.file ?? null, tokenLine(this.token) ?? null);
     return images.imageUrl(value, args, report("not-implemented"), report("missing-resource"));
   });
   registerMediaFilters(
@@ -313,7 +314,7 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
   );
   engine.registerFilter("image_tag", function (value: unknown, ...args: unknown[]) {
     const report = (code: string) => (message: string) =>
-      hooks.diagnostic(code, message, this.token.file ?? null, this.token.getPosition()[0] ?? null);
+      hooks.diagnostic(code, message, this.token.file ?? null, tokenLine(this.token) ?? null);
     return images.imageTag(value, args, report("not-implemented"), report("missing-resource"));
   });
   // Extra named arguments become attributes in the order given. A boolean HTML attribute is
@@ -370,7 +371,7 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
         "shopify-server-only",
         "Shopify's HTTP Link preload header is omitted from the HTML render result.",
         this.token.file ?? null,
-        this.token.getPosition()[0] ?? null,
+        tokenLine(this.token) ?? null,
       );
     const attributes = tagAttributes(
       [

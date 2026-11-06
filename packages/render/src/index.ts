@@ -63,6 +63,7 @@ import {
   templateConfig,
   themeBlockSchema,
 } from "./theme-config.js";
+import { tokenLine } from "./token-line.js";
 
 export { type RenderNode, type RenderResult, renderSchema } from "./contracts.js";
 export interface RenderOptions {
@@ -292,7 +293,7 @@ export async function renderTheme(
         const previous = readLocation;
         readLocation = {
           file: this.token.file ?? previous?.file ?? location.file,
-          line: this.token.getPosition()[0] ?? previous?.line ?? location.line,
+          line: tokenLine(this.token) ?? previous?.line ?? location.line,
         };
         try {
           return yield render.call(this, context, emitter);
@@ -346,7 +347,7 @@ export async function renderTheme(
       });
     },
     (error, token) =>
-      liquidError(error, token.file ?? "layout/theme.liquid", token.getPosition()[0] ?? 1),
+      liquidError(error, token.file ?? "layout/theme.liquid", tokenLine(token) ?? 1),
     backupGuard ? (value) => backupGuard.skipLoop(value) : undefined,
   );
   const assetBundles = new ThemeAssetBundles(files, snapshot);
@@ -444,7 +445,7 @@ export async function renderTheme(
       const previous = location;
       location = {
         file: this.token.file ?? previous.file,
-        line: this.token.getPosition()[0] ?? previous.line,
+        line: tokenLine(this.token) ?? previous.line,
       };
       const previousRead = readLocation;
       readLocation = location;
@@ -473,7 +474,7 @@ export async function renderTheme(
       const previous = location;
       location = {
         file: this.token.file ?? previous.file,
-        line: this.token.getPosition()[0] ?? previous.line,
+        line: tokenLine(this.token) ?? previous.line,
       };
       diagnostic("not-implemented", `Filter ${name} is not implemented.`);
       location = previous;
@@ -527,7 +528,7 @@ export async function renderTheme(
   function liquidError(error: unknown, file: string, line: number): string {
     if (LiquidError.is(error)) {
       file = sourceFile(error.token.file ?? file) ?? file;
-      line = error.token.getPosition()[0] ?? line;
+      line = tokenLine(error.token) ?? line;
     }
     const detail = LiquidError.is(error) ? (error.originalError ?? error) : error;
     const message =
@@ -555,7 +556,7 @@ export async function renderTheme(
         source(file),
         file,
         (error, token) => {
-          liquidError(error, token.file ?? file, token.getPosition()[0] ?? 1);
+          liquidError(error, token.file ?? file, tokenLine(token) ?? 1);
         },
         backupGuard,
       );
@@ -596,7 +597,7 @@ export async function renderTheme(
       let html = "";
       for (const template of parsed) {
         const previous = location;
-        location = { file, line: template.token.getPosition()[0] ?? 1 };
+        location = { file, line: tokenLine(template.token) ?? 1 };
         try {
           html += await engine.render([template], context);
         } catch (error) {
@@ -769,7 +770,7 @@ export async function renderTheme(
             depth++;
             try {
               const templates = parseLiquid(engine, raw, `settings.${key}`, (error, token) => {
-                liquidError(error, token.file ?? `settings.${key}`, token.getPosition()[0] ?? 1);
+                liquidError(error, token.file ?? `settings.${key}`, tokenLine(token) ?? 1);
               });
               return engine.render(templates, dynamicContext().spawn()).finally(() => {
                 depth--;
@@ -812,11 +813,7 @@ export async function renderTheme(
               ? evalNumericValue(engine, single[1] ?? "", context)
               : engine.render(
                   parseLiquid(engine, raw, `settings.${key}`, (error, token) => {
-                    liquidError(
-                      error,
-                      token.file ?? `settings.${key}`,
-                      token.getPosition()[0] ?? 1,
-                    );
+                    liquidError(error, token.file ?? `settings.${key}`, tokenLine(token) ?? 1);
                   }),
                   context,
                 );

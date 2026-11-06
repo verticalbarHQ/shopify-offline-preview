@@ -2,6 +2,7 @@ import { decodeHTML } from "entities";
 import type { Liquid } from "liquidjs";
 import { liquidObjectKind } from "../../../data/src/objects.js";
 import type { Snapshot } from "../../../data/src/schema.js";
+import { tokenLine } from "../token-line.js";
 import { jsonString } from "./json.js";
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -29,7 +30,7 @@ export function registerStructuredDataFilter(
           "missing-resource",
           `Structured data source metadata ${property} is absent from the snapshot.`,
           this.token.file ?? null,
-          this.token.getPosition()[0] ?? null,
+          tokenLine(this.token) ?? null,
         );
       return object[property];
     };
