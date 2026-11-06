@@ -1,6 +1,7 @@
 import { type Liquid, toValue } from "liquidjs";
 import type { Snapshot } from "../../../data/src/schema.js";
 import { parseThemeJson } from "../../../theme/src/index.js";
+import { tokenLine } from "../token-line.js";
 import { formatDate } from "./date-format.js";
 import { namedArgs } from "./images.js";
 
@@ -129,7 +130,7 @@ export function registerDateFilters(
           "not-implemented",
           message,
           this.token.file ?? null,
-          this.token.getPosition()[0] ?? null,
+          tokenLine(this.token) ?? null,
         );
       const positionalArgs = args.filter((arg) => !Array.isArray(arg));
       const positional = toValue(positionalArgs[0]);
@@ -163,7 +164,7 @@ export function registerDateFilters(
           "missing-resource",
           "shop.locale is absent; date formatting cannot be resolved.",
           this.token.file ?? null,
-          this.token.getPosition()[0] ?? null,
+          tokenLine(this.token) ?? null,
         );
         return "";
       }

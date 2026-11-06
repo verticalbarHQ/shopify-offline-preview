@@ -1,6 +1,7 @@
 import { type Liquid, toValue } from "liquidjs";
 import { liquidObjectKind, liquidPrice } from "../../../data/src/objects.js";
 import type { Snapshot } from "../../../data/src/schema.js";
+import { tokenLine } from "../token-line.js";
 import { namedArgs } from "./images.js";
 import { jsonString } from "./json.js";
 import { formatMoney } from "./money.js";
@@ -46,7 +47,7 @@ export function registerCommerceFilters(
           "missing-resource",
           "shop.money_format is absent from the snapshot.",
           this.token.file ?? null,
-          this.token.getPosition()[0] ?? null,
+          tokenLine(this.token) ?? null,
         );
         return "";
       }
@@ -89,7 +90,7 @@ export function registerCommerceFilters(
   });
   engine.registerFilter("metafield_tag", function (input: unknown, ...args: unknown[]) {
     const report = (code: string, message: string) =>
-      diagnostic(code, message, this.token.file ?? null, this.token.getPosition()[0] ?? null);
+      diagnostic(code, message, this.token.file ?? null, tokenLine(this.token) ?? null);
     if (liquidObjectKind(input) !== "metafield" || !record(input)) {
       report(
         "missing-resource",

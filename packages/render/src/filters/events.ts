@@ -1,5 +1,6 @@
 import type { Liquid } from "liquidjs";
 import { liquidObjectKind, readSnapshotProperty } from "../../../data/src/objects.js";
+import { tokenLine } from "../token-line.js";
 import { namedArgs } from "./images.js";
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -53,7 +54,7 @@ export function registerEventFilters(
           "shopify-server-only",
           "Shopify cart session identity is unavailable; the view payload omits the server cart while the page renders snapshot lines.",
           this.token.file ?? null,
-          this.token.getPosition()[0] ?? null,
+          tokenLine(this.token) ?? null,
         );
         return serialize({ context, cart: null });
       }

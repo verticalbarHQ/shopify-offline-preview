@@ -2,6 +2,7 @@ import { type Liquid, toValue } from "liquidjs";
 import { parseFragment } from "parse5";
 import { placeholderNames } from "../../../data/src/placeholders.js";
 import type { Snapshot } from "../../../data/src/schema.js";
+import { tokenLine } from "../token-line.js";
 import { liquidFilterText } from "./core-language.js";
 import { namedArgs } from "./images.js";
 
@@ -81,7 +82,7 @@ export function registerPlaceholderFilter(engine: Liquid, snapshot: Snapshot, ho
         "missing-resource",
         `Local SVG data for placeholder ${name} is missing.`,
         this.token.file ?? null,
-        this.token.getPosition()[0] ?? null,
+        tokenLine(this.token) ?? null,
       );
       return "";
     }
@@ -112,7 +113,7 @@ export function registerPaymentTypeFilter(engine: Liquid, snapshot: Snapshot, ho
         "missing-resource",
         `Local SVG data for payment type ${type} is missing.`,
         this.token.file ?? null,
-        this.token.getPosition()[0] ?? null,
+        tokenLine(this.token) ?? null,
       );
       return "";
     }
