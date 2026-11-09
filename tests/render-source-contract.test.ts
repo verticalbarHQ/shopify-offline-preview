@@ -36,6 +36,46 @@ function theme(body: string, type?: string, value?: unknown) {
 function diagnosticMessages(result: Awaited<ReturnType<typeof renderTheme>>) {
   return result.diagnostics.map(({ code, message }) => ({ code, message }));
 }
+
+test("global article lookup preserves composite handles and reads only the selected article", async () => {
+  const snapshot = defaultFixture(),
+    source = new WireSource(snapshot),
+    body =
+      "{{articles['news/story-2'].title}}|{{articles['news/absent'].title}}|{{articles[''].title}}";
+  const full = await renderTheme(theme(body), "/", { snapshot }),
+    lazy = await renderTheme(theme(body), "/", { source, staticPreview: true });
+  assert.equal(lazy.html, full.html);
+  assert.deepEqual(diagnosticMessages(lazy), diagnosticMessages(full));
+  assert.deepEqual(source.resolutions, [
+    ["article", JSON.stringify(["news", "story-2"])],
+    ["article", JSON.stringify(["news", "absent"])],
+  ]);
+  assert.deepEqual(
+    source.reads.flat().map(({ kind, key }) => [kind, key]),
+    [["article", JSON.stringify(["news", "story-2"])]],
+  );
+  assert.deepEqual(source.lists, []);
+});
+
+for (const [path, template] of [
+  ["/", "index"],
+  ["/blogs/news", "blog"],
+  ["/blogs/news/story-1", "article"],
+] as const)
+  test(`closest retains route blog and explicit nil resource members: ${path}`, async () => {
+    const snapshot = defaultFixture(),
+      source = new WireSource(snapshot),
+      make = () =>
+        new MemoryThemeFileSystem({
+          "layout/theme.liquid": "{{content_for_layout}}",
+          [`templates/${template}.liquid`]:
+            "{{closest.blog.title}}|{{closest.metaobject | json}}|{% for entry in closest %}{{entry.first}};{% endfor %}",
+        });
+    const full = await renderTheme(make(), path, { snapshot }),
+      lazy = await renderTheme(make(), path, { source, staticPreview: true });
+    assert.equal(lazy.html, full.html);
+    assert.deepEqual(diagnosticMessages(lazy), diagnosticMessages(full));
+  });
 for (const body of [
   "before{% render 'missing' %}after",
   "before{% include 'missing' %}after",

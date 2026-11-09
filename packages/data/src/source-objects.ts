@@ -139,6 +139,27 @@ export class SourceObjects {
         header.counts[relation],
       );
     }
+    this.globals.articles = new SourceDictionary(
+      async (key) => {
+        const parts = key.split("/");
+        return parts.length === 2 ? this.lookup("article", JSON.stringify(parts)) : null;
+      },
+      async () => {
+        const blogs = await this.list({ relation: "blogs" });
+        if (!blogs) return undefined;
+        const articles: unknown[] = [];
+        for (const blog of await materializeList(blogs)) {
+          if (!blog || typeof blog !== "object") continue;
+          const owner = this.descriptorByObject.get(blog);
+          if (!owner) continue;
+          const list = await this.list({ relation: "blog-articles", owner }, false);
+          if (!list) return undefined;
+          articles.push(...(await materializeList(list)));
+        }
+        return articles;
+      },
+      header.counts.articles,
+    );
     this.globals.images = new SourceImageDirectory(session, hooks);
     this.globals.metaobjects = new SourceDictionary(
       async (type) =>
@@ -211,9 +232,12 @@ export class SourceObjects {
       {
         product: this.globals.product ?? null,
         collection: this.globals.collection ?? null,
-        article: this.globals.article ?? null,
         page: this.globals.page ?? null,
+        blog: this.globals.blog ?? null,
+        article: this.globals.article ?? null,
+        metaobject: null,
       },
+      "closest",
       "closest",
     );
   }
