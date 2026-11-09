@@ -1,4 +1,5 @@
 import { type LiquidRecord, readSnapshotProperty } from "../../data/src/objects.js";
+import type { RenderCommon } from "../../data/src/render-source.js";
 import type { Snapshot } from "../../data/src/schema.js";
 import translations from "../../spec/src/generated/translations.json" with { type: "json" };
 import type { ResolvedRoute } from "./routes.js";
@@ -20,20 +21,21 @@ function escapeHtml(value: string): string {
 }
 export function registerPageMetadata(
   globals: LiquidRecord,
-  snapshot: Snapshot,
+  snapshot: Snapshot | RenderCommon,
   route: ResolvedRoute,
   hooks: Hooks,
+  selected?: { source: { title: string; seo?: Snapshot["shop"]["seo"] }; path: string },
 ): void {
-  let source: { title: string; seo?: Snapshot["shop"]["seo"] } | undefined;
-  let path = "";
+  let source = selected?.source;
+  let path = selected?.path ?? "";
   const handle = route.resource?.handle;
-  if (route.pageType === "article") {
+  if ("products" in snapshot && route.pageType === "article") {
     const blog = snapshot.blogs.findIndex((value) => value.handle === route.resource?.blogHandle);
     const article =
       snapshot.blogs[blog]?.articles.findIndex((value) => value.handle === handle) ?? -1;
     source = snapshot.blogs[blog]?.articles[article];
     path = `blogs[${blog}].articles[${article}]`;
-  } else if (route.resource && route.resource.kind !== "all-collection") {
+  } else if ("products" in snapshot && route.resource && route.resource.kind !== "all-collection") {
     const resources =
       route.pageType === "product"
         ? snapshot.products
@@ -96,6 +98,15 @@ export function registerPageMetadata(
           search && typeof search === "object" && "results_count" in search
             ? search.results_count
             : 0;
+        if (rawCount instanceof Promise)
+          return rawCount.then((count) =>
+            count === undefined
+              ? ""
+              : system(`search_results.${Number(count) === 1 ? "one" : "other"}`, {
+                  count: Number(count),
+                  terms: route.query.q,
+                }),
+          );
         if (rawCount === undefined) return "";
         const count = Number(rawCount);
         return system(`search_results.${count === 1 ? "one" : "other"}`, {

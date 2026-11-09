@@ -1,8 +1,15 @@
 import { findNodeAtLocation, parseTree } from "jsonc-parser";
 import { type Liquid, toValue } from "liquidjs";
 import { ImageDirectory, MissingImage } from "../../../data/src/images.js";
-import { liquidObjectKind, readSnapshotProperty, ScalarDrop } from "../../../data/src/objects.js";
+import { isLazyList, materializeList } from "../../../data/src/lazy-list.js";
+import {
+  liquidObjectKind,
+  preserveLiquidObjectKind,
+  readSnapshotProperty,
+  ScalarDrop,
+} from "../../../data/src/objects.js";
 import { ShopTime } from "../../../data/src/shop-time.js";
+import { SourceDictionary } from "../../../data/src/source-objects.js";
 import { LiquidFloat } from "../numbers.js";
 import { TableRowLoop } from "../tablerow-tag.js";
 
@@ -87,7 +94,87 @@ function project(value: Record<string, unknown>, fields: string[]) {
   );
 }
 export function registerJsonFilter(engine: Liquid) {
-  engine.registerFilter("json", (input: unknown) => {
+  engine.registerFilter("json", async (input: unknown) => {
+    const resolved = new WeakMap<object, unknown>();
+    async function resolve(value: unknown): Promise<unknown> {
+      value = await value;
+      if (value instanceof SourceDictionary) value = await value.enumerate();
+      if (isLazyList(value)) value = await materializeList(value);
+      if (
+        !value ||
+        typeof value !== "object" ||
+        value instanceof ScalarDrop ||
+        value instanceof ShopTime ||
+        value instanceof MissingImage ||
+        value instanceof ImageDirectory ||
+        value instanceof TableRowLoop
+      )
+        return value;
+      if (resolved.has(value)) return resolved.get(value);
+      if (Array.isArray(value)) {
+        const result: unknown[] = [];
+        resolved.set(value, result);
+        let changed = false;
+        for (const item of value) {
+          const next = await resolve(item);
+          result.push(next);
+          changed ||= next !== item;
+        }
+        const output = changed ? result : value;
+        resolved.set(value, output);
+        return output;
+      }
+      const kind = liquidObjectKind(value);
+      // Product and variant JSON deliberately exclude backlinks and derived relationships.
+      const fields =
+        kind === "product"
+          ? productFields
+          : kind === "variant"
+            ? variantFields
+            : Object.keys(value);
+      if (
+        !kind &&
+        Object.getPrototypeOf(value) !== Object.prototype &&
+        Object.getPrototypeOf(value) !== null
+      )
+        return value;
+      const result: Record<string, unknown> = {};
+      resolved.set(value, result);
+      preserveLiquidObjectKind(value, result);
+      let changed = false;
+      for (const key of fields) {
+        const original = readSnapshotProperty(value as Record<string, unknown>, key);
+        const item = await resolve(original);
+        changed ||= item !== original;
+        if (item !== undefined || Object.hasOwn(value, key)) result[key] = item;
+      }
+      if (!changed) {
+        resolved.set(value, value);
+        return value;
+      }
+      const original = value;
+      const proxy = new Proxy(result, {
+        get(target, key, receiver) {
+          return Reflect.has(target, key)
+            ? Reflect.get(target, key, receiver)
+            : Reflect.get(original, key);
+        },
+        getOwnPropertyDescriptor(target, key) {
+          return (
+            Reflect.getOwnPropertyDescriptor(target, key) ??
+            Reflect.getOwnPropertyDescriptor(original, key)
+          );
+        },
+      });
+      for (const key of Object.getOwnPropertySymbols(original)) {
+        const descriptor = Object.getOwnPropertyDescriptor(original, key);
+        if (descriptor) Object.defineProperty(result, key, descriptor);
+      }
+      preserveLiquidObjectKind(original, proxy);
+      resolved.set(value, proxy);
+      return proxy;
+    }
+    input = await resolve(input);
     if (
       input instanceof MissingImage ||
       input instanceof ImageDirectory ||

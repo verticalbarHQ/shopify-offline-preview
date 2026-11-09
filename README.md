@@ -47,7 +47,8 @@ Until you add your own data, pages render with a bundled sample store. It has 40
 collection, a page, a blog with three articles, menus and a cart.
 
 The package also exports `@verticalbar/shopify-offline-preview/browser` for in-browser rendering.
-Always supply your snapshot when showing backed-up store data; omitting it selects the sample store.
+Always supply either `snapshot` or `source` when showing backed-up store data; omitting both selects
+the sample store.
 
 Saved JSON and Liquid templates are supported for the listed page types. A resource's assigned
 template or `?view=` can select either format; a missing alternate uses the captured assigned or
@@ -64,6 +65,49 @@ separate from the selected outer layout.
 while retaining the same `liquid-error` diagnostics and successful output from the same file.
 The default `"inline"` behavior is unchanged. This option does not certify a useful preview:
 hosts must still distinguish an empty/error-only page from content they can display.
+
+## On-demand saved data
+
+A host that stores large backups can provide `RenderSource` instead of a materialized snapshot:
+
+```ts
+import { renderTheme, type RenderSource } from "@verticalbar/shopify-offline-preview/render";
+
+const source: RenderSource = savedSource; // host-owned adapter for one authorized, immutable backup
+const result = await renderTheme(theme, "/", {
+  source,
+  signal: controller.signal,
+  staticPreview: true,
+  liquidErrors: "omit",
+});
+```
+
+`source` and `snapshot` are mutually exclusive; source rendering does not accept a sample scenario.
+The same API is exported from `/browser`. Import `RenderSourceError` from the same entrypoint as
+`renderTheme` to preserve custom error codes; mixing entrypoints wraps them as
+`PREVIEW_SOURCE_READ_FAILED` and retains the original error as its cause. The host supplies five operations:
+
+- `header` supplies captured common values, coverage, exact counts and immutable source identity.
+- `resolve` looks up metadata for one resource key without reading its body.
+- `list` returns ordered relationship descriptors and exact totals; `limit: 0` reads counts only.
+- `read` loads a bounded batch of normalized records in descriptor order, including required children.
+- `asset` resolves captured image metadata without fetching binary bytes.
+
+Every operation receives an `AbortSignal`. Bind the adapter to one authenticated source, preserve
+missing and uncaptured states, and throw for transport or contract failures. These failures reject
+the render as `RenderSourceError`; they do not become inline Liquid errors or sample data. Resource
+positions preserve the saved data's provenance. Counts and bounded loops need no unrelated record
+bodies; full-domain operations such as sorting still read the complete domain they require.
+
+With `staticPreview: true`, the renderer reads the selected route's theme dependencies and used CSS
+without generating a theme JavaScript bundle. `ThemeFileSystem.readTexts(paths, signal)` is an optional
+batch transport for those dependency groups. Dynamic references are resolved as the template executes.
+The host remains responsible for sanitization, sandboxing, captured asset ownership and external-request
+blocking. This option is not a security boundary by itself.
+
+Each source render limits active execution to 10 seconds and overall elapsed time to 120 seconds. Waiting for
+source or theme I/O does not consume the active-execution limit. The existing materialized `snapshot`
+API remains available.
 
 ## Saved backup content
 

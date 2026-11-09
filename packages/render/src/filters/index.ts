@@ -1,7 +1,7 @@
 import { Drop, type Liquid, toValue } from "liquidjs";
 import { ImageDirectory, MissingImage, NamedImageDrop } from "../../../data/src/images.js";
 import { liquidObjectKind, mediaProductTitle, ScalarDrop } from "../../../data/src/objects.js";
-import type { Snapshot } from "../../../data/src/schema.js";
+import type { RenderCommon } from "../../../data/src/render-source.js";
 import { themePath } from "../../../theme/src/index.js";
 import {
   type BackupPreviewOptions,
@@ -34,7 +34,9 @@ import { translateFactory } from "./translations.js";
 
 interface FilterHooks {
   backupPreview?: BackupPreviewOptions | undefined;
-  snapshot: Snapshot;
+  snapshot: RenderCommon;
+  imageEntries: Parameters<typeof imageFilters>[0];
+  resolveImage?(key: string): Promise<import("../../../data/src/render-source.js").RenderAsset>;
   files: Map<string, string>;
   paths: ReadonlySet<string>;
   readAsset(path: string): Promise<Uint8Array>;
@@ -288,8 +290,27 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
     return `<link ${output.join(" ")} rel="preload">`;
   });
   engine.registerFilter("md5", (value: unknown) => md5(String(toValue(value) ?? "")));
-  const images = imageFilters(hooks.snapshot, hooks.readData);
-  engine.registerFilter("image_url", function (value: unknown, ...args: unknown[]) {
+  const images = imageFilters(hooks.imageEntries, hooks.readData);
+  async function prepareImage(input: unknown) {
+    if (!hooks.resolveImage) return;
+    let value = toValue(input);
+    if (value && typeof value === "object")
+      value =
+        Reflect.get(value, "src") ??
+        Reflect.get(value, "image") ??
+        Reflect.get(value, "featured_image") ??
+        Reflect.get(value, "preview_image");
+    value = await value;
+    if (value && typeof value === "object") value = Reflect.get(value, "src");
+    if (typeof value !== "string") return;
+    const key = value.startsWith("/sop/images/")
+      ? decodeURIComponent(new URL(value, "https://offline.invalid").pathname.slice(12))
+      : value;
+    const result = await hooks.resolveImage(key);
+    if (result.state === "present") images.add(`images[${JSON.stringify(key)}]`, result.image);
+  }
+  engine.registerFilter("image_url", async function (value: unknown, ...args: unknown[]) {
+    await prepareImage(value);
     const report = (code: string) => (message: string) =>
       hooks.diagnostic(code, message, this.token.file ?? null, tokenLine(this.token) ?? null);
     return images.imageUrl(value, args, report("not-implemented"), report("missing-resource"));
@@ -312,7 +333,8 @@ export function registerShopifyFilters(engine: Liquid, hooks: FilterHooks): void
       ),
     (media) => mediaProductTitle(media),
   );
-  engine.registerFilter("image_tag", function (value: unknown, ...args: unknown[]) {
+  engine.registerFilter("image_tag", async function (value: unknown, ...args: unknown[]) {
+    await prepareImage(value);
     const report = (code: string) => (message: string) =>
       hooks.diagnostic(code, message, this.token.file ?? null, tokenLine(this.token) ?? null);
     return images.imageTag(value, args, report("not-implemented"), report("missing-resource"));

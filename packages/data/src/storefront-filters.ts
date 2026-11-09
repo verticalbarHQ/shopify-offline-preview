@@ -78,11 +78,12 @@ function predicate(filter: Filter): ((product: Product, value: string) => Truth)
  * collection being viewed. Parameters the snapshot cannot decide are reported, never guessed.
  */
 export function storefrontQuery(
-  snapshot: Snapshot,
+  snapshot: Pick<Snapshot, "shop" | "filters">,
   path: string,
   members: QueryMember[],
   options: {
     apply: boolean;
+    lazyFacets?: boolean;
     sortBy: string | null;
     defaultSortBy: string;
     track: Track;
@@ -208,110 +209,118 @@ export function storefrontQuery(
 
   // Shopify offers no filters when nothing matched before filtering: an empty collection, or
   // search terms that match no product. Filters that narrow a result to nothing stay offered.
-  const filters = (members.length ? (snapshot.filters ?? []) : []).map((filter, index) => {
-    const condition = conditions[index];
-    if (filter.type === "price_range") {
-      const minimum = `${filter.id}.gte`,
-        maximum = `${filter.id}.lte`;
+  const buildFilters = () =>
+    (members.length ? (snapshot.filters ?? []) : []).map((filter, index) => {
+      const condition = conditions[index];
+      if (filter.type === "price_range") {
+        const minimum = `${filter.id}.gte`,
+          maximum = `${filter.id}.lte`;
+        return options.track(
+          {
+            id: filter.id,
+            label: filter.label,
+            type: filter.type,
+            param_name: filter.id,
+            values: [],
+            active_values: [],
+            inactive_values: [],
+            operator: null,
+            presentation: null,
+            min_value: options.track(
+              { param_name: minimum, value: price(minimum) },
+              "filter_value",
+            ),
+            max_value: options.track(
+              { param_name: maximum, value: price(maximum) },
+              "filter_value",
+            ),
+            range_max: members.reduce(
+              (highest, member) => Math.max(highest, Number(member.value.price_max) || 0),
+              0,
+            ),
+            url_to_remove: without((url) => {
+              url.searchParams.delete(minimum);
+              url.searchParams.delete(maximum);
+            }),
+          },
+          "filter",
+          `filters[${index}]`,
+        );
+      }
+      const selected = query.searchParams.getAll(filter.id);
+      const matches = condition?.matches ?? null;
+      const values = filter.values.map((entry, valueIndex) => {
+        const active = selected.includes(entry.value);
+        return options.track(
+          {
+            param_name: filter.id,
+            value: entry.value,
+            label: entry.label,
+            active,
+            ...(matches === null
+              ? {}
+              : {
+                  // Faceted count: the other active filters apply. This filter's own selection
+                  // narrows the count only when its values combine with AND.
+                  ...availableFields({
+                    count: (() => {
+                      const included = members.map((member) =>
+                        allKnown([
+                          passes(member.source, index),
+                          !condition?.all || condition.test(member.source),
+                          matches(member.source, entry.value),
+                        ]),
+                      );
+                      return included.includes(undefined)
+                        ? undefined
+                        : included.filter((value) => value === true).length;
+                    })(),
+                  }),
+                }),
+            url_to_add: without((url) => {
+              if (!active) url.searchParams.append(filter.id, entry.value);
+            }),
+            url_to_remove: without((url) => {
+              // Removing one value keeps every other parameter in its original order.
+              url.search = new URLSearchParams(
+                [...url.searchParams].filter(
+                  ([name, value]) => name !== filter.id || value !== entry.value,
+                ),
+              ).toString();
+            }),
+          },
+          "filter_value",
+          `filters[${index}].values[${valueIndex}]`,
+          { param_name: "id", active: null, count: null, url_to_add: null, url_to_remove: null },
+        );
+      });
+      const pick = (accepted: string[]) =>
+        values.find((value) => accepted.includes(String(value.value))) ?? null;
       return options.track(
         {
           id: filter.id,
           label: filter.label,
           type: filter.type,
           param_name: filter.id,
-          values: [],
-          active_values: [],
-          inactive_values: [],
-          operator: null,
-          presentation: null,
-          min_value: options.track({ param_name: minimum, value: price(minimum) }, "filter_value"),
-          max_value: options.track({ param_name: maximum, value: price(maximum) }, "filter_value"),
-          range_max: members.reduce(
-            (highest, member) => Math.max(highest, Number(member.value.price_max) || 0),
-            0,
-          ),
-          url_to_remove: without((url) => {
-            url.searchParams.delete(minimum);
-            url.searchParams.delete(maximum);
-          }),
+          values: options.track(values, "filter_value", `filters[${index}].values`),
+          active_values: values.filter((value) => value.active),
+          inactive_values: values.filter((value) => !value.active),
+          ...availableFields({ operator: condition === undefined ? "OR" : condition.operator }),
+          ...(filter.type === "boolean"
+            ? {
+                presentation: null,
+                true_value: pick(["1", "true"]),
+                false_value: pick(["0", "false"]),
+              }
+            : {}),
+          url_to_remove: without((url) => url.searchParams.delete(filter.id)),
         },
         "filter",
         `filters[${index}]`,
-      );
-    }
-    const selected = query.searchParams.getAll(filter.id);
-    const matches = condition?.matches ?? null;
-    const values = filter.values.map((entry, valueIndex) => {
-      const active = selected.includes(entry.value);
-      return options.track(
-        {
-          param_name: filter.id,
-          value: entry.value,
-          label: entry.label,
-          active,
-          ...(matches === null
-            ? {}
-            : {
-                // Faceted count: the other active filters apply. This filter's own selection
-                // narrows the count only when its values combine with AND.
-                ...availableFields({
-                  count: (() => {
-                    const included = members.map((member) =>
-                      allKnown([
-                        passes(member.source, index),
-                        !condition?.all || condition.test(member.source),
-                        matches(member.source, entry.value),
-                      ]),
-                    );
-                    return included.includes(undefined)
-                      ? undefined
-                      : included.filter((value) => value === true).length;
-                  })(),
-                }),
-              }),
-          url_to_add: without((url) => {
-            if (!active) url.searchParams.append(filter.id, entry.value);
-          }),
-          url_to_remove: without((url) => {
-            // Removing one value keeps every other parameter in its original order.
-            url.search = new URLSearchParams(
-              [...url.searchParams].filter(
-                ([name, value]) => name !== filter.id || value !== entry.value,
-              ),
-            ).toString();
-          }),
-        },
-        "filter_value",
-        `filters[${index}].values[${valueIndex}]`,
-        { param_name: "id", active: null, count: null, url_to_add: null, url_to_remove: null },
+        { param_name: "id", operator: null, active_values: "values", inactive_values: "values" },
       );
     });
-    const pick = (accepted: string[]) =>
-      values.find((value) => accepted.includes(String(value.value))) ?? null;
-    return options.track(
-      {
-        id: filter.id,
-        label: filter.label,
-        type: filter.type,
-        param_name: filter.id,
-        values: options.track(values, "filter_value", `filters[${index}].values`),
-        active_values: values.filter((value) => value.active),
-        inactive_values: values.filter((value) => !value.active),
-        ...availableFields({ operator: condition === undefined ? "OR" : condition.operator }),
-        ...(filter.type === "boolean"
-          ? {
-              presentation: null,
-              true_value: pick(["1", "true"]),
-              false_value: pick(["0", "false"]),
-            }
-          : {}),
-        url_to_remove: without((url) => url.searchParams.delete(filter.id)),
-      },
-      "filter",
-      `filters[${index}]`,
-      { param_name: "id", operator: null, active_values: "values", inactive_values: "values" },
-    );
-  });
+  let filters = options.lazyFacets ? undefined : buildFilters();
   return {
     get products() {
       if (unknownMembership) {
@@ -328,6 +337,9 @@ export function storefrontQuery(
       }
       return filtered.length;
     },
-    filters,
+    get filters() {
+      filters ??= buildFilters();
+      return filters;
+    },
   };
 }

@@ -1,4 +1,5 @@
 export { defaultFixture } from "../../data/src/fixture.js";
+export * from "../../data/src/render-source.js";
 export { applyScenario, validateSnapshotReferences } from "../../data/src/scenarios.js";
 export {
   parseSnapshot,

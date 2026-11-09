@@ -1,7 +1,7 @@
 import { type Liquid, toValue } from "liquidjs";
 import { parseFragment } from "parse5";
 import { placeholderNames } from "../../../data/src/placeholders.js";
-import type { Snapshot } from "../../../data/src/schema.js";
+import type { RenderCommon } from "../../../data/src/render-source.js";
 import { tokenLine } from "../token-line.js";
 import { liquidFilterText } from "./core-language.js";
 import { namedArgs } from "./images.js";
@@ -65,7 +65,11 @@ function blank(input: unknown): boolean {
   return false;
 }
 /** Consumes externally prepared local SVG data; the renderer never fetches platform artwork. */
-export function registerPlaceholderFilter(engine: Liquid, snapshot: Snapshot, hooks: Hooks): void {
+export function registerPlaceholderFilter(
+  engine: Liquid,
+  snapshot: RenderCommon,
+  hooks: Hooks,
+): void {
   const names: ReadonlySet<string> = new Set(placeholderNames);
   const cache = new Map<string, SvgTemplate>();
   engine.registerFilter("placeholder_svg_tag", function (input: unknown, cssClass?: unknown) {
@@ -101,7 +105,11 @@ export function registerPlaceholderFilter(engine: Liquid, snapshot: Snapshot, ho
 }
 
 /** Payment icons are platform artwork too: the snapshot supplies their SVGs by payment type. */
-export function registerPaymentTypeFilter(engine: Liquid, snapshot: Snapshot, hooks: Hooks): void {
+export function registerPaymentTypeFilter(
+  engine: Liquid,
+  snapshot: RenderCommon,
+  hooks: Hooks,
+): void {
   const cache = new Map<string, SvgTemplate>();
   engine.registerFilter("payment_type_svg_tag", function (input: unknown, ...args: unknown[]) {
     const type = liquidFilterText(toValue(input) ?? "");

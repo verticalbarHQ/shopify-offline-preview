@@ -1,5 +1,5 @@
 import { type Liquid, toValue } from "liquidjs";
-import type { Snapshot } from "../../../data/src/schema.js";
+import type { RenderCommon } from "../../../data/src/render-source.js";
 import { parseThemeJson } from "../../../theme/src/index.js";
 import { tokenLine } from "../token-line.js";
 import { formatDate } from "./date-format.js";
@@ -73,7 +73,7 @@ function instant(value: unknown, formatter: Intl.DateTimeFormat): Date | null {
 }
 export function registerDateFilters(
   engine: Liquid,
-  snapshot: Snapshot,
+  snapshot: RenderCommon,
   files: ReadonlyMap<string, string>,
   diagnostic: (code: string, message: string, file: string | null, line: number | null) => void,
 ): void {
