@@ -9,6 +9,7 @@ import {
   toPromise,
   toValue,
 } from "liquidjs";
+import { SourceDictionary } from "../../data/src/source-objects.js";
 
 interface Cursor {
   index: number;
@@ -106,7 +107,7 @@ export function registerTableRowTag(
       async #run(context: Context, emitter: Emitter): Promise<void> {
         const value: unknown = await toPromise(evalTokenValue(this.collection, context));
         if (value === null || value === undefined || value === false) return;
-        const all = collection(value);
+        const all = collection(value instanceof SourceDictionary ? await value.enumerate() : value);
         context.memoryLimit.use(all.length);
         const args = await toPromise(this.args.render(context));
         const from = Object.hasOwn(args, "offset") ? integer(args.offset) : 0;
@@ -124,10 +125,11 @@ export function registerTableRowTag(
           for (const item of items) {
             context.renderLimit.use(1);
             context.breakCalled = context.continueCalled = false;
-            scope[this.variable] = item;
+            const resolved = await item;
+            scope[this.variable] = resolved;
             emitter.write(`<td class="col${loop.col()}">`);
             emitter.write(
-              await execute(item, this.token, () => engine.render(this.templates, context)),
+              await execute(resolved, this.token, () => engine.render(this.templates, context)),
             );
             emitter.write("</td>");
             if (context.breakCalled) break;

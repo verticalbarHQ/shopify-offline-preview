@@ -1,3 +1,13 @@
+import { Deferred } from "../../data/src/lazy-list.js";
+import { type RenderSource, RenderSourceError } from "../../data/src/render-source.js";
+import { SourceDictionary, SourceObjects } from "../../data/src/source-objects.js";
+import { SourceSession } from "../../data/src/source-session.js";
+import { registerAsyncValues, registerLazyArrayFilters } from "./async-values.js";
+import { fatalSourceError, RenderClock } from "./render-clock.js";
+import { ThemeLoader } from "./theme-loader.js";
+
+export * from "../../data/src/render-source.js";
+
 import { NodeTypes, toLiquidAST, walk } from "@shopify/liquid-html-parser";
 import {
   AssignTag,
@@ -49,7 +59,7 @@ import { registerPageMetadata } from "./page-metadata.js";
 import { parseLiquid } from "./parse-liquid.js";
 import { PreviewContext } from "./preview-context.js";
 import { registerRenderTag } from "./render-tag.js";
-import { resolveRoute } from "./routes.js";
+import { resolveRoute, resolveSourceRoute } from "./routes.js";
 import { registerShopifyTags } from "./shopify-tags.js";
 import {
   type NestedBlockConfig,
@@ -66,8 +76,11 @@ import {
 import { tokenLine } from "./token-line.js";
 
 export { type RenderNode, type RenderResult, renderSchema } from "./contracts.js";
-export interface RenderOptions {
-  snapshot?: Snapshot;
+
+interface CommonRenderOptions {
+  signal?: AbortSignal;
+  /** Selected-route dependencies, used CSS, and no generated executable theme bundle. */
+  staticPreview?: boolean;
   scenario?: string;
   designMode?: boolean;
   inspect?: boolean;
@@ -76,6 +89,11 @@ export interface RenderOptions {
   /** Saved-content semantics: unknown commercial facts never become theme sample values. */
   backupPreview?: BackupPreviewOptions;
 }
+export type RenderOptions = CommonRenderOptions &
+  (
+    | { snapshot?: Snapshot; source?: never }
+    | { source: RenderSource; snapshot?: never; scenario?: never }
+  );
 
 class SchemaTag extends Tag {
   readonly schema: SectionSchema | z.infer<typeof themeBlockSchema>;
@@ -130,29 +148,87 @@ export async function renderTheme(
   path: string,
   options: RenderOptions = {},
 ): Promise<RenderResult> {
-  const snapshot = applyScenario(
-    snapshotSchema.parse(options.snapshot ?? defaultFixture()),
-    options.scenario,
-  );
-  validateSnapshotReferences(snapshot);
-  registerSnapshotHashes(snapshot);
+  if (options.source && options.snapshot)
+    throw new RenderSourceError(
+      "PREVIEW_SOURCE_INVALID",
+      "source and snapshot are mutually exclusive",
+    );
+  if (options.source && options.scenario)
+    throw new RenderSourceError(
+      "PREVIEW_SOURCE_INVALID",
+      "Scenarios require a materialized snapshot",
+    );
+  const clock = options.source ? new RenderClock(options.signal) : undefined;
+  try {
+    return await renderWithSource(theme, path, options, clock);
+  } finally {
+    clock?.dispose();
+  }
+}
+async function renderWithSource(
+  theme: ThemeFileSystem,
+  path: string,
+  options: RenderOptions,
+  clock?: RenderClock,
+): Promise<RenderResult> {
+  const session =
+    options.source && clock
+      ? new SourceSession(
+          options.source,
+          clock.signal,
+          (read) => clock.io(read),
+          registerSnapshotHashes,
+        )
+      : undefined;
+  const materialized = session
+    ? undefined
+    : applyScenario(snapshotSchema.parse(options.snapshot ?? defaultFixture()), options.scenario);
+  if (materialized) {
+    validateSnapshotReferences(materialized);
+    registerSnapshotHashes(materialized);
+  }
+  const header = session ? await session.header() : undefined;
+  const availableSnapshot = header ?? materialized;
+  if (!availableSnapshot)
+    throw new RenderSourceError("PREVIEW_SOURCE_INVALID", "Render data source is absent");
+  const snapshot = availableSnapshot;
   const data = new Map<string, Set<string>>();
   const tree: RenderNode[] = [];
   const stack: RenderNode[] = [];
   let location: { file: string | null; line: number | null } = { file: null, line: null };
   let readLocation: typeof location | undefined;
   let serial = 0;
-  const files = new Map<string, string>();
-  const allPaths = new Set(await theme.listFiles());
-  const route = resolveRoute(snapshot, path, (file) => allPaths.has(file));
+  const allPaths = new Set(await (clock ? clock.io(() => theme.listFiles()) : theme.listFiles()));
+  const loader = new ThemeLoader(theme, allPaths, clock);
+  const files = loader.files;
+  const route = session
+    ? await resolveSourceRoute(session, path, (file) => allPaths.has(file))
+    : resolveRoute(materialized as Snapshot, path, (file) => allPaths.has(file));
   const diagnostics: Diagnostic[] = [...route.diagnostics];
   const sectionLocales = new Map<string, unknown>();
-  for (const file of allPaths)
-    if (
-      /^(?:layout|templates|sections|blocks|snippets|config|locales)\//.test(file) &&
-      /\.(?:liquid|json)$/.test(file)
-    )
-      files.set(file, await theme.readText(file));
+  if (options.staticPreview) {
+    const locale = snapshot.shop.locale,
+      language = locale?.split("-")[0];
+    await loader.closure([
+      route.template,
+      ...(route.template.endsWith(".liquid") ? ["layout/theme.liquid"] : []),
+      "config/settings_data.json",
+      "config/settings_schema.json",
+      ...[...allPaths].filter(
+        (file) =>
+          file.startsWith("locales/") &&
+          (file.includes(".default.") ||
+            [locale, language].some((value) => value && file.startsWith(`locales/${value}.`))),
+      ),
+    ]);
+  } else
+    await loader.load(
+      [...allPaths].filter(
+        (file) =>
+          /^(?:layout|templates|sections|blocks|snippets|config|locales)\//.test(file) &&
+          /\.(?:liquid|json)$/.test(file),
+      ),
+    );
   function sourceFile(file: string | null): string | null {
     if (file === null || files.has(file)) return file;
     const snippet = `snippets/${file}.liquid`;
@@ -243,21 +319,35 @@ export async function renderTheme(
   };
   // Documented objects built during rendering share the snapshot objects' diagnostics.
   const track = objectTracker(objectHooks);
-  const globals = liquidObjects(
-    snapshot,
-    {
-      pageType: route.pageType,
-      path: route.path,
-      variant: route.query.variant,
-      q: route.query.q,
-      sortBy: route.query.sortBy,
-      resourceHandle: route.resource?.handle ?? null,
-      ...(route.resource?.blogHandle ? { blogHandle: route.resource.blogHandle } : {}),
-      designMode: options.designMode ?? false,
-    },
-    objectHooks,
-    track,
-  );
+  const objectRoute = {
+    pageType: route.pageType,
+    path: route.path,
+    variant: route.query.variant,
+    q: route.query.q,
+    sortBy: route.query.sortBy,
+    resourceHandle: route.resource?.handle ?? null,
+    ...(route.resource?.blogHandle ? { blogHandle: route.resource.blogHandle } : {}),
+    designMode: options.designMode ?? false,
+  };
+  const sourceObjects =
+    session && header
+      ? new SourceObjects(session, header, objectRoute, objectHooks, track)
+      : undefined;
+  if (sourceObjects) await sourceObjects.select();
+  const globals =
+    sourceObjects?.globals ??
+    liquidObjects(materialized as Snapshot, objectRoute, objectHooks, track);
+  function createContext(
+    env: object,
+    renderOptions?: ConstructorParameters<typeof PreviewContext>[2],
+  ): PreviewContext {
+    return new PreviewContext(
+      env,
+      engine.options,
+      renderOptions,
+      clock ? { renderLimit: clock.limiter, liquid: engine } : { liquid: engine },
+    );
+  }
   const templates = Object.fromEntries(
     [...files]
       .filter(([file]) => file.startsWith("snippets/") && file.endsWith(".liquid"))
@@ -350,7 +440,7 @@ export async function renderTheme(
       liquidError(error, token.file ?? "layout/theme.liquid", tokenLine(token) ?? 1),
     backupGuard ? (value) => backupGuard.skipLoop(value) : undefined,
   );
-  const assetBundles = new ThemeAssetBundles(files, snapshot);
+  const assetBundles = new ThemeAssetBundles(files, snapshot, options.staticPreview);
   registerBasicTags(engine);
   registerCycleTag(engine);
   registerShopifyTags(engine, {
@@ -374,13 +464,19 @@ export async function renderTheme(
   registerShopifyFilters(engine, {
     backupPreview: options.backupPreview,
     snapshot,
+    imageEntries:
+      materialized ??
+      (snapshot.shop.socialSharingImage
+        ? [["shop.socialSharingImage", snapshot.shop.socialSharingImage]]
+        : []),
+    ...(session ? { resolveImage: (key: string) => session.asset(key) } : {}),
     readData: readSnapshot,
     files,
     paths: allPaths,
     readAsset(path) {
       let bytes = assetBytes.get(path);
       if (!bytes) {
-        bytes = theme.readBytes(path);
+        bytes = clock ? clock.io(() => theme.readBytes(path)) : theme.readBytes(path);
         assetBytes.set(path, bytes);
       }
       return bytes;
@@ -398,6 +494,7 @@ export async function renderTheme(
       location = previous;
     },
   });
+  if (session) registerLazyArrayFilters(engine);
   registerContentFor(engine, async (kind, args, context) => {
     const currentBlock: unknown = context.getSync(["block"]),
       currentSection: unknown = context.getSync(["section"]);
@@ -486,6 +583,7 @@ export async function renderTheme(
     if (filter) engine.registerFilter(alias, filter);
   }
   backupGuard?.wrapFilters(engine);
+  if (session) registerAsyncValues(engine);
   registerRenderTag(
     engine,
     (name, context, bindings) =>
@@ -526,6 +624,9 @@ export async function renderTheme(
     );
   }
   function liquidError(error: unknown, file: string, line: number): string {
+    clock?.signal.throwIfAborted();
+    const fatal = fatalSourceError(error);
+    if (fatal) throw fatal;
     if (LiquidError.is(error)) {
       file = sourceFile(error.token.file ?? file) ?? file;
       line = tokenLine(error.token) ?? line;
@@ -577,6 +678,8 @@ export async function renderTheme(
     }
   }
   async function renderBoundFile(file: string, context: Context): Promise<string> {
+    await loader.closure([file]);
+    await loader.load([file]);
     backupGuard?.prepare(context);
     let parsed: Template[];
     let commonPrice = false;
@@ -618,6 +721,25 @@ export async function renderTheme(
   }
 
   function imageSetting(value: unknown, key: string): unknown {
+    if (sourceObjects)
+      return new Deferred(async () => {
+        if (value === null || value === undefined || value === "") return null;
+        if (value instanceof NamedImageDrop) return value;
+        let filename = typeof value === "string" ? value : "";
+        if (filename.startsWith("shopify://shop_images/"))
+          filename = decodeURIComponent(filename.slice("shopify://shop_images/".length));
+        const directory = globals.images;
+        const image =
+          directory instanceof ImageDirectory
+            ? await directory.liquidMethodMissing(filename)
+            : null;
+        if (image instanceof NamedImageDrop) return image;
+        diagnostic(
+          "missing-resource",
+          `Setting ${key} references an image absent from the snapshot.`,
+        );
+        return null;
+      });
     if (value === null || value === undefined || value === "") return null;
     if (
       value instanceof NamedImageDrop ||
@@ -641,6 +763,38 @@ export async function renderTheme(
   }
   /** Theme-editor resource URIs resolve to storefront paths; absent resources resolve to nil. */
   function urlSetting(value: unknown, key: string): unknown {
+    if (sourceObjects && typeof value === "string" && value.startsWith("shopify://"))
+      return new Deferred(async () => {
+        const [namespace, handle = "", child] = value
+          .slice("shopify://".length)
+          .split("/")
+          .map(decodeURIComponent);
+        const dictionary = (
+          {
+            products: "all_products",
+            collections: "collections",
+            pages: "pages",
+            blogs: "blogs",
+          } as Record<string, string>
+        )[namespace ?? ""];
+        if (!dictionary) {
+          diagnostic(
+            "not-implemented",
+            `Setting ${key} uses an unsupported resource URL ${value}.`,
+          );
+          return null;
+        }
+        const resource =
+          namespace === "blogs" && child
+            ? await articleSetting(`${handle}/${child}`, key)
+            : await lookup(dictionary, handle);
+        if (resource == null && !(namespace === "blogs" && child))
+          diagnostic(
+            "missing-resource",
+            `Setting ${key} references a resource absent from the snapshot.`,
+          );
+        return object(resource) ? (resource.url ?? null) : null;
+      });
     if (typeof value !== "string" || !value.startsWith("shopify://")) return value ?? null;
     const parts = value.slice("shopify://".length).split("/");
     let decoded: string[];
@@ -674,12 +828,26 @@ export async function renderTheme(
   }
   function lookup(dictionaryName: string, handle: string): unknown {
     const dictionary = globals[dictionaryName];
+    if (dictionary instanceof SourceDictionary)
+      return new Deferred(() => dictionary.liquidMethodMissing(handle));
     return object(dictionary) && Object.hasOwn(dictionary, handle)
       ? Reflect.get(dictionary, handle)
       : null;
   }
   /** Article settings store `<blog handle>/<article handle>`. */
   function articleSetting(value: unknown, key: string): unknown {
+    if (sourceObjects)
+      return new Deferred(async () => {
+        const parts = typeof value === "string" ? value.split("/") : [];
+        const result =
+          parts.length === 2 ? await sourceObjects.lookup("article", JSON.stringify(parts)) : null;
+        if (result === null)
+          diagnostic(
+            "missing-resource",
+            `Setting ${key} references a resource absent from the snapshot.`,
+          );
+        return result;
+      });
     const [blogHandle = "", articleHandle, extra] =
       typeof value === "string" ? value.split("/") : [];
     const blog =
@@ -882,6 +1050,20 @@ export async function renderTheme(
         continue;
       }
       if (["collection_list", "product_list"].includes(definition.type)) {
+        if (sourceObjects) {
+          result[key] = new Deferred(() =>
+            sourceObjects.settingsList(
+              definition.type === "product_list" ? "product" : "collection",
+              Array.isArray(raw) ? raw : [],
+              () =>
+                diagnostic(
+                  "missing-resource",
+                  `Setting ${key} references a resource absent from the snapshot.`,
+                ),
+            ),
+          );
+          continue;
+        }
         const dictionary =
           globals[definition.type === "collection_list" ? "collections" : "all_products"];
         const resources = (Array.isArray(raw) ? raw : []).flatMap((handle) => {
@@ -904,6 +1086,18 @@ export async function renderTheme(
         link_list: "linklists",
       }[definition.type];
       if (resource) {
+        if (sourceObjects) {
+          result[key] = new Deferred(async () => {
+            const value = typeof raw === "string" ? await lookup(resource, raw) : null;
+            if (raw && value == null)
+              diagnostic(
+                "missing-resource",
+                `Setting ${key} references a resource absent from the snapshot.`,
+              );
+            return value;
+          });
+          continue;
+        }
         const dictionary = globals[resource];
         result[key] =
           typeof raw === "string" &&
@@ -994,7 +1188,7 @@ export async function renderTheme(
     );
   }
   globals.settings = settings(definitions, settingsConfig, () => globalSettingsContext);
-  globalSettingsContext = new PreviewContext({}, engine.options, { globals });
+  globalSettingsContext = createContext({}, { globals });
   Object.defineProperty(globals, "content_for_header", {
     get() {
       diagnostic(
@@ -1040,12 +1234,18 @@ export async function renderTheme(
       return `<a target="_blank" rel="nofollow" href="https://www.shopify.com?utm_campaign=poweredby&amp;utm_medium=shopify&amp;utm_source=onlinestore">${label}</a>`;
     },
   });
-  registerPageMetadata(globals, snapshot, route, {
-    read: readSnapshot,
-    unsupported: (message) => diagnostic("not-implemented", message),
-    missing: (message) => diagnostic("missing-resource", message),
-    image: (value, path) => imageObject(value, path, track),
-  });
+  registerPageMetadata(
+    globals,
+    snapshot,
+    route,
+    {
+      read: readSnapshot,
+      unsupported: (message) => diagnostic("not-implemented", message),
+      missing: (message) => diagnostic("missing-resource", message),
+      image: (value, path) => imageObject(value, path, track),
+    },
+    sourceObjects?.metadata(),
+  );
   async function section(
     id: string,
     config: SectionConfig,
@@ -1054,6 +1254,7 @@ export async function renderTheme(
     index: number | null = null,
   ): Promise<string> {
     const file = themePath(`sections/${config.type}.liquid`);
+    await loader.closure([file]);
     const pointer = id.replaceAll("~", "~0").replaceAll("/", "~1");
     const entry = node("section", config.type, file, `${configFile}#/sections/${pointer}`);
     return inside(entry, async () => {
@@ -1081,7 +1282,7 @@ export async function renderTheme(
         const schemaBlock = schema.blocks.find(
           (block) => block.type === (isApp ? "@app" : configBlock.type),
         );
-        const isThemeBlock = files.has(`blocks/${configBlock.type}.liquid`);
+        const isThemeBlock = allPaths.has(`blocks/${configBlock.type}.liquid`);
         if (!schemaBlock && !isThemeBlock && !isApp)
           diagnostic(
             "not-implemented",
@@ -1148,9 +1349,11 @@ export async function renderTheme(
         enumerable: true,
         configurable: true,
       });
-      const context = new PreviewContext({ section: sectionData }, engine.options, {
-        globals: sectionGlobals,
-      });
+      const sectionRenderContext = createContext(
+        { section: sectionData },
+        { globals: sectionGlobals },
+      );
+      const context = sectionRenderContext;
       sectionContext = context;
       blockOwners.set(sectionData, {
         config,
@@ -1191,6 +1394,7 @@ export async function renderTheme(
     if (stack.filter((node) => node.kind === "block").length >= 8)
       throw new Error("Theme blocks cannot be nested beyond eight levels");
     const file = themePath(`blocks/${config.type}.liquid`);
+    await loader.closure([file]);
     const pointer = id.replaceAll("~", "~0").replaceAll("/", "~1");
     const entry = node(
       "block",
@@ -1265,12 +1469,9 @@ export async function renderTheme(
         if (Object.getOwnPropertyDescriptor(scope, key)?.configurable === false) continue;
         Object.defineProperty(scope, key, { value, enumerable: true, configurable: true });
       }
-      blockContext = new PreviewContext(
+      blockContext = createContext(
         { ...parameters, block: blockData, closest },
-        engine.options,
-        {
-          globals: scope,
-        },
+        { globals: scope },
       );
       blockOwners.set(blockData, {
         config,
@@ -1328,6 +1529,7 @@ export async function renderTheme(
         const value: unknown = await evalNumericValue(engine, this.token.args);
         if (typeof value !== "string") throw new Error("Sections requires a string name");
         const file = themePath(`sections/${value}.json`);
+        await loader.closure([file]);
         const config = templateConfig(source(file), file);
         return inside(node("section-group", value, file, file), () =>
           assembly(file, config.type ?? value),
@@ -1341,7 +1543,7 @@ export async function renderTheme(
     source(route.template);
     // A Liquid template executes before its layout. Its assignments and chosen
     // layout survive, while captured inputs and all file reads remain unchanged.
-    const context = new PreviewContext(globals, engine.options);
+    const context = createContext(globals);
     const content = await inside(
       node("layout", `template:${route.template.slice(10, -7)}`, route.template, null),
       () => renderFile(route.template, context),
@@ -1349,6 +1551,7 @@ export async function renderTheme(
     if (liquidLayout.name === false) html = content;
     else {
       const file = themePath(`layout/${liquidLayout.name}.liquid`);
+      await loader.load([file]);
       source(file);
       globals.content_for_layout = content;
       html = await inside(node("layout", liquidLayout.name, file, null), () =>
@@ -1361,6 +1564,7 @@ export async function renderTheme(
     else {
       const layout = config.layout ?? "theme";
       const file = themePath(`layout/${layout}.liquid`);
+      await loader.load([file]);
       source(file); // An absent outer layout is fatal; individual section errors remain inline.
       html = await inside(node("layout", layout, file, null), async () => {
         let content: Promise<string> | undefined;
@@ -1370,7 +1574,7 @@ export async function renderTheme(
             return content;
           },
         });
-        return renderFile(file, new PreviewContext(globals, engine.options));
+        return renderFile(file, createContext(globals));
       });
     }
   }

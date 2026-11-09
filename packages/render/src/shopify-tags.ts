@@ -15,6 +15,7 @@ import {
   type ObjectTracker,
   preserveLiquidObjectKind,
 } from "../../data/src/objects.js";
+import { SourceDictionary } from "../../data/src/source-objects.js";
 import { evalNumericValue } from "./numbers.js";
 
 const formKinds = new WeakMap<object, string>();
@@ -227,10 +228,17 @@ export function registerShopifyTags(engine: Liquid, hooks: TagHooks): void {
         const source: unknown = await evalNumericValue(engine, path, context);
         // The collections global is a handle dictionary that iterates over the store's collections.
         const dictionary =
-          path === "collections" && liquidObjectKind(source) === "dictionary" && iterable(source)
+          path === "collections" &&
+          (source instanceof SourceDictionary ||
+            (liquidObjectKind(source) === "dictionary" && iterable(source)))
             ? source
             : undefined;
-        const array: unknown = dictionary ? [...dictionary] : source;
+        const array: unknown =
+          dictionary instanceof SourceDictionary
+            ? await dictionary.enumerate()
+            : dictionary
+              ? [...dictionary]
+              : source;
         if (!Array.isArray(array)) {
           hooks.unsupported(`Pagination source ${path} is not an available array.`);
           return `[not implemented: paginate ${escapeHtml(path)}]`;
@@ -329,7 +337,13 @@ export function registerShopifyTags(engine: Liquid, hooks: TagHooks): void {
         if (!root || !property) throw new Error("Invalid pagination path");
         const slice = array.slice(offset, offset + size);
         let local: unknown = slice;
-        if (dictionary) {
+        if (dictionary instanceof SourceDictionary) {
+          local = new SourceDictionary(
+            (key) => dictionary.liquidMethodMissing(key),
+            async () => slice,
+            slice.length,
+          );
+        } else if (dictionary) {
           const page = new Proxy(dictionary, {
             get(target, property, receiver) {
               return property === Symbol.iterator

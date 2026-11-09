@@ -225,7 +225,9 @@ export class ImageDirectory extends Drop {
     return "ImagesDrop";
   }
   *[Symbol.iterator](): Generator<never> {}
-  liquidMethodMissing(filename: string | number) {
+  liquidMethodMissing(
+    filename: string | number,
+  ): NamedImageDrop | MissingImage | Promise<NamedImageDrop | MissingImage> {
     if (typeof filename !== "string") throw new Error("Expected image filename to be a String");
     this.#hooks.read("images");
     if (!this.#supplied) this.#hooks.missing("images source metadata");

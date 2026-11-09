@@ -6,6 +6,7 @@ import {
   type TagToken,
   type TopLevelToken,
   TypeGuards,
+  toPromise,
   type ValueToken,
 } from "liquidjs";
 import { unknownBackupValue } from "./backup-values.js";
@@ -69,7 +70,7 @@ export function registerIncludeTag(
           throw new Error("include requires a string filename");
         const value = this.#binding
           ? await evalNumericValue(engine, this.#binding.getText(), context)
-          : context.getSync([name]);
+          : await toPromise(context._get([name]));
         const alias = this.#alias ?? name.split("/").at(-1) ?? name;
         if (this.#for && unknownBackupValue(value)) return "";
         return trace(name, async () => {
@@ -88,7 +89,7 @@ export function registerIncludeTag(
             let html = "";
             for (const item of items) {
               context.renderLimit.use(1);
-              scope[alias] = item;
+              scope[alias] = await item;
               html += await render(name, context, scope);
               if (context.breakCalled || context.continueCalled) break;
             }

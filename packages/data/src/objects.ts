@@ -2,6 +2,7 @@ import { Drop } from "liquidjs";
 import { LiquidFloat } from "./float.js";
 import { handleize } from "./handle.js";
 import { ImageDirectory, localImageUrl } from "./images.js";
+import type { RenderCommon } from "./render-source.js";
 import { focalPoint, ScalarDrop } from "./scalar-drop.js";
 import type { PartialMenuLink as MenuLink, ProductMedia, Snapshot } from "./schema.js";
 import { type SearchCandidate, type SearchPurpose, searchResults } from "./search.js";
@@ -24,6 +25,10 @@ const collectionProductLists = new WeakSet<unknown[]>();
 export function isCollectionProductList(value: unknown): value is unknown[] {
   return Array.isArray(value) && collectionProductLists.has(value);
 }
+export function markCollectionProductList<T extends unknown[]>(value: T): T {
+  collectionProductLists.add(value);
+  return value;
+}
 const mediaTitles = new WeakMap<object, string>();
 /** The title of the product that owns video, external video or model media. */
 export function mediaProductTitle(media: object): string | undefined {
@@ -33,7 +38,10 @@ export function mediaProductTitle(media: object): string | undefined {
  * The distinct non-empty values of a product field across a collection's products, in
  * alphabetical order, as Shopify returns `all_tags` (and, as measured, `all_types`/`all_vendors`).
  */
-function memberValues(members: readonly LiquidRecord[], key: "tags" | "type" | "vendor"): string[] {
+export function memberValues(
+  members: readonly LiquidRecord[],
+  key: "tags" | "type" | "vendor",
+): string[] {
   const values = members.flatMap((product) => {
     const value: unknown = product[key];
     return Array.isArray(value) ? value : [value];
@@ -340,13 +348,11 @@ export const unavailableGlobals: readonly string[] = [
   "scripts",
   "theme",
 ];
-/** Source-backed fields plus explicit derivation; omitted fields are observed, never invented. */
-export function liquidObjects(
-  snapshot: Snapshot,
-  route: RouteContext,
+export function liquidResourceHelpers(
+  snapshot: RenderCommon,
   hooks: ObjectHooks,
-  tracked: ObjectTracker = objectTracker(hooks),
-): LiquidRecord {
+  tracked: ObjectTracker,
+) {
   // Timestamps print in the shop's timezone; an absent one stays absent.
   const time = (iso: string | null | undefined) =>
     iso === undefined ? undefined : shopTime(iso, snapshot.shop.timezone);
@@ -514,8 +520,6 @@ export function liquidObjects(
       ]),
     );
   }
-  const products = new Map<string, LiquidRecord>();
-  const collections = new Map<string, LiquidRecord>();
   const sortOptions = [
     ["manual", "Featured"],
     ["most-relevant", "Most relevant"],
@@ -549,389 +553,1134 @@ export function liquidObjects(
       );
     return sortOptions.map((option) => tracked({ ...option }, "sort_option"));
   }
-  for (const [productIndex, source] of snapshot.products.entries()) {
-    const path = `products[${productIndex}]`;
-    const images = source.images.map((value, index) =>
-        tracked(
-          {
-            ...image(value, `${path}.images[${index}]`, index),
-            ...availableFields({ id: sourceId(value.id) }),
-          },
-          "image",
-          `${path}.images[${index}]`,
-        ),
-      ),
-      // With explicit media, an image's media position is its place among all media.
-      mediaPosition = (index: number) => {
-        const file = source.images[index]?.file;
-        const position = source.media?.findIndex(
-          (entry) => entry.mediaType === "image" && entry.file === file,
-        );
-        return position === undefined || position < 0 ? index : position;
-      },
-      mediaImages = source.images.map((value, index) => {
-        const imagePath = `${path}.images[${index}]`;
-        const preview = tracked(
-          {
-            ...image(value, imagePath),
-            id: null,
-            alt:
-              value.previewAlt === undefined
-                ? value.mediaAlt === undefined
-                  ? value.alt
-                  : value.mediaAlt
-                : value.previewAlt,
-          },
-          "image",
-          imagePath,
-          {
-            id: null,
-            alt:
-              value.previewAlt !== undefined
-                ? "previewAlt"
-                : value.mediaAlt !== undefined
-                  ? "mediaAlt"
-                  : "alt",
-          },
-        );
-        // A media ID is never inferred from the classic image ID.
-        const record: LiquidRecord = {
-          ...image(value, imagePath, mediaPosition(index)),
-          ...availableFields({ id: sourceId(value.mediaId) }),
-          alt: value.mediaAlt === undefined ? value.alt : value.mediaAlt,
-          media_type: "image",
-          preview_image: preview,
-        };
-        const result = tracked(record, "image", imagePath, {
-          id: "mediaId",
-          alt: value.mediaAlt === undefined ? "alt" : "mediaAlt",
-        });
-        objectKinds.set(result, "media_image");
-        return result;
-      }),
-      media = source.media
-        ? source.media.map((entry, index) =>
-            entry.mediaType === "image"
-              ? mediaImages[source.images.findIndex((value) => value.file === entry.file)]
-              : otherMedia(entry, `${path}.media[${index}]`, index, source.title),
-          )
-        : mediaImages;
-    const variants = source.variants.map((variant, index) => {
-      const options = source.options.map(
-        (option) => variant.optionValues.find((value) => value.name === option.name)?.value ?? "",
-      );
-      const selected = variant.id === route.variant;
-      return tracked(
-        {
-          id: id(variant.id),
-          title: options.join(" / "),
-          name:
-            source.options.length === 1 &&
-            source.options[0]?.name === "Title" &&
-            source.options[0]?.values[0] === "Default Title"
-              ? source.title
-              : `${source.title} - ${options.join(" / ")}`,
-          public_title:
-            source.options.length === 1 &&
-            source.options[0]?.name === "Title" &&
-            source.options[0]?.values[0] === "Default Title"
-              ? null
-              : options.join(" / "),
-          options,
-          option1: options[0] ?? null,
-          option2: options[1] ?? null,
-          option3: options[2] ?? null,
-          price: liquidPrice(variant.price),
-          compare_at_price:
-            variant.compareAtPrice === null ? null : liquidPrice(variant.compareAtPrice),
-          ...availableFields({ available: variant.available }),
-          sku: variant.sku,
-          barcode: variant.barcode,
-          selected,
-          url: `/products/${source.handle}?variant=${encodeURIComponent(variant.id)}`,
-          ...availableFields({
-            image:
-              variant.image === undefined
-                ? undefined
-                : (images.find((i) => i.file === variant.image) ?? null),
-            featured_image:
-              variant.image === undefined
-                ? undefined
-                : (images.find((i) => i.file === variant.image) ?? null),
-            featured_media:
-              variant.image === undefined
-                ? undefined
-                : (mediaImages.find((i) => i.file === variant.image) ?? null),
-          }),
-          ...availableFields({
-            quantity_rule: trackedJson(
-              variant.quantityRule,
-              "quantity_rule",
-              `${path}.variants[${index}].quantity_rule`,
-            ),
-            quantity_price_breaks: trackedJson(
-              variant.quantityPriceBreaks?.map((entry) => ({
-                minimum_quantity: entry.minimumQuantity,
-                price: liquidPrice(entry.price),
-              })),
-              "quantity_price_break",
-              `${path}.variants[${index}].quantity_price_breaks`,
-            ),
-            unit_price:
-              variant.unitPrice === undefined
-                ? undefined
-                : variant.unitPrice === null
-                  ? null
-                  : liquidPrice(variant.unitPrice),
-            unit_price_measurement: trackedJson(
-              variant.unitPriceMeasurement && {
-                ...variant.unitPriceMeasurement,
-                // Shopify keeps the quantity as a Float, so 250 prints as 250.0 (measured on a
-                // store in Germany); the reference value is an Integer.
-                quantity_value: new LiquidFloat(variant.unitPriceMeasurement.quantity_value),
-              },
-              "unit_price_measurement",
-              `${path}.variants[${index}].unit_price_measurement`,
-            ),
-            requires_shipping: variant.requiresShipping,
-            taxable: variant.taxable,
-            weight: variant.weight,
-            requires_selling_plan: variant.requiresSellingPlan,
-            selling_plan_allocations: trackedJson(
-              variant.sellingPlanAllocations,
-              "selling_plan_allocation",
-              `${path}.variants[${index}].selling_plan_allocations`,
-            ),
-            inventory_management: variant.inventoryManagement,
-            inventory_policy: variant.inventoryPolicy,
-            inventory_quantity: variant.inventoryQuantity,
-            store_availabilities: trackedJson(
-              variant.storeAvailabilities,
-              "store_availability",
-              `${path}.variants[${index}].store_availabilities`,
-            ),
-          }),
-        },
-        "variant",
-        `${path}.variants[${index}]`,
-      );
-    });
-    const selected = variants.find((variant) => variant.selected);
-    for (const [index, record] of images.entries()) {
-      const file = source.images[index]?.file;
-      // Associations are getters so the graph is complete after variant construction and does not serialize cycles.
-      Object.defineProperties(record, {
-        product_id: {
-          enumerable: true,
-          get: () => {
-            if (source.id === undefined) {
-              absent("image", "product_id");
-              return undefined;
-            }
-            return id(source.id);
-          },
-        },
-        variants: {
-          enumerable: false,
-          get: () => {
-            if (source.variants.some((variant) => variant.image === undefined)) {
-              absent("image", "variants");
-              return undefined;
-            }
-            return variants.filter((_variant, index) => source.variants[index]?.image === file);
-          },
-        },
-        "attached_to_variant?": {
-          enumerable: true,
-          get: () => {
-            if (source.variants.some((variant) => variant.image === file)) return true;
-            if (source.variants.some((variant) => variant.image === undefined)) {
-              absent("image", "attached_to_variant?");
-              return undefined;
-            }
-            return source.variants.some((variant) => variant.image === file);
-          },
-        },
-      });
-    }
-    // A later unknown cannot precede an already established first available variant.
-    const firstIndex = source.variants.findIndex((variant) => variant.available !== false);
-    const firstAvailable =
-      firstIndex < 0
-        ? null
-        : source.variants[firstIndex]?.available === true
-          ? variants[firstIndex]
-          : undefined;
-    const selectionKnown = selected !== undefined || firstAvailable !== undefined;
-    const current = selected ?? firstAvailable ?? variants[0];
-    const optionRows = source.variants.map((variant) =>
-      source.options.map(
-        (option) => variant.optionValues.find((value) => value.name === option.name)?.value ?? "",
-      ),
-    );
-    const currentRow = optionRows[current ? variants.indexOf(current) : -1] ?? [];
-    // Shopify derives option value state from the selected-or-first-available variant: earlier
-    // options constrain availability, and `variant` swaps only this option's value.
-    const optionsWithValues = source.options.map((option, index) =>
+  return {
+    time,
+    absent,
+    image,
+    otherMedia,
+    mediaObject,
+    trackedJson,
+    metafield,
+    metafields,
+    typedMetafield,
+    collectionSortOptions,
+  };
+}
+
+export function liquidProduct(
+  source: Snapshot["products"][number],
+  productIndex: number,
+  snapshot: RenderCommon,
+  route: RouteContext,
+  hooks: ObjectHooks,
+  tracked: ObjectTracker,
+): LiquidRecord {
+  const { time, absent, image, otherMedia, trackedJson, metafields } = liquidResourceHelpers(
+    snapshot,
+    hooks,
+    tracked,
+  );
+  const path = `products[${productIndex}]`;
+  const images = source.images.map((value, index) =>
       tracked(
         {
-          name: option.name,
-          position: index + 1,
-          values: tracked(
-            option.values.map((value, valueIndex) => {
-              const isSelected = currentRow[index] === value;
-              const swapped = currentRow.map((entry, position) =>
-                position === index ? value : entry,
-              );
-              const match = isSelected
-                ? current
-                : variants[optionRows.findIndex((row) => row.every((v, i) => v === swapped[i]))];
-              const swatch = option.swatches?.[valueIndex];
-              const swatchPath = `${path}.options[${index}].swatches[${valueIndex}]`;
-              const fields: LiquidRecord = {
-                name: value,
-                ...availableFields({
-                  available:
-                    index === 0 || selectionKnown
-                      ? productAvailability(
-                          source.variants.filter(
-                            (_variant, row) =>
-                              optionRows[row]?.[index] === value &&
-                              currentRow
-                                .slice(0, index)
-                                .every((v, i) => optionRows[row]?.[i] === v),
-                          ),
-                        )
-                      : undefined,
-                  selected: selectionKnown ? isSelected : undefined,
-                  variant: selectionKnown ? (match ?? null) : undefined,
-                }),
-                // Snapshots have no combined listings, so no value points at another product.
-                product_url: null,
-                ...availableFields({
-                  id: sourceId(option.valueIds?.[valueIndex]),
-                  swatch:
-                    swatch === undefined || swatch === null
-                      ? swatch
-                      : tracked(
-                          {
-                            color:
-                              swatch.color === null
-                                ? null
-                                : (hooks.color?.(swatch.color) ?? swatch.color),
-                            image: swatch.image
-                              ? tracked(
-                                  {
-                                    ...image(swatch.image, `${swatchPath}.image`),
-                                    ...availableFields({ id: sourceId(swatch.image.id) }),
-                                  },
-                                  "image",
-                                  `${swatchPath}.image`,
-                                )
-                              : null,
-                          },
-                          "swatch",
-                          swatchPath,
-                        ),
-                }),
-              };
-              // Themes measure option labels with `value.size`, the name's length.
-              Object.defineProperty(fields, "size", { value: value.length, enumerable: false });
-              return tracked(
-                new ScalarDrop(fields, value),
-                "product_option_value",
-                `${path}.options[${index}]`,
-                {
-                  name: `values[${valueIndex}]`,
-                  selected: null,
-                  available: null,
-                  variant: null,
-                  product_url: null,
-                  size: `values[${valueIndex}]`,
-                  id: `valueIds[${valueIndex}]`,
-                  swatch: `swatches[${valueIndex}]`,
-                },
-              );
-            }),
-            "product_option_value",
-            `${path}.options[${index}].values`,
+          ...image(value, `${path}.images[${index}]`, index),
+          ...availableFields({ id: sourceId(value.id) }),
+        },
+        "image",
+        `${path}.images[${index}]`,
+      ),
+    ),
+    // With explicit media, an image's media position is its place among all media.
+    mediaPosition = (index: number) => {
+      const file = source.images[index]?.file;
+      const position = source.media?.findIndex(
+        (entry) => entry.mediaType === "image" && entry.file === file,
+      );
+      return position === undefined || position < 0 ? index : position;
+    },
+    mediaImages = source.images.map((value, index) => {
+      const imagePath = `${path}.images[${index}]`;
+      const preview = tracked(
+        {
+          ...image(value, imagePath),
+          id: null,
+          alt:
+            value.previewAlt === undefined
+              ? value.mediaAlt === undefined
+                ? value.alt
+                : value.mediaAlt
+              : value.previewAlt,
+        },
+        "image",
+        imagePath,
+        {
+          id: null,
+          alt:
+            value.previewAlt !== undefined
+              ? "previewAlt"
+              : value.mediaAlt !== undefined
+                ? "mediaAlt"
+                : "alt",
+        },
+      );
+      // A media ID is never inferred from the classic image ID.
+      const record: LiquidRecord = {
+        ...image(value, imagePath, mediaPosition(index)),
+        ...availableFields({ id: sourceId(value.mediaId) }),
+        alt: value.mediaAlt === undefined ? value.alt : value.mediaAlt,
+        media_type: "image",
+        preview_image: preview,
+      };
+      const result = tracked(record, "image", imagePath, {
+        id: "mediaId",
+        alt: value.mediaAlt === undefined ? "alt" : "mediaAlt",
+      });
+      objectKinds.set(result, "media_image");
+      return result;
+    }),
+    media = source.media
+      ? source.media.map((entry, index) =>
+          entry.mediaType === "image"
+            ? mediaImages[source.images.findIndex((value) => value.file === entry.file)]
+            : otherMedia(entry, `${path}.media[${index}]`, index, source.title),
+        )
+      : mediaImages;
+  const variants = source.variants.map((variant, index) => {
+    const options = source.options.map(
+      (option) => variant.optionValues.find((value) => value.name === option.name)?.value ?? "",
+    );
+    const selected = variant.id === route.variant;
+    return tracked(
+      {
+        id: id(variant.id),
+        title: options.join(" / "),
+        name:
+          source.options.length === 1 &&
+          source.options[0]?.name === "Title" &&
+          source.options[0]?.values[0] === "Default Title"
+            ? source.title
+            : `${source.title} - ${options.join(" / ")}`,
+        public_title:
+          source.options.length === 1 &&
+          source.options[0]?.name === "Title" &&
+          source.options[0]?.values[0] === "Default Title"
+            ? null
+            : options.join(" / "),
+        options,
+        option1: options[0] ?? null,
+        option2: options[1] ?? null,
+        option3: options[2] ?? null,
+        price: liquidPrice(variant.price),
+        compare_at_price:
+          variant.compareAtPrice === null ? null : liquidPrice(variant.compareAtPrice),
+        ...availableFields({ available: variant.available }),
+        sku: variant.sku,
+        barcode: variant.barcode,
+        selected,
+        url: `/products/${source.handle}?variant=${encodeURIComponent(variant.id)}`,
+        ...availableFields({
+          image:
+            variant.image === undefined
+              ? undefined
+              : (images.find((i) => i.file === variant.image) ?? null),
+          featured_image:
+            variant.image === undefined
+              ? undefined
+              : (images.find((i) => i.file === variant.image) ?? null),
+          featured_media:
+            variant.image === undefined
+              ? undefined
+              : (mediaImages.find((i) => i.file === variant.image) ?? null),
+        }),
+        ...availableFields({
+          quantity_rule: trackedJson(
+            variant.quantityRule,
+            "quantity_rule",
+            `${path}.variants[${index}].quantity_rule`,
           ),
+          quantity_price_breaks: trackedJson(
+            variant.quantityPriceBreaks?.map((entry) => ({
+              minimum_quantity: entry.minimumQuantity,
+              price: liquidPrice(entry.price),
+            })),
+            "quantity_price_break",
+            `${path}.variants[${index}].quantity_price_breaks`,
+          ),
+          unit_price:
+            variant.unitPrice === undefined
+              ? undefined
+              : variant.unitPrice === null
+                ? null
+                : liquidPrice(variant.unitPrice),
+          unit_price_measurement: trackedJson(
+            variant.unitPriceMeasurement && {
+              ...variant.unitPriceMeasurement,
+              // Shopify keeps the quantity as a Float, so 250 prints as 250.0 (measured on a
+              // store in Germany); the reference value is an Integer.
+              quantity_value: new LiquidFloat(variant.unitPriceMeasurement.quantity_value),
+            },
+            "unit_price_measurement",
+            `${path}.variants[${index}].unit_price_measurement`,
+          ),
+          requires_shipping: variant.requiresShipping,
+          taxable: variant.taxable,
+          weight: variant.weight,
+          requires_selling_plan: variant.requiresSellingPlan,
+          selling_plan_allocations: trackedJson(
+            variant.sellingPlanAllocations,
+            "selling_plan_allocation",
+            `${path}.variants[${index}].selling_plan_allocations`,
+          ),
+          inventory_management: variant.inventoryManagement,
+          inventory_policy: variant.inventoryPolicy,
+          inventory_quantity: variant.inventoryQuantity,
+          store_availabilities: trackedJson(
+            variant.storeAvailabilities,
+            "store_availability",
+            `${path}.variants[${index}].store_availabilities`,
+          ),
+        }),
+      },
+      "variant",
+      `${path}.variants[${index}]`,
+    );
+  });
+  const selected = variants.find((variant) => variant.selected);
+  for (const [index, record] of images.entries()) {
+    const file = source.images[index]?.file;
+    // Associations are getters so the graph is complete after variant construction and does not serialize cycles.
+    Object.defineProperties(record, {
+      product_id: {
+        enumerable: true,
+        get: () => {
+          if (source.id === undefined) {
+            absent("image", "product_id");
+            return undefined;
+          }
+          return id(source.id);
+        },
+      },
+      variants: {
+        enumerable: false,
+        get: () => {
+          if (source.variants.some((variant) => variant.image === undefined)) {
+            absent("image", "variants");
+            return undefined;
+          }
+          return variants.filter((_variant, index) => source.variants[index]?.image === file);
+        },
+      },
+      "attached_to_variant?": {
+        enumerable: true,
+        get: () => {
+          if (source.variants.some((variant) => variant.image === file)) return true;
+          if (source.variants.some((variant) => variant.image === undefined)) {
+            absent("image", "attached_to_variant?");
+            return undefined;
+          }
+          return source.variants.some((variant) => variant.image === file);
+        },
+      },
+    });
+  }
+  // A later unknown cannot precede an already established first available variant.
+  const firstIndex = source.variants.findIndex((variant) => variant.available !== false);
+  const firstAvailable =
+    firstIndex < 0
+      ? null
+      : source.variants[firstIndex]?.available === true
+        ? variants[firstIndex]
+        : undefined;
+  const selectionKnown = selected !== undefined || firstAvailable !== undefined;
+  const current = selected ?? firstAvailable ?? variants[0];
+  const optionRows = source.variants.map((variant) =>
+    source.options.map(
+      (option) => variant.optionValues.find((value) => value.name === option.name)?.value ?? "",
+    ),
+  );
+  const currentRow = optionRows[current ? variants.indexOf(current) : -1] ?? [];
+  // Shopify derives option value state from the selected-or-first-available variant: earlier
+  // options constrain availability, and `variant` swaps only this option's value.
+  const optionsWithValues = source.options.map((option, index) =>
+    tracked(
+      {
+        name: option.name,
+        position: index + 1,
+        values: tracked(
+          option.values.map((value, valueIndex) => {
+            const isSelected = currentRow[index] === value;
+            const swapped = currentRow.map((entry, position) =>
+              position === index ? value : entry,
+            );
+            const match = isSelected
+              ? current
+              : variants[optionRows.findIndex((row) => row.every((v, i) => v === swapped[i]))];
+            const swatch = option.swatches?.[valueIndex];
+            const swatchPath = `${path}.options[${index}].swatches[${valueIndex}]`;
+            const fields: LiquidRecord = {
+              name: value,
+              ...availableFields({
+                available:
+                  index === 0 || selectionKnown
+                    ? productAvailability(
+                        source.variants.filter(
+                          (_variant, row) =>
+                            optionRows[row]?.[index] === value &&
+                            currentRow.slice(0, index).every((v, i) => optionRows[row]?.[i] === v),
+                        ),
+                      )
+                    : undefined,
+                selected: selectionKnown ? isSelected : undefined,
+                variant: selectionKnown ? (match ?? null) : undefined,
+              }),
+              // Snapshots have no combined listings, so no value points at another product.
+              product_url: null,
+              ...availableFields({
+                id: sourceId(option.valueIds?.[valueIndex]),
+                swatch:
+                  swatch === undefined || swatch === null
+                    ? swatch
+                    : tracked(
+                        {
+                          color:
+                            swatch.color === null
+                              ? null
+                              : (hooks.color?.(swatch.color) ?? swatch.color),
+                          image: swatch.image
+                            ? tracked(
+                                {
+                                  ...image(swatch.image, `${swatchPath}.image`),
+                                  ...availableFields({ id: sourceId(swatch.image.id) }),
+                                },
+                                "image",
+                                `${swatchPath}.image`,
+                              )
+                            : null,
+                        },
+                        "swatch",
+                        swatchPath,
+                      ),
+              }),
+            };
+            // Themes measure option labels with `value.size`, the name's length.
+            Object.defineProperty(fields, "size", { value: value.length, enumerable: false });
+            return tracked(
+              new ScalarDrop(fields, value),
+              "product_option_value",
+              `${path}.options[${index}]`,
+              {
+                name: `values[${valueIndex}]`,
+                selected: null,
+                available: null,
+                variant: null,
+                product_url: null,
+                size: `values[${valueIndex}]`,
+                id: `valueIds[${valueIndex}]`,
+                swatch: `swatches[${valueIndex}]`,
+              },
+            );
+          }),
+          "product_option_value",
+          `${path}.options[${index}].values`,
+        ),
+        ...availableFields({
+          selected_value: selectionKnown ? (currentRow[index] ?? null) : undefined,
+        }),
+      },
+      "product_option",
+      `${path}.options[${index}]`,
+      { position: null, selected_value: null },
+    ),
+  );
+  const prices = source.variants.map((variant) => liquidPrice(variant.price));
+  const comparePrices = source.variants.flatMap((variant) =>
+    variant.compareAtPrice === null ? [] : [liquidPrice(variant.compareAtPrice)],
+  );
+  const dto: LiquidRecord = {
+    ...availableFields({
+      created_at: time(source.createdAt),
+      published_at: time(source.publishedAt),
+      category: trackedJson(source.category, "taxonomy_category", `${path}.category`),
+      id: source.id === undefined ? undefined : id(source.id),
+      "gift_card?": source.giftCard,
+      requires_selling_plan: source.requiresSellingPlan,
+      selling_plan_groups: trackedJson(
+        source.sellingPlanGroups,
+        "selling_plan_group",
+        `${path}.selling_plan_groups`,
+      ),
+      "quantity_price_breaks_configured?": source.quantityPriceBreaksConfigured,
+    }),
+    variants_count: variants.length,
+    object_type: "product",
+    handle: source.handle,
+    title: source.title,
+    description: source.descriptionHtml,
+    content: source.descriptionHtml,
+    vendor: source.vendor,
+    type: source.productType,
+    // Shopify keeps a product's tags in alphabetical order (measured).
+    tags: [...source.tags].sort(),
+    template_suffix: source.templateSuffix,
+    url: `/products/${source.handle}`,
+    ...availableFields({
+      available: productAvailability(source.variants),
+    }),
+    price: Math.min(...prices),
+    price_min: Math.min(...prices),
+    price_max: Math.max(...prices),
+    price_varies: new Set(prices).size > 1,
+    compare_at_price: comparePrices.length ? Math.min(...comparePrices) : null,
+    compare_at_price_min: comparePrices.length ? Math.min(...comparePrices) : null,
+    compare_at_price_max: comparePrices.length ? Math.max(...comparePrices) : null,
+    compare_at_price_varies: new Set(comparePrices).size > 1,
+    variants,
+    ...availableFields({ first_available_variant: firstAvailable }),
+    selected_variant: selected ?? null,
+    ...availableFields({
+      selected_or_first_available_variant:
+        selected ??
+        (firstAvailable !== undefined ? (firstAvailable ?? variants[0] ?? null) : undefined),
+    }),
+    has_only_default_variant:
+      source.options.length === 1 &&
+      source.options[0]?.name === "Title" &&
+      source.options[0].values.length === 1 &&
+      source.options[0].values[0] === "Default Title",
+    options: source.options.map((option) => option.name),
+    options_with_values: optionsWithValues,
+    images,
+    featured_image: images[0] ?? null,
+    media,
+    featured_media: media[0] ?? null,
+    ...availableFields({ metafields: metafields(source.metafields, `${path}.metafields`) }),
+  };
+  const product = tracked(dto, "product", path);
+  for (const variant of variants) Object.defineProperty(variant, "product", { value: product });
+  return product;
+}
+
+/** Common captured context; resource catalogs are supplied separately, never replaced with empty snapshots. */
+export function commonLiquidObjects(
+  snapshot: RenderCommon,
+  route: RouteContext,
+  hooks: ObjectHooks,
+  tracked: ObjectTracker,
+  counts: { products: number; collections: number },
+): LiquidRecord {
+  const { absent } = liquidResourceHelpers(snapshot, hooks, tracked);
+  const languages = (snapshot.localization?.availableLanguages ?? []).map((language, index) =>
+    tracked(
+      {
+        iso_code: language.isoCode,
+        direction: direction(language.isoCode),
+        ...availableFields({
+          name: language.name,
+          endonym_name: language.endonymName,
+          primary: language.primary,
+          root_url: language.rootUrl,
+        }),
+      },
+      "shop_locale",
+      `localization.availableLanguages[${index}]`,
+      {
+        iso_code: "isoCode",
+        direction: "isoCode",
+        endonym_name: "endonymName",
+        root_url: "rootUrl",
+      },
+    ),
+  );
+  let localization: LiquidRecord | undefined;
+  if (snapshot.localization) {
+    const source = snapshot.localization;
+    const countries = source.availableCountries.map((country, index) =>
+      tracked(
+        {
+          iso_code: country.isoCode,
           ...availableFields({
-            selected_value: selectionKnown ? (currentRow[index] ?? null) : undefined,
+            name: country.name,
+            currency: country.currency
+              ? tracked(
+                  {
+                    iso_code: country.currency.isoCode,
+                    ...availableFields({
+                      symbol: country.currency.symbol,
+                      name: country.currency.name,
+                    }),
+                  },
+                  "currency",
+                  `localization.availableCountries[${index}].currency`,
+                  { iso_code: "isoCode" },
+                )
+              : undefined,
           }),
         },
-        "product_option",
-        `${path}.options[${index}]`,
-        { position: null, selected_value: null },
+        "country",
+        `localization.availableCountries[${index}]`,
+        { iso_code: "isoCode" },
       ),
     );
-    const prices = source.variants.map((variant) => liquidPrice(variant.price));
-    const comparePrices = source.variants.flatMap((variant) =>
-      variant.compareAtPrice === null ? [] : [liquidPrice(variant.compareAtPrice)],
+    localization = tracked(
+      {
+        available_countries: countries,
+        available_languages: languages,
+        country: countries.find((country) => country.iso_code === source.country),
+        language: languages.find((language) => language.iso_code === source.language),
+      },
+      "localization",
+      "localization",
+      { available_countries: "availableCountries", available_languages: "availableLanguages" },
     );
-    const dto: LiquidRecord = {
-      ...availableFields({
-        created_at: time(source.createdAt),
-        published_at: time(source.publishedAt),
-        category: trackedJson(source.category, "taxonomy_category", `${path}.category`),
-        id: source.id === undefined ? undefined : id(source.id),
-        "gift_card?": source.giftCard,
-        requires_selling_plan: source.requiresSellingPlan,
-        selling_plan_groups: trackedJson(
-          source.sellingPlanGroups,
-          "selling_plan_group",
-          `${path}.selling_plan_groups`,
-        ),
-        "quantity_price_breaks_configured?": source.quantityPriceBreaksConfigured,
-      }),
-      variants_count: variants.length,
-      object_type: "product",
-      handle: source.handle,
-      title: source.title,
-      description: source.descriptionHtml,
-      content: source.descriptionHtml,
-      vendor: source.vendor,
-      type: source.productType,
-      // Shopify keeps a product's tags in alphabetical order (measured).
-      tags: [...source.tags].sort(),
-      template_suffix: source.templateSuffix,
-      url: `/products/${source.handle}`,
-      ...availableFields({
-        available: productAvailability(source.variants),
-      }),
-      price: Math.min(...prices),
-      price_min: Math.min(...prices),
-      price_max: Math.max(...prices),
-      price_varies: new Set(prices).size > 1,
-      compare_at_price: comparePrices.length ? Math.min(...comparePrices) : null,
-      compare_at_price_min: comparePrices.length ? Math.min(...comparePrices) : null,
-      compare_at_price_max: comparePrices.length ? Math.max(...comparePrices) : null,
-      compare_at_price_varies: new Set(comparePrices).size > 1,
-      variants,
-      ...availableFields({ first_available_variant: firstAvailable }),
-      selected_variant: selected ?? null,
-      ...availableFields({
-        selected_or_first_available_variant:
-          selected ??
-          (firstAvailable !== undefined ? (firstAvailable ?? variants[0] ?? null) : undefined),
-      }),
-      has_only_default_variant:
-        source.options.length === 1 &&
-        source.options[0]?.name === "Title" &&
-        source.options[0].values.length === 1 &&
-        source.options[0].values[0] === "Default Title",
-      options: source.options.map((option) => option.name),
-      options_with_values: optionsWithValues,
-      images,
-      featured_image: images[0] ?? null,
-      media,
-      featured_media: media[0] ?? null,
-      ...availableFields({ metafields: metafields(source.metafields, `${path}.metafields`) }),
-    };
-    const product = tracked(dto, "product", path);
-    products.set(source.handle, product);
-    for (const variant of variants) Object.defineProperty(variant, "product", { value: product });
   }
+  // The request locale is the shop's language entry when the snapshot lists its languages.
+  const requestLocale =
+    languages.find((language) => language.iso_code === snapshot.shop.locale) ??
+    tracked(
+      {
+        ...availableFields({
+          iso_code: snapshot.shop.locale,
+          direction:
+            snapshot.shop.locale === undefined ? undefined : direction(snapshot.shop.locale),
+        }),
+        ...availableFields({
+          name: undefined,
+          endonym_name: undefined,
+          primary: undefined,
+          root_url: undefined,
+        }),
+      },
+      "shop_locale",
+      "shop",
+      { iso_code: "locale", direction: "locale" },
+    );
+  const globals: LiquidRecord = {
+    shop: tracked(
+      {
+        ...Object.fromEntries(
+          Object.entries(snapshot.shop).filter(
+            ([key]) => !["seo", "permanentDomain", "socialSharingImage"].includes(key),
+          ),
+        ),
+        ...availableFields({
+          id: snapshot.shop.id === undefined ? undefined : id(snapshot.shop.id),
+          permanent_domain: snapshot.shop.permanentDomain,
+          name: snapshot.shop.name,
+          locale: snapshot.shop.locale,
+          money_format: snapshot.shop.money_format,
+          money_with_currency_format: snapshot.shop.money_with_currency_format,
+          // Optional shop metadata; an omission is missing data.
+          description: snapshot.shop.description,
+          customer_accounts_enabled: snapshot.shop.customer_accounts_enabled,
+          customer_accounts_optional: snapshot.shop.customer_accounts_optional,
+          enabled_payment_types: snapshot.shop.enabled_payment_types,
+          features: snapshot.shop.features
+            ? tracked(snapshot.shop.features, "shop.features", "shop.features")
+            : undefined,
+          policies: snapshot.shop.policies
+            ? snapshot.shop.policies.map((source, index) => {
+                class Policy extends Drop {
+                  #field(key: "id" | "title" | "body" | "url") {
+                    hooks.read(`shop.policies[${index}].${key}`);
+                    if (!Object.hasOwn(source, key)) absent("policy", key);
+                    return key === "id" && source.id ? id(source.id) : source[key];
+                  }
+                  get id() {
+                    return this.#field("id");
+                  }
+                  get title() {
+                    return this.#field("title");
+                  }
+                  get body() {
+                    return this.#field("body");
+                  }
+                  get url() {
+                    return this.#field("url");
+                  }
+                  valueOf() {
+                    return this.body;
+                  }
+                  liquidMethodMissing(key: string) {
+                    if (!internalKeys.has(key)) hooks.unsupported("policy", key);
+                    return undefined;
+                  }
+                }
+                const policy = new Policy();
+                objectKinds.set(policy, "policy");
+                return policy;
+              })
+            : undefined,
+        }),
+        // Without a policy list, the policy aliases are missing data too.
+        ...(snapshot.shop.policies
+          ? {}
+          : availableFields(Object.fromEntries(policyAliases.map((key) => [key, undefined])))),
+        products_count: counts.products,
+        collections_count: counts.collections,
+      },
+      "shop",
+      "shop",
+      { permanent_domain: "permanentDomain" },
+    ),
+    request: tracked(
+      {
+        path:
+          route.pageType === "404" ? null : new URL(route.path, "https://offline.invalid").pathname,
+        page_type: route.pageType,
+        design_mode: route.designMode,
+        visual_preview_mode: false,
+        locale: requestLocale,
+        host: snapshot.shop.domain,
+        origin: `https://${snapshot.shop.domain}`,
+      },
+      "request",
+      "request",
+    ),
+    // Derived paths, not snapshot reads: no source path is recorded for them.
+    routes: tracked(
+      { ...routePaths },
+      "routes",
+      "routes",
+      Object.fromEntries(Object.keys(routePaths).map((key) => [key, null])),
+    ),
+  };
+  if (localization) globals.localization = localization;
+  else
+    Object.defineProperty(globals, "localization", {
+      enumerable: true,
+      get() {
+        if (hooks.missing) hooks.missing("Localization availability is absent from the snapshot.");
+        else hooks.unsupportedOperation?.("Localization availability is absent from the snapshot.");
+        return null;
+      },
+    });
+  if (snapshot.shop.policies !== undefined) {
+    const shop = globals.shop;
+    if (
+      shop !== null &&
+      typeof shop === "object" &&
+      "policies" in shop &&
+      Array.isArray(shop.policies)
+    ) {
+      const policies = shop.policies;
+      for (const key of policyAliases)
+        Object.defineProperty(shop, key, {
+          enumerable: true,
+          get() {
+            return (
+              policies.find((policy) => policy.url === `/policies/${key.replaceAll("_", "-")}`) ??
+              null
+            );
+          },
+        });
+    }
+  }
+  // Documented globals beyond the resources: nil where the preview has no such state, and a
+  // diagnostic where the value exists on Shopify but not offline.
+  Object.assign(globals, {
+    handle: route.resourceHandle,
+    customer: null, // No customer session exists offline.
+    self: null, // Metaobject templates are not rendered.
+    current_tags: null, // Tag-filtered collection and blog URLs are not routed.
+    // Product recommendations come from a separate storefront request; a page render has none.
+    // Themes read `performed` as well as the documented `performed?`.
+    recommendations: tracked(
+      { "performed?": false, performed: false, products: [], products_count: 0, intent: null },
+      "recommendations",
+    ),
+  });
+  for (const [key, value, message] of [
+    [
+      "additional_checkout_buttons",
+      false,
+      "Accelerated checkout buttons are omitted; they require Shopify's live checkout.",
+    ],
+    [
+      "content_for_additional_checkout_buttons",
+      "",
+      "Accelerated checkout buttons are omitted; they require Shopify's live checkout.",
+    ],
+  ] as const)
+    Object.defineProperty(globals, key, {
+      enumerable: true,
+      get() {
+        hooks.serverOnly?.(message);
+        return value;
+      },
+    });
+  for (const key of unavailableGlobals)
+    Object.defineProperty(globals, key, {
+      enumerable: true,
+      get() {
+        hooks.unsupportedOperation?.(`Global object ${key} is not available offline.`);
+        return null;
+      },
+    });
+  return globals;
+}
+
+/** Source-backed fields plus explicit derivation; omitted fields are observed, never invented. */
+export function liquidCart(
+  snapshot: RenderCommon,
+  products: ReadonlyMap<string, LiquidRecord>,
+  sources: ReadonlyMap<string, { source: Snapshot["products"][number]; position: number }>,
+  hooks: ObjectHooks,
+  tracked: ObjectTracker,
+): LiquidRecord {
+  const { trackedJson } = liquidResourceHelpers(snapshot, hooks, tracked);
+  function amount(value: bigint): number {
+    if (value > BigInt(Number.MAX_SAFE_INTEGER))
+      throw new Error("Cart amount exceeds safe Liquid numeric precision");
+    return Number(value);
+  }
+  const items = snapshot.cart.lines.map((line, index) => {
+    const source = sources.get(line.productHandle)?.source;
+    const variantIndex =
+      source?.variants.findIndex((variant) => variant.id === line.variantId) ?? -1;
+    const variantSource = source?.variants[variantIndex];
+    const product = products.get(line.productHandle);
+    if (!source || !variantSource || !product)
+      throw new Error("Cart variant is absent from snapshot");
+    const variants = product.variants;
+    const variant = Array.isArray(variants) ? variants[variantIndex] : undefined;
+    if (!variant || typeof variant !== "object")
+      throw new Error("Cart variant derivation is unavailable");
+    const price = liquidPrice(variantSource.price);
+    const linePrice = amount(BigInt(price) * BigInt(line.quantity));
+    const variantTitle = source.options
+      .map(
+        (option) =>
+          variantSource.optionValues.find((value) => value.name === option.name)?.value ?? "",
+      )
+      .join(" / ");
+    const lineImage = source.images.find((image) => image.file === variantSource.image);
+    const variantPath = `products[${sources.get(source.handle)?.position}].variants[${variantIndex}]`;
+    return tracked(
+      {
+        id: id(line.variantId),
+        index,
+        variant_id: id(line.variantId),
+        product,
+        variant,
+        quantity: line.quantity,
+        title: product.has_only_default_variant
+          ? source.title
+          : `${source.title} - ${variantTitle}`,
+        product_title: source.title,
+        variant_title: variantTitle,
+        vendor: source.vendor,
+        sku: variantSource.sku,
+        ...availableFields({
+          image:
+            variantSource.image === undefined
+              ? undefined
+              : lineImage
+                ? ((Array.isArray(product.images)
+                    ? product.images[source.images.indexOf(lineImage)]
+                    : null) ?? null)
+                : product.featured_image,
+        }),
+        url: `/products/${source.handle}?variant=${encodeURIComponent(line.variantId)}`,
+        options_with_values: tracked(
+          variantSource.optionValues.map((value, valueIndex) =>
+            tracked(
+              { ...value },
+              "option_with_value",
+              `${variantPath}.optionValues[${valueIndex}]`,
+            ),
+          ),
+          "option_with_value",
+          `${variantPath}.optionValues`,
+        ),
+        original_price: price,
+        final_price: price,
+        price,
+        original_line_price: linePrice,
+        final_line_price: linePrice,
+        line_price: linePrice,
+        line_level_discount_allocations: [],
+        line_level_total_discount: 0,
+        discount_allocations: [],
+        discounts: [],
+        total_discount: 0,
+        properties: {},
+        selling_plan_allocation: null,
+        ...availableFields({
+          key: line.key,
+          instructions: trackedJson(
+            line.instructions,
+            "instructions",
+            `cart.lines[${index}].instructions`,
+          ),
+          parent_relationship: trackedJson(
+            line.parentRelationship,
+            "parent_relationship",
+            `cart.lines[${index}].parent_relationship`,
+          ),
+          item_components: trackedJson(
+            line.itemComponents,
+            "line_item",
+            `cart.lines[${index}].item_components`,
+          ),
+          url_to_remove:
+            line.key === undefined
+              ? undefined
+              : `/cart/change?id=${encodeURIComponent(line.key).replace(/%3A/gi, ":")}&quantity=0`,
+        }),
+        ...availableFields({
+          unit_price: variant.unit_price,
+          unit_price_measurement: variant.unit_price_measurement,
+        }),
+      },
+      "line_item",
+      `cart.lines[${index}]`,
+    );
+  });
+  return liquidCartPresentation(snapshot, tracked, items);
+}
+
+export function liquidCartPresentation(
+  snapshot: RenderCommon,
+  tracked: ObjectTracker,
+  items: LiquidRecord[] | PromiseLike<LiquidRecord[]>,
+): LiquidRecord {
+  function amount(value: bigint): number {
+    if (value > BigInt(Number.MAX_SAFE_INTEGER))
+      throw new Error("Cart amount exceeds safe Liquid numeric precision");
+    return Number(value);
+  }
+  const total = (values: LiquidRecord[]) =>
+    amount(values.reduce((sum, item) => sum + BigInt(Number(item.final_line_price)), 0n));
+  const cartTotal = () =>
+    Array.isArray(items) ? total(items) : Promise.resolve(items).then(total);
+  const count = amount(snapshot.cart.lines.reduce((sum, line) => sum + BigInt(line.quantity), 0n));
+  // The selected country's currency supplies names when it is the shop currency.
+  const shopCurrency = [
+    ...(snapshot.localization?.availableCountries.filter(
+      (country) => country.isoCode === snapshot.localization?.country,
+    ) ?? []),
+    ...(snapshot.localization?.availableCountries ?? []),
+  ].find((country) => country.currency?.isoCode === snapshot.shop.currency)?.currency;
+  return tracked(
+    {
+      items,
+      item_count: count,
+      "empty?": snapshot.cart.lines.length === 0,
+      note: snapshot.cart.note,
+      get original_total_price() {
+        return cartTotal();
+      },
+      get items_subtotal_price() {
+        return cartTotal();
+      },
+      get total_price() {
+        return cartTotal();
+      },
+      total_discount: 0,
+      cart_level_discount_applications: [],
+      discount_applications: [],
+      attributes: {},
+      currency: tracked(
+        {
+          iso_code: snapshot.shop.currency,
+          symbol:
+            shopCurrency?.symbol ??
+            new Intl.NumberFormat("en", {
+              style: "currency",
+              currency: snapshot.shop.currency,
+              currencyDisplay: "narrowSymbol",
+            })
+              .formatToParts(0)
+              .find((part) => part.type === "currency")?.value ??
+            snapshot.shop.currency,
+          ...availableFields({ name: shopCurrency?.name }),
+        },
+        "currency",
+        "shop",
+        { iso_code: "currency", symbol: null, name: null },
+      ),
+      ...availableFields({
+        taxes_included: snapshot.cart.taxesIncluded,
+        duties_included: snapshot.cart.dutiesIncluded,
+      }),
+    },
+    "cart",
+    "cart",
+  );
+}
+
+export function liquidSearch(
+  snapshot: RenderCommon,
+  catalog: Pick<Snapshot, "products" | "pages" | "blogs">,
+  products: ReadonlyMap<string, LiquidRecord>,
+  pages: ReadonlyMap<string, LiquidRecord>,
+  articles: ReadonlyMap<string, Map<string, LiquidRecord>>,
+  route: RouteContext,
+  hooks: ObjectHooks,
+  tracked: ObjectTracker,
+): LiquidRecord {
+  const { absent } = liquidResourceHelpers(snapshot, hooks, tracked);
+  const candidates: SearchCandidate<LiquidRecord>[] = [];
+  for (const source of catalog.products) {
+    const value = products.get(source.handle);
+    if (value)
+      candidates.push({
+        type: "product",
+        value,
+        text: [
+          source.title,
+          source.descriptionHtml,
+          source.vendor,
+          source.productType,
+          ...source.tags,
+          ...source.variants.map((v) => v.sku),
+        ].join(" "),
+        available: productAvailability(source.variants),
+        price: Math.min(...source.variants.map((v) => liquidPrice(v.price))),
+      });
+  }
+  for (const source of catalog.pages) {
+    const value = pages.get(source.handle);
+    if (value)
+      candidates.push({
+        type: "page",
+        value,
+        text: `${source.title} ${source.bodyHtml}`,
+        available: true,
+        price: null,
+      });
+  }
+  for (const blog of catalog.blogs)
+    for (const source of blog.articles) {
+      const value = articles.get(blog.handle)?.get(source.handle);
+      if (value)
+        candidates.push({
+          type: "article",
+          value,
+          text: [
+            source.title,
+            source.bodyHtml,
+            source.excerptHtml,
+            source.author,
+            ...source.tags,
+          ].join(" "),
+          available: true,
+          price: null,
+        });
+    }
+  const productSourceOf = new WeakMap<object, Snapshot["products"][number]>();
+  for (const source of catalog.products) {
+    const value = products.get(source.handle);
+    if (value) productSourceOf.set(value, source);
+  }
+  const resultSources = new WeakMap<object, Snapshot["products"][number]>();
+  const resultCache = new Map<SearchPurpose, LiquidRecord[]>();
+  function matching(purpose: SearchPurpose = "results"): LiquidRecord[] | undefined {
+    const cached = resultCache.get(purpose);
+    if (cached) return cached;
+    const matches = searchResults(
+      candidates,
+      route.path,
+      (message) =>
+        hooks.unsupportedOperation
+          ? hooks.unsupportedOperation(message)
+          : hooks.unsupported("search", message),
+      () => absent("search", `${purpose} (variant.available)`),
+      purpose,
+    );
+    if (matches === undefined) return undefined;
+    const results = matches.map((candidate) => {
+      const result = new Proxy(candidate.value, {
+        ownKeys(target) {
+          const keys = Reflect.ownKeys(target);
+          return keys.includes("object_type") ? keys : [...keys, "object_type"];
+        },
+        getOwnPropertyDescriptor(target, key) {
+          return key === "object_type"
+            ? { configurable: true, enumerable: true, writable: false, value: candidate.type }
+            : Reflect.getOwnPropertyDescriptor(target, key);
+        },
+        get(target, key, receiver) {
+          return key === "object_type" ? candidate.type : Reflect.get(target, key, receiver);
+        },
+      });
+      objectKinds.set(result, candidate.type);
+      const source = productSourceOf.get(candidate.value);
+      if (source) resultSources.set(result, source);
+      return result;
+    });
+    resultCache.set(purpose, results);
+    return results;
+  }
+  return tracked(
+    {
+      id: null,
+      url: null,
+      terms: route.q,
+      performed: new URL(route.path, "https://offline.invalid").searchParams.has("q"),
+      get results() {
+        return matching();
+      },
+      get results_count() {
+        return matching("count")?.length;
+      },
+      default_sort_by: "relevance",
+      sort_by: route.sortBy ?? "relevance",
+      sort_options: [
+        { name: "Relevance", value: "relevance" },
+        { name: "Price, low to high", value: "price-ascending" },
+        { name: "Price, high to low", value: "price-descending" },
+      ].map((option) => tracked(option, "sort_option")),
+      get filters() {
+        if (snapshot.filters === undefined) {
+          const matches = matching("facets");
+          if (matches?.every((value) => !resultSources.has(value))) return [];
+          absent("search", "filters");
+          return undefined;
+        }
+        const query = new URL(route.path, "https://offline.invalid").searchParams;
+        if (
+          snapshot.filters.some((filter) =>
+            [...query.keys()].some((key) => key.startsWith(filter.id)),
+          )
+        )
+          hooks.unsupportedOperation?.(
+            "Storefront filters are not applied to search results offline.",
+          );
+        const matches = matching("facets");
+        if (matches === undefined) return undefined;
+        return storefrontQuery(
+          snapshot,
+          route.path,
+          matches.flatMap((value) => {
+            const source = resultSources.get(value);
+            return source ? [{ source, value }] : [];
+          }),
+          {
+            apply: false,
+            sortBy: null,
+            defaultSortBy: "relevance",
+            track: tracked,
+            unsupported: (message) => hooks.unsupportedOperation?.(message),
+            missing: (message) =>
+              hooks.missing ? hooks.missing(message) : hooks.unsupportedOperation?.(message),
+          },
+        ).filters;
+      },
+    },
+    "search",
+    "search",
+  );
+}
+
+export function liquidMenu(
+  menu: Snapshot["menus"][number],
+  index: number,
+  snapshot: RenderCommon,
+  route: RouteContext,
+  tracked: ObjectTracker,
+  linkObject: (link: MenuLink) => unknown,
+): LiquidRecord {
+  const requestPath = localPath(route.path) ?? "/";
+  function localPath(url: string): string | null {
+    try {
+      const parsed = new URL(url, "https://offline.invalid");
+      if (![`offline.invalid`, snapshot.shop.domain].includes(parsed.host)) return null;
+      return parsed.pathname.replace(/(.)\/$/, "$1");
+    } catch {
+      return null;
+    }
+  }
+  interface LinkState {
+    record: LiquidRecord;
+    active: boolean;
+    current: boolean;
+    levels: number;
+    children: LinkState[];
+  }
+  function menuLinks(links: MenuLink[], path: string): LinkState[] {
+    return links.map((link, index) => {
+      const children = menuLinks(link.links, `${path}[${index}].links`);
+      const target = localPath(link.url);
+      // Shopify ignores URL parameters; a link is active on its own path and below it.
+      const current = target !== null && target === requestPath;
+      const active =
+        current || (target !== null && target !== "/" && requestPath.startsWith(`${target}/`));
+      const levels = children.length ? 1 + Math.max(...children.map((c) => c.levels)) : 0;
+      const descendants = (states: LinkState[]): LinkState[] =>
+        states.flatMap((state) => [state, ...descendants(state.children)]);
+      const all = descendants(children);
+      const record = tracked(
+        {
+          title: link.title,
+          // Shopify derives a link's handle from its title; themes build element ids from it.
+          handle: handleize(link.title),
+          url: link.url,
+          type: link.type,
+          links: tracked(
+            children.map((c) => c.record),
+            "link",
+            `${path}[${index}].links`,
+          ),
+          active,
+          current,
+          child_active: all.some((c) => c.active),
+          child_current: all.some((c) => c.current),
+          levels,
+          get object() {
+            return linkObject(link);
+          },
+          // Only Shopify's data-sale opt-out page link carries the privacy-choices icon.
+          ...(target === "/pages/data-sharing-opt-out" ? {} : { data_sharing_opt_out_icon: null }),
+        },
+        "link",
+        `${path}[${index}]`,
+        {
+          handle: "title",
+          active: null,
+          current: null,
+          child_active: null,
+          child_current: null,
+          levels: null,
+          object: "url",
+          data_sharing_opt_out_icon: null,
+        },
+      );
+      return { record, active, current, levels, children };
+    });
+  }
+  const links = menuLinks(menu.links, `menus[${index}].links`);
+  const record = {
+    handle: menu.handle,
+    title: menu.title,
+    links: tracked(
+      links.map((link) => link.record),
+      "link",
+      `menus[${index}].links`,
+    ),
+    levels: links.length ? 1 + Math.max(...links.map((link) => link.levels)) : 0,
+  };
+  // Shopify prints a menu as its handle, e.g. a link_list setting passed to an attribute.
+  Object.defineProperty(record, Symbol.toPrimitive, { value: () => menu.handle });
+  return tracked(record, "linklist", `menus[${index}]`, { levels: null });
+}
+
+export function liquidObjects(
+  snapshot: Snapshot,
+  route: RouteContext,
+  hooks: ObjectHooks,
+  tracked: ObjectTracker = objectTracker(hooks),
+): LiquidRecord {
+  const { time, absent, image, metafield, metafields, typedMetafield, collectionSortOptions } =
+    liquidResourceHelpers(snapshot, hooks, tracked);
+  const products = new Map<string, LiquidRecord>();
+  const collections = new Map<string, LiquidRecord>();
+  for (const [productIndex, source] of snapshot.products.entries())
+    products.set(
+      source.handle,
+      liquidProduct(source, productIndex, snapshot, route, hooks, tracked),
+    );
   const productSources = new Map(snapshot.products.map((source) => [source.handle, source]));
   const viewed = (handle: string) =>
     route.pageType === "collection" && route.resourceHandle === handle;
@@ -1354,7 +2103,6 @@ export function liquidObjects(
       });
     }
   }
-  const requestPath = localPath(route.path) ?? "/";
   function localPath(url: string): string | null {
     try {
       const parsed = new URL(url, "https://offline.invalid");
@@ -1404,81 +2152,11 @@ export function liquidObjects(
     }
     return value ?? null;
   }
-  interface LinkState {
-    record: LiquidRecord;
-    active: boolean;
-    current: boolean;
-    levels: number;
-    children: LinkState[];
-  }
-  function menuLinks(links: MenuLink[], path: string): LinkState[] {
-    return links.map((link, index) => {
-      const children = menuLinks(link.links, `${path}[${index}].links`);
-      const target = localPath(link.url);
-      // Shopify ignores URL parameters; a link is active on its own path and below it.
-      const current = target !== null && target === requestPath;
-      const active =
-        current || (target !== null && target !== "/" && requestPath.startsWith(`${target}/`));
-      const levels = children.length ? 1 + Math.max(...children.map((c) => c.levels)) : 0;
-      const descendants = (states: LinkState[]): LinkState[] =>
-        states.flatMap((state) => [state, ...descendants(state.children)]);
-      const all = descendants(children);
-      const record = tracked(
-        {
-          title: link.title,
-          // Shopify derives a link's handle from its title; themes build element ids from it.
-          handle: handleize(link.title),
-          url: link.url,
-          type: link.type,
-          links: tracked(
-            children.map((c) => c.record),
-            "link",
-            `${path}[${index}].links`,
-          ),
-          active,
-          current,
-          child_active: all.some((c) => c.active),
-          child_current: all.some((c) => c.current),
-          levels,
-          get object() {
-            return linkObject(link);
-          },
-          // Only Shopify's data-sale opt-out page link carries the privacy-choices icon.
-          ...(target === "/pages/data-sharing-opt-out" ? {} : { data_sharing_opt_out_icon: null }),
-        },
-        "link",
-        `${path}[${index}]`,
-        {
-          handle: "title",
-          active: null,
-          current: null,
-          child_active: null,
-          child_current: null,
-          levels: null,
-          object: "url",
-          data_sharing_opt_out_icon: null,
-        },
-      );
-      return { record, active, current, levels, children };
-    });
-  }
   const menuMap = Object.fromEntries(
-    snapshot.menus.map((menu, index) => {
-      const links = menuLinks(menu.links, `menus[${index}].links`);
-      const record = {
-        handle: menu.handle,
-        title: menu.title,
-        links: tracked(
-          links.map((link) => link.record),
-          "link",
-          `menus[${index}].links`,
-        ),
-        levels: links.length ? 1 + Math.max(...links.map((link) => link.levels)) : 0,
-      };
-      // Shopify prints a menu as its handle, e.g. a link_list setting passed to an attribute.
-      Object.defineProperty(record, Symbol.toPrimitive, { value: () => menu.handle });
-      return [menu.handle, tracked(record, "linklist", `menus[${index}]`, { levels: null })];
-    }),
+    snapshot.menus.map((menu, index) => [
+      menu.handle,
+      liquidMenu(menu, index, snapshot, route, tracked, linkObject),
+    ]),
   );
   /** `metaobjects.<type>.<handle>` lookup plus `values` and `values_count` per definition. */
   function metaobjectDefinitions(): LiquidRecord {
@@ -1529,474 +2207,24 @@ export function liquidObjects(
       ]),
     );
   }
-  function amount(value: bigint): number {
-    if (value > BigInt(Number.MAX_SAFE_INTEGER))
-      throw new Error("Cart amount exceeds safe Liquid numeric precision");
-    return Number(value);
-  }
-  const items = snapshot.cart.lines.map((line, index) => {
-    const source = snapshot.products.find((product) => product.handle === line.productHandle);
-    const variantIndex =
-      source?.variants.findIndex((variant) => variant.id === line.variantId) ?? -1;
-    const variantSource = source?.variants[variantIndex];
-    const product = products.get(line.productHandle);
-    if (!source || !variantSource || !product)
-      throw new Error("Cart variant is absent from snapshot");
-    const variants = product.variants;
-    const variant = Array.isArray(variants) ? variants[variantIndex] : undefined;
-    if (!variant || typeof variant !== "object")
-      throw new Error("Cart variant derivation is unavailable");
-    const price = liquidPrice(variantSource.price);
-    const linePrice = amount(BigInt(price) * BigInt(line.quantity));
-    const variantTitle = source.options
-      .map(
-        (option) =>
-          variantSource.optionValues.find((value) => value.name === option.name)?.value ?? "",
-      )
-      .join(" / ");
-    const lineImage = source.images.find((image) => image.file === variantSource.image);
-    const variantPath = `products[${snapshot.products.indexOf(source)}].variants[${variantIndex}]`;
-    return tracked(
-      {
-        id: id(line.variantId),
-        index,
-        variant_id: id(line.variantId),
-        product,
-        variant,
-        quantity: line.quantity,
-        title: product.has_only_default_variant
-          ? source.title
-          : `${source.title} - ${variantTitle}`,
-        product_title: source.title,
-        variant_title: variantTitle,
-        vendor: source.vendor,
-        sku: variantSource.sku,
-        ...availableFields({
-          image:
-            variantSource.image === undefined
-              ? undefined
-              : lineImage
-                ? ((Array.isArray(product.images)
-                    ? product.images[source.images.indexOf(lineImage)]
-                    : null) ?? null)
-                : product.featured_image,
-        }),
-        url: `/products/${source.handle}?variant=${encodeURIComponent(line.variantId)}`,
-        options_with_values: tracked(
-          variantSource.optionValues.map((value, valueIndex) =>
-            tracked(
-              { ...value },
-              "option_with_value",
-              `${variantPath}.optionValues[${valueIndex}]`,
-            ),
-          ),
-          "option_with_value",
-          `${variantPath}.optionValues`,
-        ),
-        original_price: price,
-        final_price: price,
-        price,
-        original_line_price: linePrice,
-        final_line_price: linePrice,
-        line_price: linePrice,
-        line_level_discount_allocations: [],
-        line_level_total_discount: 0,
-        discount_allocations: [],
-        discounts: [],
-        total_discount: 0,
-        properties: {},
-        selling_plan_allocation: null,
-        ...availableFields({
-          key: line.key,
-          instructions: trackedJson(
-            line.instructions,
-            "instructions",
-            `cart.lines[${index}].instructions`,
-          ),
-          parent_relationship: trackedJson(
-            line.parentRelationship,
-            "parent_relationship",
-            `cart.lines[${index}].parent_relationship`,
-          ),
-          item_components: trackedJson(
-            line.itemComponents,
-            "line_item",
-            `cart.lines[${index}].item_components`,
-          ),
-          url_to_remove:
-            line.key === undefined
-              ? undefined
-              : `/cart/change?id=${encodeURIComponent(line.key).replace(/%3A/gi, ":")}&quantity=0`,
-        }),
-        ...availableFields({
-          unit_price: variant.unit_price,
-          unit_price_measurement: variant.unit_price_measurement,
-        }),
-      },
-      "line_item",
-      `cart.lines[${index}]`,
-    );
+  const cart = liquidCart(
+    snapshot,
+    products,
+    new Map(snapshot.products.map((source, position) => [source.handle, { source, position }])),
+    hooks,
+    tracked,
+  );
+  const search = liquidSearch(snapshot, snapshot, products, pages, articles, route, hooks, tracked);
+  const globals = commonLiquidObjects(snapshot, route, hooks, tracked, {
+    products: snapshot.products.length,
+    collections: snapshot.collections.length,
   });
-  const cartTotal = amount(
-    items.reduce((sum, item) => sum + BigInt(Number(item.final_line_price)), 0n),
-  );
-  const count = amount(snapshot.cart.lines.reduce((sum, line) => sum + BigInt(line.quantity), 0n));
-  // The selected country's currency supplies names when it is the shop currency.
-  const shopCurrency = [
-    ...(snapshot.localization?.availableCountries.filter(
-      (country) => country.isoCode === snapshot.localization?.country,
-    ) ?? []),
-    ...(snapshot.localization?.availableCountries ?? []),
-  ].find((country) => country.currency?.isoCode === snapshot.shop.currency)?.currency;
-  const cart = tracked(
-    {
-      items,
-      item_count: count,
-      "empty?": items.length === 0,
-      note: snapshot.cart.note,
-      original_total_price: cartTotal,
-      items_subtotal_price: cartTotal,
-      total_price: cartTotal,
-      total_discount: 0,
-      cart_level_discount_applications: [],
-      discount_applications: [],
-      attributes: {},
-      currency: tracked(
-        {
-          iso_code: snapshot.shop.currency,
-          symbol:
-            shopCurrency?.symbol ??
-            new Intl.NumberFormat("en", {
-              style: "currency",
-              currency: snapshot.shop.currency,
-              currencyDisplay: "narrowSymbol",
-            })
-              .formatToParts(0)
-              .find((part) => part.type === "currency")?.value ??
-            snapshot.shop.currency,
-          ...availableFields({ name: shopCurrency?.name }),
-        },
-        "currency",
-        "shop",
-        { iso_code: "currency", symbol: null, name: null },
-      ),
-      ...availableFields({
-        taxes_included: snapshot.cart.taxesIncluded,
-        duties_included: snapshot.cart.dutiesIncluded,
-      }),
-    },
-    "cart",
-    "cart",
-  );
-  const candidates: SearchCandidate<LiquidRecord>[] = [];
-  for (const source of snapshot.products) {
-    const value = products.get(source.handle);
-    if (value)
-      candidates.push({
-        type: "product",
-        value,
-        text: [
-          source.title,
-          source.descriptionHtml,
-          source.vendor,
-          source.productType,
-          ...source.tags,
-          ...source.variants.map((v) => v.sku),
-        ].join(" "),
-        available: productAvailability(source.variants),
-        price: Math.min(...source.variants.map((v) => liquidPrice(v.price))),
-      });
-  }
-  for (const source of snapshot.pages) {
-    const value = pages.get(source.handle);
-    if (value)
-      candidates.push({
-        type: "page",
-        value,
-        text: `${source.title} ${source.bodyHtml}`,
-        available: true,
-        price: null,
-      });
-  }
-  for (const blog of snapshot.blogs)
-    for (const source of blog.articles) {
-      const value = articles.get(blog.handle)?.get(source.handle);
-      if (value)
-        candidates.push({
-          type: "article",
-          value,
-          text: [
-            source.title,
-            source.bodyHtml,
-            source.excerptHtml,
-            source.author,
-            ...source.tags,
-          ].join(" "),
-          available: true,
-          price: null,
-        });
-    }
-  const productSourceOf = new WeakMap<object, Snapshot["products"][number]>();
-  for (const source of snapshot.products) {
-    const value = products.get(source.handle);
-    if (value) productSourceOf.set(value, source);
-  }
-  const resultSources = new WeakMap<object, Snapshot["products"][number]>();
-  const resultCache = new Map<SearchPurpose, LiquidRecord[]>();
-  function matching(purpose: SearchPurpose = "results"): LiquidRecord[] | undefined {
-    const cached = resultCache.get(purpose);
-    if (cached) return cached;
-    const matches = searchResults(
-      candidates,
-      route.path,
-      (message) =>
-        hooks.unsupportedOperation
-          ? hooks.unsupportedOperation(message)
-          : hooks.unsupported("search", message),
-      () => absent("search", `${purpose} (variant.available)`),
-      purpose,
-    );
-    if (matches === undefined) return undefined;
-    const results = matches.map((candidate) => {
-      const result = new Proxy(candidate.value, {
-        ownKeys(target) {
-          const keys = Reflect.ownKeys(target);
-          return keys.includes("object_type") ? keys : [...keys, "object_type"];
-        },
-        getOwnPropertyDescriptor(target, key) {
-          return key === "object_type"
-            ? { configurable: true, enumerable: true, writable: false, value: candidate.type }
-            : Reflect.getOwnPropertyDescriptor(target, key);
-        },
-        get(target, key, receiver) {
-          return key === "object_type" ? candidate.type : Reflect.get(target, key, receiver);
-        },
-      });
-      objectKinds.set(result, candidate.type);
-      const source = productSourceOf.get(candidate.value);
-      if (source) resultSources.set(result, source);
-      return result;
-    });
-    resultCache.set(purpose, results);
-    return results;
-  }
-  const search = tracked(
-    {
-      id: null,
-      url: null,
-      terms: route.q,
-      performed: new URL(route.path, "https://offline.invalid").searchParams.has("q"),
-      get results() {
-        return matching();
-      },
-      get results_count() {
-        return matching("count")?.length;
-      },
-      default_sort_by: "relevance",
-      sort_by: route.sortBy ?? "relevance",
-      sort_options: [
-        { name: "Relevance", value: "relevance" },
-        { name: "Price, low to high", value: "price-ascending" },
-        { name: "Price, high to low", value: "price-descending" },
-      ].map((option) => tracked(option, "sort_option")),
-      get filters() {
-        if (snapshot.filters === undefined) {
-          const matches = matching("facets");
-          if (matches?.every((value) => !resultSources.has(value))) return [];
-          absent("search", "filters");
-          return undefined;
-        }
-        const query = new URL(route.path, "https://offline.invalid").searchParams;
-        if (
-          snapshot.filters.some((filter) =>
-            [...query.keys()].some((key) => key.startsWith(filter.id)),
-          )
-        )
-          hooks.unsupportedOperation?.(
-            "Storefront filters are not applied to search results offline.",
-          );
-        const matches = matching("facets");
-        if (matches === undefined) return undefined;
-        return storefrontQuery(
-          snapshot,
-          route.path,
-          matches.flatMap((value) => {
-            const source = resultSources.get(value);
-            return source ? [{ source, value }] : [];
-          }),
-          {
-            apply: false,
-            sortBy: null,
-            defaultSortBy: "relevance",
-            track: tracked,
-            unsupported: (message) => hooks.unsupportedOperation?.(message),
-            missing: (message) =>
-              hooks.missing ? hooks.missing(message) : hooks.unsupportedOperation?.(message),
-          },
-        ).filters;
-      },
-    },
-    "search",
-    "search",
-  );
-  const languages = (snapshot.localization?.availableLanguages ?? []).map((language, index) =>
-    tracked(
-      {
-        iso_code: language.isoCode,
-        direction: direction(language.isoCode),
-        ...availableFields({
-          name: language.name,
-          endonym_name: language.endonymName,
-          primary: language.primary,
-          root_url: language.rootUrl,
-        }),
-      },
-      "shop_locale",
-      `localization.availableLanguages[${index}]`,
-      {
-        iso_code: "isoCode",
-        direction: "isoCode",
-        endonym_name: "endonymName",
-        root_url: "rootUrl",
-      },
-    ),
-  );
-  let localization: LiquidRecord | undefined;
-  if (snapshot.localization) {
-    const source = snapshot.localization;
-    const countries = source.availableCountries.map((country, index) =>
-      tracked(
-        {
-          iso_code: country.isoCode,
-          ...availableFields({
-            name: country.name,
-            currency: country.currency
-              ? tracked(
-                  {
-                    iso_code: country.currency.isoCode,
-                    ...availableFields({
-                      symbol: country.currency.symbol,
-                      name: country.currency.name,
-                    }),
-                  },
-                  "currency",
-                  `localization.availableCountries[${index}].currency`,
-                  { iso_code: "isoCode" },
-                )
-              : undefined,
-          }),
-        },
-        "country",
-        `localization.availableCountries[${index}]`,
-        { iso_code: "isoCode" },
-      ),
-    );
-    localization = tracked(
-      {
-        available_countries: countries,
-        available_languages: languages,
-        country: countries.find((country) => country.iso_code === source.country),
-        language: languages.find((language) => language.iso_code === source.language),
-      },
-      "localization",
-      "localization",
-      { available_countries: "availableCountries", available_languages: "availableLanguages" },
-    );
-  }
-  // The request locale is the shop's language entry when the snapshot lists its languages.
-  const requestLocale =
-    languages.find((language) => language.iso_code === snapshot.shop.locale) ??
-    tracked(
-      {
-        ...availableFields({
-          iso_code: snapshot.shop.locale,
-          direction:
-            snapshot.shop.locale === undefined ? undefined : direction(snapshot.shop.locale),
-        }),
-        ...availableFields({
-          name: undefined,
-          endonym_name: undefined,
-          primary: undefined,
-          root_url: undefined,
-        }),
-      },
-      "shop_locale",
-      "shop",
-      { iso_code: "locale", direction: "locale" },
-    );
-  const globals: LiquidRecord = {
+  Object.assign(globals, {
     images: new ImageDirectory(snapshot.images, {
       read: hooks.read,
       unsupported: (property) => hooks.unsupported("image", property),
       missing: (property) => absent("image", property),
     }),
-    shop: tracked(
-      {
-        ...Object.fromEntries(
-          Object.entries(snapshot.shop).filter(
-            ([key]) => !["seo", "permanentDomain", "socialSharingImage"].includes(key),
-          ),
-        ),
-        ...availableFields({
-          id: snapshot.shop.id === undefined ? undefined : id(snapshot.shop.id),
-          permanent_domain: snapshot.shop.permanentDomain,
-          name: snapshot.shop.name,
-          locale: snapshot.shop.locale,
-          money_format: snapshot.shop.money_format,
-          money_with_currency_format: snapshot.shop.money_with_currency_format,
-          // Optional shop metadata; an omission is missing data.
-          description: snapshot.shop.description,
-          customer_accounts_enabled: snapshot.shop.customer_accounts_enabled,
-          customer_accounts_optional: snapshot.shop.customer_accounts_optional,
-          enabled_payment_types: snapshot.shop.enabled_payment_types,
-          features: snapshot.shop.features
-            ? tracked(snapshot.shop.features, "shop.features", "shop.features")
-            : undefined,
-          policies: snapshot.shop.policies
-            ? snapshot.shop.policies.map((source, index) => {
-                class Policy extends Drop {
-                  #field(key: "id" | "title" | "body" | "url") {
-                    hooks.read(`shop.policies[${index}].${key}`);
-                    if (!Object.hasOwn(source, key)) absent("policy", key);
-                    return key === "id" && source.id ? id(source.id) : source[key];
-                  }
-                  get id() {
-                    return this.#field("id");
-                  }
-                  get title() {
-                    return this.#field("title");
-                  }
-                  get body() {
-                    return this.#field("body");
-                  }
-                  get url() {
-                    return this.#field("url");
-                  }
-                  valueOf() {
-                    return this.body;
-                  }
-                  liquidMethodMissing(key: string) {
-                    if (!internalKeys.has(key)) hooks.unsupported("policy", key);
-                    return undefined;
-                  }
-                }
-                const policy = new Policy();
-                objectKinds.set(policy, "policy");
-                return policy;
-              })
-            : undefined,
-        }),
-        // Without a policy list, the policy aliases are missing data too.
-        ...(snapshot.shop.policies
-          ? {}
-          : availableFields(Object.fromEntries(policyAliases.map((key) => [key, undefined])))),
-        products_count: snapshot.products.length,
-        collections_count: snapshot.collections.length,
-      },
-      "shop",
-      "shop",
-      { permanent_domain: "permanentDomain" },
-    ),
     cart,
     search,
     all_products: tracked(Object.fromEntries(products), "dictionary", "all_products"),
@@ -2005,59 +2233,7 @@ export function liquidObjects(
     blogs: tracked(Object.fromEntries(blogs), "dictionary", "blogs"),
     linklists: tracked(menuMap, "dictionary", "linklists"),
     metaobjects: tracked(metaobjectDefinitions(), "dictionary", "metaobjects"),
-    request: tracked(
-      {
-        path:
-          route.pageType === "404" ? null : new URL(route.path, "https://offline.invalid").pathname,
-        page_type: route.pageType,
-        design_mode: route.designMode,
-        visual_preview_mode: false,
-        locale: requestLocale,
-        host: snapshot.shop.domain,
-        origin: `https://${snapshot.shop.domain}`,
-      },
-      "request",
-      "request",
-    ),
-    // Derived paths, not snapshot reads: no source path is recorded for them.
-    routes: tracked(
-      { ...routePaths },
-      "routes",
-      "routes",
-      Object.fromEntries(Object.keys(routePaths).map((key) => [key, null])),
-    ),
-  };
-  if (localization) globals.localization = localization;
-  else
-    Object.defineProperty(globals, "localization", {
-      enumerable: true,
-      get() {
-        if (hooks.missing) hooks.missing("Localization availability is absent from the snapshot.");
-        else hooks.unsupportedOperation?.("Localization availability is absent from the snapshot.");
-        return null;
-      },
-    });
-  if (snapshot.shop.policies !== undefined) {
-    const shop = globals.shop;
-    if (
-      shop !== null &&
-      typeof shop === "object" &&
-      "policies" in shop &&
-      Array.isArray(shop.policies)
-    ) {
-      const policies = shop.policies;
-      for (const key of policyAliases)
-        Object.defineProperty(shop, key, {
-          enumerable: true,
-          get() {
-            return (
-              policies.find((policy) => policy.url === `/policies/${key.replaceAll("_", "-")}`) ??
-              null
-            );
-          },
-        });
-    }
-  }
+  });
   if (route.pageType === "product")
     globals.product = products.get(route.resourceHandle ?? "") ?? null;
   if (route.pageType === "collection")
@@ -2082,55 +2258,14 @@ export function liquidObjects(
     "closest",
     "closest",
   );
-  // Documented globals beyond the resources: nil where the preview has no such state, and a
-  // diagnostic where the value exists on Shopify but not offline.
-  Object.assign(globals, {
-    articles: tracked(
-      Object.fromEntries(
-        [...articles].flatMap(([blog, entries]) =>
-          [...entries].map(([handle, value]) => [`${blog}/${handle}`, value]),
-        ),
+  globals.articles = tracked(
+    Object.fromEntries(
+      [...articles].flatMap(([blog, entries]) =>
+        [...entries].map(([handle, value]) => [`${blog}/${handle}`, value]),
       ),
-      "dictionary",
-      "articles",
     ),
-    handle: route.resourceHandle,
-    customer: null, // No customer session exists offline.
-    self: null, // Metaobject templates are not rendered.
-    current_tags: null, // Tag-filtered collection and blog URLs are not routed.
-    // Product recommendations come from a separate storefront request; a page render has none.
-    // Themes read `performed` as well as the documented `performed?`.
-    recommendations: tracked(
-      { "performed?": false, performed: false, products: [], products_count: 0, intent: null },
-      "recommendations",
-    ),
-  });
-  for (const [key, value, message] of [
-    [
-      "additional_checkout_buttons",
-      false,
-      "Accelerated checkout buttons are omitted; they require Shopify's live checkout.",
-    ],
-    [
-      "content_for_additional_checkout_buttons",
-      "",
-      "Accelerated checkout buttons are omitted; they require Shopify's live checkout.",
-    ],
-  ] as const)
-    Object.defineProperty(globals, key, {
-      enumerable: true,
-      get() {
-        hooks.serverOnly?.(message);
-        return value;
-      },
-    });
-  for (const key of unavailableGlobals)
-    Object.defineProperty(globals, key, {
-      enumerable: true,
-      get() {
-        hooks.unsupportedOperation?.(`Global object ${key} is not available offline.`);
-        return null;
-      },
-    });
+    "dictionary",
+    "articles",
+  );
   return globals;
 }

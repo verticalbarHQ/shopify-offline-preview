@@ -19,32 +19,43 @@ export class ThemeAssetBundles {
   #assets = new Map<string, Assets>();
   #used = new Set<string>();
   #marker: string;
-  constructor(files: ReadonlyMap<string, string>, snapshot: unknown) {
+  constructor(
+    private readonly files: ReadonlyMap<string, string>,
+    snapshot: unknown,
+    private readonly staticPreview = false,
+  ) {
     let number = 0;
     const source = [...files.values(), JSON.stringify(snapshot)];
     while (source.some((text) => text.includes(`<!--sop:theme-assets:${number}-->`))) number++;
     this.#marker = `<!--sop:theme-assets:${number}-->`;
-    for (const [file, text] of [...files].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
-      if (!/^(sections|blocks|snippets)\/.*\.liquid$/.test(file)) continue;
-      const assets: Assets = {};
-      try {
-        walk(toLiquidAST(text, { mode: "tolerant", allowUnclosedDocumentNode: false }), (node) => {
-          if (node.type !== NodeTypes.LiquidRawTag) return;
-          if (node.name !== "javascript" && node.name !== "stylesheet") return;
-          if (Object.hasOwn(assets, node.name))
-            throw new Error(`Only one ${node.name} tag is allowed per file`);
-          assets[node.name] = node.body.value;
-        });
-      } catch (error) {
-        assets.error = error instanceof Error ? error : new Error("Invalid asset source");
-      }
-      this.#assets.set(file, assets);
+    if (!staticPreview)
+      for (const [file, text] of [...files].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)))
+        this.compile(file, text);
+  }
+  private compile(file: string, text: string) {
+    if (!/^(sections|blocks|snippets)\/.*\.liquid$/.test(file)) return;
+    const assets: Assets = {};
+    try {
+      walk(toLiquidAST(text, { mode: "tolerant", allowUnclosedDocumentNode: false }), (node) => {
+        if (node.type !== NodeTypes.LiquidRawTag) return;
+        if (node.name !== "javascript" && node.name !== "stylesheet") return;
+        if (Object.hasOwn(assets, node.name))
+          throw new Error(`Only one ${node.name} tag is allowed per file`);
+        assets[node.name] = node.body.value;
+      });
+    } catch (error) {
+      assets.error = error instanceof Error ? error : new Error("Invalid asset source");
     }
+    this.#assets.set(file, assets);
   }
   header() {
     return this.#marker;
   }
   use(file: string) {
+    if (this.staticPreview && !this.#assets.has(file)) {
+      const text = this.files.get(file);
+      if (text !== undefined) this.compile(file, text);
+    }
     const assets = this.#assets.get(file);
     if (assets?.error) throw assets.error;
     this.#used.add(file);
@@ -52,11 +63,13 @@ export class ThemeAssetBundles {
   finish(html: string): { html: string; emitted: boolean } {
     const css: string[] = [];
     const javascript = new Map<string, string[]>();
-    for (const [file, assets] of this.#assets) {
+    for (const [file, assets] of [...this.#assets].sort(([a], [b]) =>
+      a < b ? -1 : a > b ? 1 : 0,
+    )) {
       if (assets.error) continue;
       if (this.#used.has(file) && assets.stylesheet !== undefined) css.push(assets.stylesheet);
       // Shopify's JS bundles include all source files, including files absent from this page.
-      if (assets.javascript !== undefined) {
+      if (!this.staticPreview && assets.javascript !== undefined) {
         const type = file.split("/")[0] ?? "";
         let bodies = javascript.get(type);
         if (!bodies) {

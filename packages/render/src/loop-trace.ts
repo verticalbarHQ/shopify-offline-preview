@@ -10,6 +10,7 @@ import {
   type TagToken,
   Tokenizer,
   type TopLevelToken,
+  toPromise,
 } from "liquidjs";
 import { registerTableRowTag } from "./tablerow-tag.js";
 
@@ -133,15 +134,14 @@ export function registerLoopTrace(
             async render(context: Context, emitter) {
               const loop = context.getSync(["forloop"]);
               if (!(loop instanceof Drop)) throw new Error("Loop metadata unavailable");
+              const item = await toPromise(context._get([variable]));
               context.push({
+                [variable]: item,
                 forloop: new ForloopView(loop, context, context.getRegister("sop-for-parentloop")),
               });
               try {
-                const output = await execute(
-                  context.getSync([variable]),
-                  token,
-                  safeRegion(token),
-                  () => engine.render(body, context),
+                const output = await execute(item, token, safeRegion(token), () =>
+                  engine.render(body, context),
                 );
                 emitter.write(output);
               } finally {

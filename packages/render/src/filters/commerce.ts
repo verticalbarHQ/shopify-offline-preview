@@ -1,6 +1,6 @@
 import { type Liquid, toValue } from "liquidjs";
 import { liquidObjectKind, liquidPrice } from "../../../data/src/objects.js";
-import type { Snapshot } from "../../../data/src/schema.js";
+import type { RenderCommon } from "../../../data/src/render-source.js";
 import { tokenLine } from "../token-line.js";
 import { namedArgs } from "./images.js";
 import { jsonString } from "./json.js";
@@ -32,7 +32,7 @@ const spanTypes = new Set([
  */
 export function registerCommerceFilters(
   engine: Liquid,
-  snapshot: Snapshot,
+  snapshot: RenderCommon,
   diagnostic: Diagnostic,
 ): void {
   engine.registerFilter(

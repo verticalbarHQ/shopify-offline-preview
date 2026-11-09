@@ -110,10 +110,12 @@ export function registerRenderTag(
           }
           if (collection === undefined) return render(name, context.spawn(args), args);
           let html = "";
-          for (let i = 0; i < collection.length; i++) {
+          let i = 0;
+          for (const reference of collection) {
+            const item = await reference;
             const scope = {
               ...args,
-              [forAlias ?? name]: collection[i],
+              [forAlias ?? name]: item,
               forloop: {
                 length: collection.length,
                 index: i + 1,
@@ -125,6 +127,7 @@ export function registerRenderTag(
               },
             };
             html += await render(name, context.spawn(scope), scope);
+            i++;
           }
           return html;
         });

@@ -1,4 +1,5 @@
 import { type Context, type Liquid, toPromise } from "liquidjs";
+import { containsMissing } from "../../data/src/lazy-list.js";
 import { isCollectionProductList, liquidObjectKind } from "../../data/src/objects.js";
 import {
   type UnknownBackupValue,
@@ -97,7 +98,10 @@ export class BackupPreviewGuard {
       engine.registerFilter(name, async function (input: unknown, ...args: unknown[]) {
         if (unknownBackupValue(input)) return guard.unknown(this.context);
         const lists = [input, ...args].filter((value) => guard.collectionList(value));
-        if (transforms.has(name) && lists.some((value) => value.includes(null))) {
+        if (
+          transforms.has(name) &&
+          (await Promise.all(lists.map((value) => containsMissing(value)))).some(Boolean)
+        ) {
           guard.diagnostic(
             `Filter ${name} omitted: missing collection members cannot be filtered or reordered.`,
           );
@@ -153,53 +157,67 @@ export class BackupPreviewGuard {
       key: Parameters<Context["readProperty"]>[1],
     ) {
       const value: unknown = read.call(this, object, key);
-      if (
-        (state.mediaReferenceRoot !== undefined &&
-          key === state.mediaReferenceRoot &&
-          (value instanceof UnknownSelectedVariant ||
+      const evaluate = (value: unknown): unknown => {
+        if (
+          (state.mediaReferenceRoot !== undefined &&
+            key === state.mediaReferenceRoot &&
+            (value instanceof UnknownSelectedVariant ||
+              (value === undefined &&
+                selectedVariantProperties.has(String(key)) &&
+                liquidObjectKind(object) === "product"))) ||
+          (state.directMediaReference &&
+            key === "featured_media" &&
+            object instanceof UnknownSelectedVariant)
+        )
+          return undefined;
+        if (unknownBackupValue(value) || unknownBackupValue(object)) {
+          state.reads++;
+          guard.unknownReads++;
+          return object instanceof UnknownSelectedVariant
+            ? unknown
+            : unknownBackupValue(value)
+              ? value
+              : unknown;
+        }
+        if (
+          key === "products" &&
+          value === undefined &&
+          liquidObjectKind(object) === "collection"
+        ) {
+          const count: unknown = read.call(context, object, "all_products_count");
+          const incomplete = (count: unknown) => {
+            if (typeof count !== "number") return value;
+            state.reads++;
+            guard.unknownReads++;
+            return unknown;
+          };
+          return count instanceof Promise ? count.then(incomplete) : incomplete(count);
+        }
+        // A null owner is a captured absence (no selected variant on a page without one, a cleared reference): its
+        // properties are nil, as in Liquid. Only an owner the backup does not hold, or a product or variant missing the
+        // property, is unknown. Treating null as unknown poisoned whole captured card lists (Horizon's quick-add reads
+        // product.selected_variant.available on every card; staging 11-06, rnd5015-hand-stg-a showed no product cards).
+        if (
+          guardedProperties.has(String(key)) &&
+          (object === undefined ||
             (value === undefined &&
-              selectedVariantProperties.has(String(key)) &&
-              liquidObjectKind(object) === "product"))) ||
-        (state.directMediaReference &&
-          key === "featured_media" &&
-          object instanceof UnknownSelectedVariant)
-      )
-        return undefined;
-      if (unknownBackupValue(value) || unknownBackupValue(object)) {
-        state.reads++;
-        guard.unknownReads++;
-        return object instanceof UnknownSelectedVariant
-          ? unknown
-          : unknownBackupValue(value)
-            ? value
+              ["product", "variant"].includes(liquidObjectKind(object) ?? "")))
+        ) {
+          state.reads++;
+          guard.unknownReads++;
+          return selectedVariantProperties.has(String(key)) &&
+            liquidObjectKind(object) === "product"
+            ? unknownSelectedVariant
             : unknown;
-      }
-      if (
-        key === "products" &&
-        value === undefined &&
-        liquidObjectKind(object) === "collection" &&
-        typeof read.call(this, object, "all_products_count") === "number"
-      ) {
-        state.reads++;
-        guard.unknownReads++;
-        return unknown;
-      }
-      // A null owner is a captured absence (no selected variant on a page without one, a cleared reference): its
-      // properties are nil, as in Liquid. Only an owner the backup does not hold, or a product or variant missing the
-      // property, is unknown. Treating null as unknown poisoned whole captured card lists (Horizon's quick-add reads
-      // product.selected_variant.available on every card; staging 11-06, rnd5015-hand-stg-a showed no product cards).
-      if (
-        guardedProperties.has(String(key)) &&
-        (object === undefined ||
-          (value === undefined && ["product", "variant"].includes(liquidObjectKind(object) ?? "")))
-      ) {
-        state.reads++;
-        guard.unknownReads++;
-        return selectedVariantProperties.has(String(key)) && liquidObjectKind(object) === "product"
-          ? unknownSelectedVariant
-          : unknown;
-      }
-      return value;
+        }
+        return value;
+      };
+      return value &&
+        (typeof value === "object" || typeof value === "function") &&
+        "then" in value &&
+        typeof value.then === "function"
+        ? Promise.resolve(value).then(evaluate)
+        : evaluate(value);
     };
   }
   reads(context: Context): number {

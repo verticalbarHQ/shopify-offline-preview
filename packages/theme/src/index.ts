@@ -3,6 +3,8 @@ import { type ParseError, parse, printParseErrorCode } from "jsonc-parser";
 /** Browser and Node adapters share relative POSIX paths and sorted listings. */
 export interface ThemeFileSystem {
   readText(path: string): Promise<string>;
+  /** Optional bounded batch transport for selected-route dependency closures. */
+  readTexts?(paths: readonly string[], signal?: AbortSignal): Promise<ReadonlyMap<string, string>>;
   readBytes(path: string): Promise<Uint8Array>;
   listFiles(): Promise<string[]>;
 }

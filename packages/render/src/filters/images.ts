@@ -36,20 +36,25 @@ function escapeHtml(value: unknown): string {
     (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c] ?? c,
   );
 }
-export function imageFilters(snapshot: Snapshot, read: (path: string) => void = () => {}) {
-  const entries = snapshotImageEntries(snapshot);
+export function imageFilters(
+  snapshot: Snapshot | ReturnType<typeof snapshotImageEntries>,
+  read: (path: string) => void = () => {},
+) {
+  const entries = Array.isArray(snapshot) ? snapshot : snapshotImageEntries(snapshot);
   const images = new Map<string, (typeof entries)[number][1]>();
   const dimensionPaths = new Map<string, string>();
-  for (const [path, image] of entries) {
-    const previous = images.get(image.file);
-    const merged = { ...image };
+  const paths = new Map<string, string>();
+  function add(path: string, image: (typeof entries)[number][1]) {
+    const previous = images.get(image.file),
+      merged = { ...image };
     for (const key of ["width", "height"] as const) {
       if (image[key] !== undefined) dimensionPaths.set(`${image.file}.${key}`, path);
       else if (previous?.[key] !== undefined) merged[key] = previous[key];
     }
     images.set(image.file, merged);
+    paths.set(image.file, path);
   }
-  const paths = new Map(entries.map(([path, image]) => [image.file, path]));
+  for (const [path, image] of entries) add(path, image);
   function observe(file: string, key: string) {
     const path = dimensionPaths.get(`${file}.${key}`) ?? paths.get(file);
     if (path !== undefined) read(`${path}.${key}`);
@@ -247,5 +252,5 @@ export function imageFilters(snapshot: Snapshot, read: (path: string) => void = 
       .map(([key, value]) => `${key}="${escapeHtml(value)}"`)
       .join(" ")}>`;
   }
-  return { imageUrl, imageTag };
+  return { imageUrl, imageTag, add };
 }

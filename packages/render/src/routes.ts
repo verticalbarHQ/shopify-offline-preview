@@ -35,6 +35,36 @@ export function resolveRoute(
   input: string,
   hasTemplate: (file: string) => boolean = () => true,
 ): ResolvedRoute {
+  return routeFromLookup(
+    input,
+    (kind, key) => {
+      if (kind === "article") {
+        const [blog, handle] = JSON.parse(key) as [string, string];
+        return snapshot.blogs
+          .find((value) => value.handle === blog)
+          ?.articles.find((value) => value.handle === handle);
+      }
+      return snapshot[
+        kind === "product"
+          ? "products"
+          : kind === "collection"
+            ? "collections"
+            : kind === "page"
+              ? "pages"
+              : "blogs"
+      ].find((value) => value.handle === key);
+    },
+    hasTemplate,
+  );
+}
+export function routeFromLookup(
+  input: string,
+  find: (
+    kind: "product" | "collection" | "page" | "blog" | "article",
+    key: string,
+  ) => { templateSuffix?: string | null } | null | undefined,
+  hasTemplate: (file: string) => boolean,
+): ResolvedRoute {
   if (!input.startsWith("/") || input.startsWith("//") || input.includes("\\"))
     throw new Error("Render requires a local URL path");
   const url = new URL(input, "https://offline.invalid");
@@ -57,42 +87,42 @@ export function resolveRoute(
   else if (path === "/cart") pageType = "cart";
   else if (namespace === "collections" && decoded.length === 1) pageType = "list-collections";
   else if (namespace === "products" && handle && decoded.length === 2) {
-    const product = snapshot.products.find((item) => item.handle === handle);
+    const product = find("product", handle);
     if (product) {
       pageType = "product";
       resource = { kind: "product", handle };
-      suffix = product.templateSuffix;
+      suffix = product.templateSuffix ?? null;
     }
   } else if (namespace === "collections" && handle && decoded.length === 2) {
-    const collection = snapshot.collections.find((item) => item.handle === handle);
+    const collection = find("collection", handle);
     if (collection) {
       pageType = "collection";
       resource = { kind: "collection", handle };
-      suffix = collection.templateSuffix;
+      suffix = collection.templateSuffix ?? null;
     } else if (handle === "all") {
       pageType = "collection";
       resource = { kind: "all-collection", handle };
     }
   } else if (namespace === "pages" && handle && decoded.length === 2) {
-    const page = snapshot.pages.find((item) => item.handle === handle);
+    const page = find("page", handle);
     if (page) {
       pageType = "page";
       resource = { kind: "page", handle };
-      suffix = page.templateSuffix;
+      suffix = page.templateSuffix ?? null;
     }
   } else if (namespace === "blogs" && handle && (decoded.length === 2 || decoded.length === 3)) {
-    const blog = snapshot.blogs.find((item) => item.handle === handle);
+    const blog = find("blog", handle);
     if (blog && !articleHandle) {
       pageType = "blog";
       resource = { kind: "blog", handle };
-      suffix = blog.templateSuffix;
+      suffix = blog.templateSuffix ?? null;
     }
     if (blog && articleHandle) {
-      const article = blog.articles.find((item) => item.handle === articleHandle);
+      const article = find("article", JSON.stringify([handle, articleHandle]));
       if (article) {
         pageType = "article";
         resource = { kind: "article", handle: articleHandle, blogHandle: handle };
-        suffix = article.templateSuffix;
+        suffix = article.templateSuffix ?? null;
       }
     }
   }
@@ -140,4 +170,34 @@ export function resolveRoute(
     },
     diagnostics,
   };
+}
+
+export async function resolveSourceRoute(
+  session: import("../../data/src/source-session.js").SourceSession,
+  input: string,
+  hasTemplate: (file: string) => boolean,
+): Promise<ResolvedRoute> {
+  const descriptors = new Map<string, import("../../data/src/render-source.js").RenderDescriptor>();
+  const requests: { kind: "product" | "collection" | "page" | "blog" | "article"; key: string }[] =
+    [];
+  // Resolve only identities touched by routing, before loading their normalized bodies.
+  routeFromLookup(
+    input,
+    (kind, key) => {
+      requests.push({ kind, key });
+      return { templateSuffix: null };
+    },
+    hasTemplate,
+  );
+  await Promise.all(
+    requests.map(async ({ kind, key }) => {
+      const descriptor = await session.resolve(kind, key);
+      if (descriptor) descriptors.set(JSON.stringify([kind, key]), descriptor);
+    }),
+  );
+  return routeFromLookup(
+    input,
+    (kind, key) => descriptors.get(JSON.stringify([kind, key])),
+    hasTemplate,
+  );
 }
