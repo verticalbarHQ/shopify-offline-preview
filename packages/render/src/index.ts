@@ -8,7 +8,6 @@ import { ThemeLoader } from "./theme-loader.js";
 
 export * from "../../data/src/render-source.js";
 
-import { NodeTypes, toLiquidAST, walk } from "@shopify/liquid-html-parser";
 import {
   AssignTag,
   type Context,
@@ -1262,12 +1261,9 @@ async function renderWithSource(
       let schemaFailure: string | undefined;
       try {
         // Schema extraction must not depend on support for the section's executable tags.
-        const schemas: SectionSchema[] = [];
-        walk(toLiquidAST(source(file)), (node, parent) => {
-          if (node.type !== NodeTypes.LiquidRawTag || node.name !== "schema") return;
-          if (parent?.type !== NodeTypes.Document) throw new Error("Schema tag must be top-level");
-          schemas.push(sectionSchema.parse(JSON.parse(node.body.value)));
-        });
+        const schemas: SectionSchema[] = loader
+          .schemaBodies(file)
+          .map((body) => sectionSchema.parse(JSON.parse(body)));
         if (schemas.length > 1) throw new Error("More than one schema tag");
         schema = schemas[0] ?? sectionSchema.parse({});
       } catch (error) {
@@ -1406,12 +1402,9 @@ async function renderWithSource(
       let schema = themeBlockSchema.parse({});
       let schemaFailure: string | undefined;
       try {
-        const values: z.infer<typeof themeBlockSchema>[] = [];
-        walk(toLiquidAST(source(file)), (node, parent) => {
-          if (node.type !== NodeTypes.LiquidRawTag || node.name !== "schema") return;
-          if (parent?.type !== NodeTypes.Document) throw new Error("Schema tag must be top-level");
-          values.push(themeBlockSchema.parse(JSON.parse(node.body.value)));
-        });
+        const values: z.infer<typeof themeBlockSchema>[] = loader
+          .schemaBodies(file)
+          .map((body) => themeBlockSchema.parse(JSON.parse(body)));
         if (values.length > 1) throw new Error("More than one schema tag");
         schema = values[0] ?? schema;
       } catch (error) {

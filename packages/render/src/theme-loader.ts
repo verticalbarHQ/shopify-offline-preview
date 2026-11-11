@@ -6,6 +6,9 @@ import type { RenderClock } from "./render-clock.js";
 export class ThemeLoader {
   readonly files = new Map<string, string>();
   private readonly pending = new Map<string, Promise<void>>();
+  /** Each file's dependencies, read once: a render's files do not change, and a snippet rendered in a loop asks again. */
+  private readonly dependencyCache = new Map<string, string[]>();
+  private readonly schemaCache = new Map<string, readonly string[] | { error: unknown }>();
   constructor(
     private readonly theme: ThemeFileSystem,
     readonly paths: ReadonlySet<string>,
@@ -51,6 +54,40 @@ export class ThemeLoader {
     }
   }
   private dependencies(file: string): string[] {
+    const known = this.dependencyCache.get(file);
+    if (known) return known;
+    const found = this.readDependencies(file);
+    // a file not loaded yet has none known so far, and is read again once it is
+    if (this.files.has(file)) this.dependencyCache.set(file, found);
+    return found;
+  }
+  /**
+   * The bodies of a loaded section's or block's top-level schema tags, read once per render. Each caller parses its own
+   * schema from them, so no parsed schema is shared; a failure is the same failure each time.
+   */
+  schemaBodies(file: string): readonly string[] {
+    let known = this.schemaCache.get(file);
+    if (!known) {
+      try {
+        const bodies: string[] = [];
+        const text = this.files.get(file);
+        // as the renderer's own source(): a file the theme does not hold is this failure
+        if (text === undefined) throw new Error(`Theme file not found: ${file}`);
+        walk(toLiquidAST(text), (node, parent) => {
+          if (node.type !== NodeTypes.LiquidRawTag || node.name !== "schema") return;
+          if (parent?.type !== NodeTypes.Document) throw new Error("Schema tag must be top-level");
+          bodies.push(node.body.value);
+        });
+        known = bodies;
+      } catch (error) {
+        known = { error };
+      }
+      if (this.files.has(file)) this.schemaCache.set(file, known);
+    }
+    if ("error" in known) throw known.error;
+    return known;
+  }
+  private readDependencies(file: string): string[] {
     const text = this.files.get(file);
     if (text === undefined) return [];
     const result: string[] = [];
